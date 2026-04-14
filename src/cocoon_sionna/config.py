@@ -79,6 +79,7 @@ class RadioConfig:
 
 @dataclass(slots=True)
 class CoverageConfig:
+    enabled: bool = True
     cell_size_m: tuple[float, float] = (10.0, 10.0)
     height_m: float = 1.5
     center_m: tuple[float, float, float] | None = None
@@ -149,6 +150,8 @@ class OptimizationConfig:
 class OutputConfig:
     output_dir: Path
     scene_animation_speedup: float = 1.0
+    write_csi_exports: bool = True
+    enable_csi_cache: bool = True
 
 
 @dataclass(slots=True)
@@ -254,6 +257,7 @@ def _load_radio(data: dict[str, Any], access_point_spec: AccessPointSpec) -> Rad
 
 def _load_coverage(data: dict[str, Any]) -> CoverageConfig:
     return CoverageConfig(
+        enabled=bool(data.get("enabled", True)),
         cell_size_m=_tuple_of_floats(data.get("cell_size_m"), 2, (10.0, 10.0)),
         height_m=float(data.get("height_m", 1.5)),
         center_m=(
@@ -372,6 +376,8 @@ def load_scenario_config(path: str | Path) -> ScenarioConfig:
         outputs=OutputConfig(
             output_dir=outputs_dir,
             scene_animation_speedup=float(raw["outputs"].get("scene_animation_speedup", 1.0)),
+            write_csi_exports=bool(raw["outputs"].get("write_csi_exports", True)),
+            enable_csi_cache=bool(raw["outputs"].get("enable_csi_cache", True)),
         ),
         scenario_path=scenario_path,
     )

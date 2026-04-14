@@ -14,9 +14,9 @@ At a high level, each scenario does the following:
 1. Build or load an outdoor scene and its walk graph.
 2. Generate UE trajectories over the walkable space.
 3. Compute path-based wireless channels with Sionna RT.
-4. Evaluate fixed and mobile wall-mounted AP constellations using grid coverage and trajectory SINR.
+4. Evaluate fixed and mobile wall-mounted AP constellations using CSI-derived trajectory SINR.
 5. Reposition the mobile AP constellation on a configured relocation schedule.
-6. Export CSI, coverage maps, trajectories, SINR comparison plots, and AP movement schedules.
+6. Export CSI, optional coverage maps, trajectories, SINR comparison plots, and AP movement schedules.
 
 ## System Model
 
@@ -190,7 +190,7 @@ This baseline is used to compute:
 
 - fixed `AP-UE` CSI
 - fixed `AP-AP` CSI
-- a fixed coverage map
+- an optional fixed coverage map
 - fixed instantaneous UE SINR samples
 
 These outputs form the reference against which the mobile or optimized
@@ -212,40 +212,20 @@ The resulting AP schedule is exported to `mobile_ap_schedule.csv`.
 
 ### Objective Function
 
-Each candidate subset is scored using three components:
+Each candidate subset is scored from CSI-derived terms only:
 
-1. Coverage-map outage over the grid.
-2. Instantaneous trajectory outage over all UE snapshots.
+1. Instantaneous trajectory outage over all UE snapshots from `AP-UE` CSI.
+2. A trajectory percentile term from the same `AP-UE` CSI.
 3. A peer-aware tie-break term derived from `UE-UE` link quality.
+
+`AP-AP` CSI is still exported for downstream analysis, but the placement score no
+longer depends on a full radio map.
 
 For a candidate subset, the code computes:
 
-- `grid_outage`: fraction of valid grid cells with SINR below
+- `trajectory_outage`: fraction of UE snapshots with SINR below
   `sinr_threshold_db`
-- `trajectory_outage`: fraction of UE snapshots with SINR below the same
-  threshold
-- `grid_p10`: 10th percentile SINR over valid grid cells
 - `traj_p10`: 10th percentile SINR over UE trajectory samples
-
-The grid and trajectory terms are blended as:
-
-```math
-\mathrm{outage}
-=
-w_g \,\mathrm{outage}_{\mathrm{grid}}
-+
-w_t \,\mathrm{outage}_{\mathrm{traj}}
-```
-
-```math
-p_{10}
-=
-w_g \,p_{10,\mathrm{grid}}
-+
-w_t \,p_{10,\mathrm{traj}}
-```
-
-where `w_g = grid_weight` and `w_t = trajectory_weight`.
 
 The peer-aware term uses `UE-UE` link powers to produce `need_weights`, so weak
 peer connectivity increases the tie-break emphasis on the corresponding
@@ -289,15 +269,16 @@ With ray tracing enabled, a full scenario run proceeds as follows:
 2. Generate UE trajectories.
 3. Compute `UE-UE` CSI and derive peer need weights.
 4. Compute the fixed AP baseline:
-   `AP-UE`, `AP-AP`, and coverage.
+   `AP-UE`, `AP-AP`, and optional coverage.
 5. If optimization is enabled, optimize the mobile AP constellation over the
-   relocation windows; otherwise reuse the fixed AP constellation.
-6. Export fixed/mobile CSI, coverage maps, SINR comparisons, AP schedules, and
+   relocation windows using CSI-derived scoring; otherwise reuse the fixed AP constellation.
+6. Export fixed/mobile CSI, optional coverage maps, SINR comparisons, AP schedules, and
    summary metrics.
 
 When `solver.enable_ray_tracing: false`, the pipeline skips CSI, coverage, and
 optimization scoring, but it still exports trajectories, AP layouts, schedules,
-and scene visualizations.
+and scene visualizations. When `coverage.enabled: false`, the pipeline still
+runs CSI and optimization but skips coverage-map computation and exports.
 
 ## Layout
 
@@ -363,16 +344,21 @@ Run the full Rabot optimization pipeline:
 .venv\Scripts\python.exe -m cocoon_sionna.cli run scenarios/rabot.yaml
 ```
 
+For faster optimization runs with less disk I/O, you can disable CSI artifact
+writes and cache storage in the scenario YAML:
+
+```yaml
+outputs:
+  write_csi_exports: false
+  enable_csi_cache: false
+```
+
 ## Outputs
 
 Each scenario writes to its configured output directory and produces:
 
 - `recommended_aps.csv`
 - `fixed_aps.csv`
-- `coverage_map.npz`
-- `coverage_map.png`
-- `fixed_coverage_map.npz`
-- `fixed_coverage_map.png`
 - `infra_csi_snapshots.npz`
 - `peer_csi_snapshots.npz`
 - `trajectory.csv`
@@ -386,6 +372,19 @@ Each scenario writes to its configured output directory and produces:
 - `user_sinr_timeseries.csv`
 - `mobile_ap_schedule.csv`
 - `run.log`
+
+When `outputs.write_csi_exports: false`, the pipeline skips
+`peer_csi_snapshots.npz` and `infra_csi_snapshots.npz` and also avoids the full
+CFR/CIR/tau export path. When `outputs.enable_csi_cache: false`, the run does
+not read or write `.csi_cache`.
+
+When `solver.enable_ray_tracing: true` and `coverage.enabled: true`, the output
+directory also includes:
+
+- `coverage_map.npz`
+- `coverage_map.png`
+- `fixed_coverage_map.npz`
+- `fixed_coverage_map.png`
 
 `infra_csi_snapshots.npz` contains fixed/mobile `AP-AP` and fixed/mobile `AP-UE` CSI exports.
 `peer_csi_snapshots.npz` contains `UE-UE` CSI exports and the peer-derived

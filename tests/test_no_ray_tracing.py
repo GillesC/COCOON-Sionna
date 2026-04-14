@@ -13,6 +13,9 @@ def test_run_scenario_without_ray_tracing_writes_trajectory_outputs(tmp_path: Pa
     config = load_scenario_config("scenarios/etoile_demo.yaml")
     config.outputs.output_dir = tmp_path / "etoile_no_rt"
     config.solver.enable_ray_tracing = False
+    config.outputs.output_dir.mkdir(parents=True, exist_ok=True)
+    (config.outputs.output_dir / "coverage_map.npz").write_bytes(b"stale")
+    (config.outputs.output_dir / "fixed_coverage_map.npz").write_bytes(b"stale")
 
     summary = run_scenario(config)
 

@@ -298,6 +298,78 @@ def test_csi_cache_roundtrip(tmp_path):
     assert (_cache_dir(config.outputs.output_dir, cache_key) / "manifest.json").exists()
     assert loaded["fixed_ap_ue"]["tx_site_ids"] == ["site_a"]
     assert loaded["selected_sites"][0].site_id == "site_a"
+    assert loaded["fixed_radio_map"] is not None
+
+
+def test_csi_cache_roundtrip_without_radiomap(tmp_path):
+    config = load_scenario_config("scenarios/etoile_demo.yaml")
+    config.outputs.output_dir = tmp_path / "out"
+    config.coverage.enabled = False
+    trajectory = Trajectory(
+        times_s=np.array([0.0, 1.0]),
+        ue_ids=["ue_000"],
+        positions_m=np.array([[[0.0, 0.0, 1.5]], [[1.0, 0.0, 1.5]]]),
+        velocities_mps=np.zeros((2, 1, 3), dtype=float),
+    )
+    base_sites = [CandidateSite("site_a", 0.0, 0.0, 5.0, 0.0, 0.0, "wall")]
+    scene_dir = tmp_path / "scene"
+    scene_dir.mkdir()
+    graph_path = scene_dir / "walk_graph.json"
+    graph_path.write_text("{}", encoding="utf-8")
+    scene_xml = scene_dir / "scene.xml"
+    scene_xml.write_text("<scene/>", encoding="utf-8")
+    metadata_path = scene_dir / "scene_metadata.json"
+    metadata_path.write_text("{}", encoding="utf-8")
+    artifacts = SceneArtifacts(scene_xml_path=scene_xml, metadata_path=metadata_path, walk_graph_path=graph_path)
+    runtime_info = {"device": "CPU", "variant": "llvm_ad_mono_polarized", "note": "test"}
+    cache_key = _build_csi_cache_key(config, artifacts, graph_path, trajectory, base_sites, base_sites, base_sites)
+
+    peer_csi = {
+        "ue_ids": ["ue_000"],
+        "times_s": trajectory.times_s,
+        "link_power_w": np.ones((2, 1, 1), dtype=float),
+        "need_weights": np.ones((2, 1), dtype=float),
+    }
+    fixed_ap_ue = {
+        "tx_site_ids": ["site_a"],
+        "rx_ue_ids": ["ue_000"],
+        "times_s": trajectory.times_s,
+        "best_sinr_db": np.ones((2, 1), dtype=float),
+        "link_power_w": np.ones((2, 1, 1), dtype=float),
+    }
+    fixed_ap_ap = {
+        "tx_site_ids": ["site_a"],
+        "rx_site_ids": ["site_a"],
+        "link_power_w": np.zeros((1, 1), dtype=float),
+    }
+
+    _write_csi_cache(
+        output_dir=config.outputs.output_dir,
+        cache_key=cache_key,
+        runtime_info=runtime_info,
+        peer_csi=peer_csi,
+        fixed_ap_ue=fixed_ap_ue,
+        final_ap_ue=fixed_ap_ue,
+        fixed_ap_ap=fixed_ap_ap,
+        final_ap_ap=fixed_ap_ap,
+        fixed_radio_map=None,
+        final_radio_map=None,
+        selected_sites=base_sites,
+        final_selected_candidate_ids=["site_a"],
+        selected_candidate_union={"site_a"},
+        schedule_rows=[],
+        fixed_score=PlacementScore(1.0, 0.0, 5.0, 1.0, 0.0, 0.0),
+        best_score=PlacementScore(1.0, 0.0, 5.0, 1.0, 0.0, 0.0),
+        num_relocation_windows=1,
+    )
+
+    loaded = _try_load_csi_cache(config.outputs.output_dir, cache_key)
+
+    assert loaded is not None
+    assert loaded["fixed_radio_map"] is None
+    assert loaded["final_radio_map"] is None
+    assert not (_cache_dir(config.outputs.output_dir, cache_key) / "coverage_map.npz").exists()
+    assert not (_cache_dir(config.outputs.output_dir, cache_key) / "fixed_coverage_map.npz").exists()
 
 
 def test_cache_optional_artifacts_roundtrip(tmp_path):

@@ -12,6 +12,7 @@ def test_load_etoile_config():
     assert config.radio.ap_num_cols == 3
     assert config.radio.ue_num_rows == 1
     assert config.radio.ue_num_cols == 1
+    assert config.coverage.enabled is True
     assert config.solver.enable_ray_tracing is True
     assert config.solver.require_gpu is False
     assert config.solver.synthetic_array is True
@@ -26,6 +27,8 @@ def test_load_etoile_config():
     ]
     assert config.mobility.speed_variation_fraction == 0.12
     assert config.optimization.relocation_interval_s == 15.0
+    assert config.outputs.write_csi_exports is True
+    assert config.outputs.enable_csi_cache is True
 
 
 def test_load_rabot_boundary_bbox():
@@ -37,4 +40,7 @@ def test_load_rabot_boundary_bbox():
     assert south < north
     assert config.scene.boundary_path is None
     assert config.outputs.scene_animation_speedup == 10.0
+    assert config.coverage.enabled is False
+    assert config.outputs.write_csi_exports is False
+    assert config.outputs.enable_csi_cache is False
     assert config.solver.require_gpu is True

@@ -914,15 +914,15 @@ def _try_load_csi_cache(output_dir: Path, cache_key: str) -> dict[str, Any] | No
     infra_path = cache_dir / "infra_csi_snapshots.npz"
     coverage_path = cache_dir / "coverage_map.npz"
     fixed_coverage_path = cache_dir / "fixed_coverage_map.npz"
-    required = [manifest_path, peer_path, infra_path, coverage_path, fixed_coverage_path]
+    required = [manifest_path, peer_path, infra_path]
     if not all(path.exists() for path in required):
         return None
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     peer_csi = _load_npz_payload(peer_path)
     infra = _load_npz_payload(infra_path)
-    final_radio_map = _load_npz_payload(coverage_path)
-    fixed_radio_map = _load_npz_payload(fixed_coverage_path)
+    final_radio_map = _load_npz_payload(coverage_path) if coverage_path.exists() else None
+    fixed_radio_map = _load_npz_payload(fixed_coverage_path) if fixed_coverage_path.exists() else None
     return {
         "runtime_info": manifest["runtime_info"],
         "peer_csi": peer_csi,
@@ -976,6 +976,12 @@ def _restore_cached_artifact(output_dir: Path, cache_key: str, cache_name: str, 
     return destination_path
 
 
+def _remove_artifacts(paths: list[Path]) -> None:
+    for path in paths:
+        if path.exists():
+            path.unlink()
+
+
 def _write_csi_cache(
     output_dir: Path,
     cache_key: str,
@@ -985,8 +991,8 @@ def _write_csi_cache(
     final_ap_ue: dict[str, Any],
     fixed_ap_ap: dict[str, Any],
     final_ap_ap: dict[str, Any],
-    fixed_radio_map: dict[str, Any],
-    final_radio_map: dict[str, Any],
+    fixed_radio_map: dict[str, Any] | None,
+    final_radio_map: dict[str, Any] | None,
     selected_sites: list[CandidateSite],
     final_selected_candidate_ids: list[str],
     selected_candidate_union: set[str],
@@ -1022,8 +1028,10 @@ def _write_csi_cache(
     _update_prefixed_export(infra_export, "fixed_ap_ap", fixed_ap_ap, ("cfr", "cir", "tau"))
     _update_prefixed_export(infra_export, "mobile_ap_ap", final_ap_ap, ("cfr", "cir", "tau"))
     np.savez_compressed(cache_dir / "infra_csi_snapshots.npz", **infra_export)
-    np.savez_compressed(cache_dir / "coverage_map.npz", **final_radio_map)
-    np.savez_compressed(cache_dir / "fixed_coverage_map.npz", **fixed_radio_map)
+    if final_radio_map is not None:
+        np.savez_compressed(cache_dir / "coverage_map.npz", **final_radio_map)
+    if fixed_radio_map is not None:
+        np.savez_compressed(cache_dir / "fixed_coverage_map.npz", **fixed_radio_map)
     manifest = {
         "runtime_info": runtime_info,
         "selected_sites": [_site_to_dict(site) for site in selected_sites],
@@ -1242,6 +1250,9 @@ def build_scene_only(config_or_path: ScenarioConfig | str | Path) -> SceneArtifa
 def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
     config = load_scenario_config(config_or_path) if not isinstance(config_or_path, ScenarioConfig) else config_or_path
     output_dir = config.outputs.output_dir
+    radio_map_enabled = bool(config.coverage.enabled)
+    csi_exports_enabled = bool(config.outputs.write_csi_exports)
+    csi_cache_enabled = bool(config.outputs.enable_csi_cache)
     output_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Starting scenario '%s'", config.name)
     logger.info("Writing outputs to %s", output_dir)
@@ -1306,6 +1317,16 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
 
         if not config.solver.enable_ray_tracing:
             logger.info("Ray tracing disabled by configuration; generating trajectory/layout outputs only")
+            _remove_artifacts(
+                [
+                    output_dir / "coverage_map.npz",
+                    output_dir / "coverage_map.png",
+                    output_dir / "fixed_coverage_map.npz",
+                    output_dir / "fixed_coverage_map.png",
+                    output_dir / "peer_csi_snapshots.npz",
+                    output_dir / "infra_csi_snapshots.npz",
+                ]
+            )
             selected_sites = list(baseline_sites)
             write_candidate_sites(
                 output_dir / "recommended_aps.csv",
@@ -1345,6 +1366,9 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             summary = {
                 "scenario": config.name,
                 "ray_tracing_enabled": False,
+                "radio_map_enabled": radio_map_enabled,
+                "csi_exports_enabled": csi_exports_enabled,
+                "csi_cache_enabled": csi_cache_enabled,
                 "optimization_enabled": config.optimization.enable_optimization,
                 "compute_device": "SKIPPED",
                 "mitsuba_variant": "",
@@ -1366,7 +1390,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             candidate_sites,
             baseline_sites,
         )
-        cache_hit = _try_load_csi_cache(output_dir, cache_key)
+        cache_hit = _try_load_csi_cache(output_dir, cache_key) if csi_cache_enabled else None
         sinr_outputs_written = False
 
         early_scene_render_path = None
@@ -1379,14 +1403,14 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 runtime_info["device"],
                 runtime_info["variant"],
             )
-            logger.info("Loaded cached CSI/radio-map payload for hash %s", cache_key[:12])
+            logger.info("Loaded cached CSI payload for hash %s", cache_key[:12])
             peer_csi = cache_hit["peer_csi"]
             fixed_ap_ue = cache_hit["fixed_ap_ue"]
             fixed_ap_ap = cache_hit["fixed_ap_ap"]
             final_ap_ue = cache_hit["final_ap_ue"]
             final_ap_ap = cache_hit["final_ap_ap"]
-            fixed_radio_map = cache_hit["fixed_radio_map"]
-            final_radio_map = cache_hit["final_radio_map"]
+            fixed_radio_map = cache_hit["fixed_radio_map"] if radio_map_enabled else None
+            final_radio_map = cache_hit["final_radio_map"] if radio_map_enabled else None
             selected_sites = cache_hit["selected_sites"]
             final_selected_candidate_ids = cache_hit["final_selected_candidate_ids"]
             selected_candidate_union = cache_hit["selected_candidate_union"]
@@ -1394,7 +1418,6 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             fixed_score = cache_hit["fixed_score"]
             best_score = cache_hit["best_score"]
             relocation_windows = [None] * cache_hit["num_relocation_windows"]
-            mobile_grid_best = _mask_best_sinr(final_radio_map["best_sinr_db"], final_radio_map["cell_centers"], metadata)
             scenario_progress.update(3)
         else:
             runner = SionnaRtRunner(
@@ -1439,14 +1462,15 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             else:
                 logger.info("Skipping early Sionna scene render/video on CPU LLVM backend to avoid Dr.Jit instability")
             logger.info("Computing UE-UE CSI snapshots")
-            peer_csi = runner.compute_ue_ue_csi(trajectory, export_full=True)
-            np.savez_compressed(output_dir / "peer_csi_snapshots.npz", **peer_csi)
-            logger.info("Wrote peer CSI export to %s", output_dir / "peer_csi_snapshots.npz")
+            peer_csi = runner.compute_ue_ue_csi(trajectory, export_full=csi_exports_enabled)
+            if csi_exports_enabled:
+                np.savez_compressed(output_dir / "peer_csi_snapshots.npz", **peer_csi)
+                logger.info("Wrote peer CSI export to %s", output_dir / "peer_csi_snapshots.npz")
             scenario_progress.update(1)
 
             logger.info("Computing fixed-constellation AP-UE and AP-AP CSI")
-            fixed_ap_ue = runner.compute_ap_ue_csi(baseline_sites, trajectory, export_full=True)
-            fixed_ap_ap = runner.compute_ap_ap_csi(baseline_sites, export_full=True)
+            fixed_ap_ue = runner.compute_ap_ue_csi(baseline_sites, trajectory, export_full=csi_exports_enabled)
+            fixed_ap_ap = runner.compute_ap_ap_csi(baseline_sites, export_full=csi_exports_enabled)
             if not config.optimization.enable_optimization:
                 _write_user_sinr_artifacts(
                     output_dir,
@@ -1457,10 +1481,8 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 )
                 logger.info("Wrote fixed-AP user SINR artifacts before optimization/radio-map stages")
                 sinr_outputs_written = True
-            fixed_radio_map = runner.compute_radio_map(baseline_sites, config.coverage)
-            fixed_grid_best = _mask_best_sinr(fixed_radio_map["best_sinr_db"], fixed_radio_map["cell_centers"], metadata)
             fixed_score = summarize_candidate_set(
-                grid_best_sinr_db=fixed_grid_best,
+                grid_best_sinr_db=np.asarray([], dtype=float),
                 trajectory_best_sinr_db=fixed_ap_ue["best_sinr_db"],
                 peer_need_weights=peer_csi["need_weights"],
                 cfg=config.optimization,
@@ -1480,15 +1502,10 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 )
                 final_ap_ue = fixed_ap_ue
                 final_ap_ap = fixed_ap_ap
-                final_radio_map = fixed_radio_map
-                mobile_grid_best = fixed_grid_best
                 best_score = fixed_score
             else:
-                radio_map_cache: dict[tuple[str, ...], dict[str, Any]] = {}
-                grid_best_cache: dict[tuple[str, ...], np.ndarray] = {}
                 candidate_index = {site.site_id: site for site in candidate_sites if site.enabled}
                 mobile_window_segments: list[dict[str, Any]] = []
-                mobile_window_grid_best: list[np.ndarray] = []
                 selected_candidate_union = set()
                 schedule_rows = []
                 relocation_windows = _window_slices(trajectory.times_s, config.optimization.relocation_interval_s)
@@ -1508,7 +1525,6 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 ]
                 mobile_sites = list(mobile_reference_sites)
                 final_selected_candidate_ids = []
-                final_radio_map = None
                 final_ap_ap = None
 
                 logger.info(
@@ -1524,16 +1540,9 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                     def evaluate_window(subset: tuple[str, ...]) -> PlacementScore:
                         if subset not in evaluation_cache:
                             selected = [candidate_index[site_id] for site_id in subset]
-                            if subset not in radio_map_cache:
-                                radio_map_cache[subset] = runner.compute_radio_map(selected, config.coverage)
-                                grid_best_cache[subset] = _mask_best_sinr(
-                                    radio_map_cache[subset]["best_sinr_db"],
-                                    radio_map_cache[subset]["cell_centers"],
-                                    metadata,
-                                )
                             ap_ue = runner.compute_ap_ue_csi(selected, window_trajectory, export_full=False)
                             score = summarize_candidate_set(
-                                grid_best_sinr_db=grid_best_cache[subset],
+                                grid_best_sinr_db=np.asarray([], dtype=float),
                                 trajectory_best_sinr_db=ap_ue["best_sinr_db"],
                                 peer_need_weights=window_need_weights,
                                 cfg=config.optimization,
@@ -1541,20 +1550,21 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                             evaluation_cache[subset] = {"score": score, "ap_ue": ap_ue}
                         return evaluation_cache[subset]["score"]
 
-                    selected_candidate_ids, window_score = greedy_one_swap(
+                    selected_candidate_ids, _window_score = greedy_one_swap(
                         candidate_ids=sorted(candidate_index),
                         select_count=len(mobile_reference_sites),
                         evaluator=evaluate_window,
                     )
-                    subset_key = tuple(sorted(selected_candidate_ids))
                     selected_candidates = [candidate_index[site_id] for site_id in selected_candidate_ids]
                     mobile_sites = _relocate_sites(mobile_sites, selected_candidates)
-                    mobile_segment = runner.compute_ap_ue_csi(mobile_sites, window_trajectory, export_full=True)
-                    final_ap_ap = runner.compute_ap_ap_csi(mobile_sites, export_full=True)
-                    final_radio_map = radio_map_cache[subset_key]
+                    mobile_segment = runner.compute_ap_ue_csi(
+                        mobile_sites,
+                        window_trajectory,
+                        export_full=csi_exports_enabled,
+                    )
+                    final_ap_ap = runner.compute_ap_ap_csi(mobile_sites, export_full=csi_exports_enabled)
                     final_selected_candidate_ids = selected_candidate_ids
                     mobile_window_segments.append(mobile_segment)
-                    mobile_window_grid_best.append(grid_best_cache[subset_key])
                     selected_candidate_union.update(selected_candidate_ids)
                     for site in mobile_sites:
                         schedule_rows.append(
@@ -1570,42 +1580,55 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                             }
                         )
 
-                if not mobile_window_segments or final_radio_map is None or final_ap_ap is None:
+                if not mobile_window_segments or final_ap_ap is None:
                     raise RuntimeError("Mobile AP optimization produced no relocation windows")
 
                 selected_sites = list(mobile_sites)
                 final_ap_ue = _concat_ap_ue_segments(mobile_window_segments)
-                mobile_grid_best = np.concatenate(mobile_window_grid_best, axis=0)
                 best_score = summarize_candidate_set(
-                    grid_best_sinr_db=mobile_grid_best,
+                    grid_best_sinr_db=np.asarray([], dtype=float),
                     trajectory_best_sinr_db=final_ap_ue["best_sinr_db"],
                     peer_need_weights=peer_csi["need_weights"],
                     cfg=config.optimization,
                 )
-            _write_csi_cache(
-                output_dir=output_dir,
-                cache_key=cache_key,
-                runtime_info=runtime_info,
-                peer_csi=peer_csi,
-                fixed_ap_ue=fixed_ap_ue,
-                final_ap_ue=final_ap_ue,
-                fixed_ap_ap=fixed_ap_ap,
-                final_ap_ap=final_ap_ap,
-                fixed_radio_map=fixed_radio_map,
-                final_radio_map=final_radio_map,
-                selected_sites=selected_sites,
-                final_selected_candidate_ids=final_selected_candidate_ids,
-                selected_candidate_union=selected_candidate_union,
-                schedule_rows=schedule_rows,
-                fixed_score=fixed_score,
-                best_score=best_score,
-                num_relocation_windows=len(relocation_windows),
-            )
-            logger.info("Stored CSI/radio-map cache under %s", _cache_dir(output_dir, cache_key))
+            fixed_radio_map = None
+            final_radio_map = None
+            if radio_map_enabled:
+                logger.info("Computing fixed coverage map")
+                fixed_radio_map = runner.compute_radio_map(baseline_sites, config.coverage)
+                if config.optimization.enable_optimization:
+                    logger.info("Computing final coverage map")
+                    final_radio_map = runner.compute_radio_map(selected_sites, config.coverage)
+                else:
+                    final_radio_map = fixed_radio_map
+            if csi_cache_enabled:
+                _write_csi_cache(
+                    output_dir=output_dir,
+                    cache_key=cache_key,
+                    runtime_info=runtime_info,
+                    peer_csi=peer_csi,
+                    fixed_ap_ue=fixed_ap_ue,
+                    final_ap_ue=final_ap_ue,
+                    fixed_ap_ap=fixed_ap_ap,
+                    final_ap_ap=final_ap_ap,
+                    fixed_radio_map=fixed_radio_map,
+                    final_radio_map=final_radio_map,
+                    selected_sites=selected_sites,
+                    final_selected_candidate_ids=final_selected_candidate_ids,
+                    selected_candidate_union=selected_candidate_union,
+                    schedule_rows=schedule_rows,
+                    fixed_score=fixed_score,
+                    best_score=best_score,
+                    num_relocation_windows=len(relocation_windows),
+                )
+                logger.info("Stored CSI cache under %s", _cache_dir(output_dir, cache_key))
         scenario_progress.update(1)
 
-        np.savez_compressed(output_dir / "peer_csi_snapshots.npz", **peer_csi)
-        logger.info("Wrote peer CSI export to %s", output_dir / "peer_csi_snapshots.npz")
+        if csi_exports_enabled:
+            np.savez_compressed(output_dir / "peer_csi_snapshots.npz", **peer_csi)
+            logger.info("Wrote peer CSI export to %s", output_dir / "peer_csi_snapshots.npz")
+        else:
+            _remove_artifacts([output_dir / "peer_csi_snapshots.npz"])
 
         infra_export: dict[str, Any] = {
             "fixed_ap_ue_tx_site_ids": np.asarray(fixed_ap_ue["tx_site_ids"], dtype=object),
@@ -1629,39 +1652,54 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         _update_prefixed_export(infra_export, "mobile_ap_ue", final_ap_ue, ("cfr", "cir", "tau"))
         _update_prefixed_export(infra_export, "fixed_ap_ap", fixed_ap_ap, ("cfr", "cir", "tau"))
         _update_prefixed_export(infra_export, "mobile_ap_ap", final_ap_ap, ("cfr", "cir", "tau"))
-        np.savez_compressed(output_dir / "infra_csi_snapshots.npz", **infra_export)
-        logger.info("Wrote infrastructure CSI export to %s", output_dir / "infra_csi_snapshots.npz")
+        if csi_exports_enabled:
+            np.savez_compressed(output_dir / "infra_csi_snapshots.npz", **infra_export)
+            logger.info("Wrote infrastructure CSI export to %s", output_dir / "infra_csi_snapshots.npz")
+        else:
+            _remove_artifacts([output_dir / "infra_csi_snapshots.npz"])
 
-        np.savez_compressed(
-            output_dir / "coverage_map.npz",
-            path_gain=final_radio_map["path_gain"],
-            rss=final_radio_map["rss"],
-            sinr=final_radio_map["sinr"],
-            best_sinr_db=final_radio_map["best_sinr_db"],
-            cell_centers=final_radio_map["cell_centers"],
-        )
-        np.savez_compressed(
-            output_dir / "fixed_coverage_map.npz",
-            path_gain=fixed_radio_map["path_gain"],
-            rss=fixed_radio_map["rss"],
-            sinr=fixed_radio_map["sinr"],
-            best_sinr_db=fixed_radio_map["best_sinr_db"],
-            cell_centers=fixed_radio_map["cell_centers"],
-        )
-        _plot_coverage(
-            fixed_radio_map["best_sinr_db"],
-            fixed_radio_map["cell_centers"],
-            baseline_sites,
-            trajectory,
-            output_dir / "fixed_coverage_map.png",
-        )
-        _plot_coverage(
-            final_radio_map["best_sinr_db"],
-            final_radio_map["cell_centers"],
-            selected_sites,
-            trajectory,
-            output_dir / "coverage_map.png",
-        )
+        if fixed_radio_map is not None and final_radio_map is not None:
+            np.savez_compressed(
+                output_dir / "coverage_map.npz",
+                path_gain=final_radio_map["path_gain"],
+                rss=final_radio_map["rss"],
+                sinr=final_radio_map["sinr"],
+                best_sinr_db=final_radio_map["best_sinr_db"],
+                cell_centers=final_radio_map["cell_centers"],
+            )
+            np.savez_compressed(
+                output_dir / "fixed_coverage_map.npz",
+                path_gain=fixed_radio_map["path_gain"],
+                rss=fixed_radio_map["rss"],
+                sinr=fixed_radio_map["sinr"],
+                best_sinr_db=fixed_radio_map["best_sinr_db"],
+                cell_centers=fixed_radio_map["cell_centers"],
+            )
+            _plot_coverage(
+                fixed_radio_map["best_sinr_db"],
+                fixed_radio_map["cell_centers"],
+                baseline_sites,
+                trajectory,
+                output_dir / "fixed_coverage_map.png",
+            )
+            _plot_coverage(
+                final_radio_map["best_sinr_db"],
+                final_radio_map["cell_centers"],
+                selected_sites,
+                trajectory,
+                output_dir / "coverage_map.png",
+            )
+            logger.info("Wrote coverage-map exports to %s", output_dir)
+        else:
+            _remove_artifacts(
+                [
+                    output_dir / "coverage_map.npz",
+                    output_dir / "coverage_map.png",
+                    output_dir / "fixed_coverage_map.npz",
+                    output_dir / "fixed_coverage_map.png",
+                ]
+            )
+            logger.info("Coverage-map computation disabled; skipping coverage-map exports")
         scene_render_path = early_scene_render_path
         scene_camera_video_path = early_scene_camera_video_path
         if cache_hit is None:
@@ -1727,7 +1765,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             logger.info("Wrote scene camera video to %s", scene_camera_video_path)
         if animation_path is not None:
             logger.info("Wrote scene animation to %s", animation_path)
-        logger.info("Wrote coverage, scene, and recommendation artifacts to %s", output_dir)
+        logger.info("Wrote scene and recommendation artifacts to %s", output_dir)
         scenario_progress.update(1)
 
         if fixed_ap_ue is not None and not sinr_outputs_written:
@@ -1748,6 +1786,9 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             "mitsuba_variant": runtime_info["variant"],
             "csi_cache_key": cache_key,
             "csi_cache_hit": cache_hit is not None,
+            "radio_map_enabled": radio_map_enabled,
+            "csi_exports_enabled": csi_exports_enabled,
+            "csi_cache_enabled": csi_cache_enabled,
             "optimization_enabled": config.optimization.enable_optimization,
             "relocation_interval_s": config.optimization.relocation_interval_s,
             "fixed_site_ids": [site.site_id for site in baseline_sites],
