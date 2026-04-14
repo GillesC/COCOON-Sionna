@@ -671,6 +671,16 @@ def _write_ap_relocation_csv(
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     baseline_index = {site.site_id: site for site in baseline_sites}
+    use_positional_fallback = any(site.site_id not in baseline_index for site in relocated_sites)
+    if use_positional_fallback:
+        if len(baseline_sites) != len(relocated_sites):
+            raise ValueError(
+                "Cannot summarize AP relocations when relocated site ids do not match the baseline ids "
+                f"and the site counts differ ({len(baseline_sites)} baseline vs {len(relocated_sites)} relocated)"
+            )
+        logger.info(
+            "Writing AP relocation summary by baseline/mobile AP order because relocated ids differ from baseline ids"
+        )
     with output_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerow(
@@ -686,8 +696,10 @@ def _write_ap_relocation_csv(
                 "relocation_source",
             ]
         )
-        for site in relocated_sites:
-            original = baseline_index[site.site_id]
+        for index, site in enumerate(relocated_sites):
+            original = baseline_index.get(site.site_id)
+            if original is None:
+                original = baseline_sites[index]
             writer.writerow(
                 [
                     site.site_id,

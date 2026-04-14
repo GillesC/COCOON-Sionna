@@ -20,6 +20,7 @@ from cocoon_sionna.pipeline import (
     _should_render_sionna_scene_artifacts,
     _try_load_csi_cache,
     _update_prefixed_export,
+    _write_ap_relocation_csv,
     _write_csi_cache,
     _window_slices,
 )
@@ -222,6 +223,28 @@ def test_update_prefixed_export_only_writes_available_keys():
     assert "peer_cfr" in target
     assert "peer_tau" in target
     assert "peer_cir" not in target
+
+
+def test_write_ap_relocation_csv_supports_mobile_ap_ids(tmp_path):
+    output_path = tmp_path / "ap_relocation_summary.csv"
+    baseline_sites = [
+        CandidateSite("fixed_ap_01", 0.0, 0.0, 5.0, 0.0, -10.0, "pole"),
+        CandidateSite("fixed_ap_02", 10.0, 0.0, 5.0, 0.0, -10.0, "pole"),
+    ]
+    relocated_sites = [
+        CandidateSite("mobile_ap_01", 1.0, 1.0, 5.0, 0.0, -10.0, "pole", source="relocated:cand_a"),
+        CandidateSite("mobile_ap_02", 12.0, 1.0, 5.0, 0.0, -10.0, "pole", source="relocated:cand_b"),
+    ]
+
+    _write_ap_relocation_csv(output_path, baseline_sites, relocated_sites)
+
+    rows = output_path.read_text(encoding="utf-8").splitlines()
+    assert rows[0] == (
+        "site_id,original_x_m,original_y_m,original_z_m,relocated_x_m,"
+        "relocated_y_m,relocated_z_m,move_distance_m,relocation_source"
+    )
+    assert rows[1].startswith("mobile_ap_01,0.0,0.0,5.0,1.0,1.0,5.0,")
+    assert rows[2].startswith("mobile_ap_02,10.0,0.0,5.0,12.0,1.0,5.0,")
 
 
 def test_csi_cache_roundtrip(tmp_path):
