@@ -16,13 +16,17 @@ def test_etoile_smoke_pipeline(tmp_path: Path):
     config.radio.cfr_bins = 16
     config.solver.samples_per_src = 500
     config.solver.samples_per_tx = 500
-    config.optimization.max_candidate_ue_positions = 4
+    config.placement.exact_max_iterations = 200
 
     summary = run_scenario(config)
 
     assert summary["selected_site_ids"]
-    assert (config.outputs.output_dir / "recommended_aps.csv").exists()
+    assert (config.outputs.output_dir / "candidate_ap_positions.csv").exists()
     assert (config.outputs.output_dir / "fixed_aps.csv").exists()
+    assert (config.outputs.output_dir / "random_baseline_movable_aps.csv").exists()
+    assert (config.outputs.output_dir / "local_csi_p90_movable_aps.csv").exists()
+    assert (config.outputs.output_dir / "capped_exact_search_movable_aps.csv").exists()
+    assert (config.outputs.output_dir / "strategy_comparison.csv").exists()
     assert (config.outputs.output_dir / "coverage_map.npz").exists()
     assert (config.outputs.output_dir / "fixed_coverage_map.npz").exists()
     assert (config.outputs.output_dir / "infra_csi_snapshots.npz").exists()
@@ -39,4 +43,4 @@ def test_etoile_smoke_pipeline(tmp_path: Path):
     assert (config.outputs.output_dir / "user_sinr_cdf.png").exists()
     assert (config.outputs.output_dir / "user_sinr_summary.csv").exists()
     assert (config.outputs.output_dir / "user_sinr_timeseries.csv").exists()
-    assert (config.outputs.output_dir / "mobile_ap_schedule.csv").exists()
+    assert (config.outputs.output_dir / "random_baseline_schedule.csv").exists()

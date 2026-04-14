@@ -307,7 +307,7 @@ def run_mobile_ap_schedule_visualization(
     graph = load_graph_json(graph_path)
 
     output_dir = config.outputs.output_dir
-    schedule_path = schedule_csv or output_dir / "mobile_ap_schedule.csv"
+    schedule_path = schedule_csv or output_dir / "random_baseline_schedule.csv"
     trajectory_path = trajectory_csv or output_dir / "trajectory.csv"
     fixed_path = fixed_sites_csv or output_dir / "fixed_aps.csv"
     animation_path = output_path or output_dir / "mobile_ap_schedule_animation.mp4"
@@ -329,7 +329,12 @@ def run_mobile_ap_schedule_visualization(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Visualize mobile AP schedules as an animation")
     parser.add_argument("scenario", help="Path to a scenario YAML file")
-    parser.add_argument("--schedule-csv", type=Path, default=None, help="Override path to mobile_ap_schedule.csv")
+    parser.add_argument(
+        "--schedule-csv",
+        type=Path,
+        default=None,
+        help="Override path to a per-strategy schedule CSV such as random_baseline_schedule.csv",
+    )
     parser.add_argument("--trajectory-csv", type=Path, default=None, help="Optional trajectory.csv for UE overlays")
     parser.add_argument("--fixed-sites-csv", type=Path, default=None, help="Optional fixed_aps.csv for reference markers")
     parser.add_argument("--output", type=Path, default=None, help="Output MP4 or GIF path")

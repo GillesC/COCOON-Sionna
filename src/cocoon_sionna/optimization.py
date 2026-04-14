@@ -1,14 +1,15 @@
-"""Deterministic greedy plus one-swap site optimization."""
+"""Placement scoring and candidate-selection helpers."""
 
 from __future__ import annotations
 
+import itertools
 import logging
 from dataclasses import dataclass
 from typing import Callable
 
 import numpy as np
 
-from .config import OptimizationConfig
+from .config import PlacementConfig
 from .logging_utils import progress_bar
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ def summarize_candidate_set(
     grid_best_sinr_db: np.ndarray,
     trajectory_best_sinr_db: np.ndarray,
     peer_need_weights: np.ndarray,
-    cfg: OptimizationConfig,
+    cfg: PlacementConfig,
 ) -> PlacementScore:
     threshold = cfg.sinr_threshold_db
     grid_values = np.asarray(grid_best_sinr_db, dtype=float).reshape(-1)
@@ -38,8 +39,6 @@ def summarize_candidate_set(
 
     grid_outage = float(np.mean(grid_values < threshold)) if grid_values.size else 1.0
     trajectory_outage = float(np.mean(traj_values < threshold)) if traj_values.size else 1.0
-    # Optimization decisions are driven by instantaneous AP-UE SINR samples,
-    # not by radio-map SINR values.
     combined_outage = trajectory_outage
 
     grid_p10 = float(np.percentile(grid_values, 10)) if grid_values.size else -120.0
@@ -68,76 +67,103 @@ def summarize_candidate_set(
     )
 
 
-def greedy_one_swap(
+def sample_random_candidates(
     candidate_ids: list[str],
     select_count: int,
-    evaluator: Callable[[tuple[str, ...]], PlacementScore],
-) -> tuple[list[str], PlacementScore]:
-    if select_count <= 0:
-        raise ValueError("select_count must be positive")
-    ordered_candidates = list(candidate_ids)
-    chosen: list[str] = []
-    best_score: PlacementScore | None = None
-    logger.info("Greedy selection started with %d candidates", len(ordered_candidates))
+    seed: int,
+) -> list[str]:
+    if select_count < 0:
+        raise ValueError("select_count must be non-negative")
+    if select_count > len(candidate_ids):
+        raise ValueError(
+            f"Requested {select_count} movable APs, but only {len(candidate_ids)} candidate AP positions exist"
+        )
+    if select_count == 0:
+        return []
+    rng = np.random.default_rng(seed)
+    indices = np.sort(rng.choice(len(candidate_ids), size=select_count, replace=False))
+    return [candidate_ids[index] for index in indices.tolist()]
 
+
+def select_local_csi_candidates(
+    candidate_ids: list[str],
+    select_count: int,
+    evaluator: Callable[[tuple[str, ...]], float],
+) -> list[str]:
+    if select_count < 0:
+        raise ValueError("select_count must be non-negative")
+    if select_count > len(candidate_ids):
+        raise ValueError(
+            f"Requested {select_count} movable APs, but only {len(candidate_ids)} candidate AP positions exist"
+        )
+
+    ordered = list(candidate_ids)
+    chosen: list[str] = []
     with progress_bar(
-        total=min(select_count, len(ordered_candidates)),
-        desc="Greedy AP selection",
-        unit="site",
+        total=select_count,
+        desc="Local CSI placement",
+        unit="ap",
         leave=False,
     ) as selection_progress:
-        while len(chosen) < min(select_count, len(ordered_candidates)):
-            local_best: tuple[str, PlacementScore] | None = None
-            for candidate in ordered_candidates:
+        while len(chosen) < select_count:
+            local_best: tuple[str, float] | None = None
+            for candidate in ordered:
                 if candidate in chosen:
                     continue
                 subset = tuple(sorted([*chosen, candidate]))
-                score = evaluator(subset)
-                if local_best is None or score.score > local_best[1].score:
-                    local_best = (candidate, score)
+                local_score = float(evaluator(subset))
+                if local_best is None or local_score > local_best[1]:
+                    local_best = (candidate, local_score)
             if local_best is None:
                 break
             chosen.append(local_best[0])
-            best_score = local_best[1]
             selection_progress.update(1)
             logger.info(
-                "Selected %s (%d/%d), score=%.3f, outage=%.3f, p10=%.2f dB",
-                local_best[0],
+                "Local CSI step %d/%d selected %s with local P90 %.2f dB",
                 len(chosen),
-                min(select_count, len(ordered_candidates)),
-                local_best[1].score,
-                local_best[1].outage,
-                local_best[1].percentile_10_db,
+                select_count,
+                local_best[0],
+                local_best[1],
             )
+    return sorted(chosen)
 
-    improved = True
-    while improved and chosen:
-        improved = False
-        current = tuple(sorted(chosen))
-        current_score = evaluator(current)
-        for existing in list(chosen):
-            for candidate in ordered_candidates:
-                if candidate in chosen:
-                    continue
-                proposal = sorted([candidate if site == existing else site for site in chosen])
-                subset = tuple(proposal)
-                score = evaluator(subset)
-                if score.score > current_score.score:
-                    logger.info(
-                        "Swap improvement: %s -> %s, score %.3f -> %.3f",
-                        existing,
-                        candidate,
-                        current_score.score,
-                        score.score,
-                    )
-                    chosen = list(subset)
-                    best_score = score
-                    improved = True
-                    break
-            if improved:
-                break
 
-    if best_score is None:
-        best_score = evaluator(tuple(sorted(chosen)))
-    logger.info("Optimization finished with sites: %s", ", ".join(sorted(chosen)))
-    return sorted(chosen), best_score
+def capped_exact_search(
+    candidate_ids: list[str],
+    select_count: int,
+    evaluator: Callable[[tuple[str, ...]], PlacementScore],
+    max_iterations: int,
+) -> tuple[list[str], PlacementScore, bool, int]:
+    if select_count < 0:
+        raise ValueError("select_count must be non-negative")
+    if select_count > len(candidate_ids):
+        raise ValueError(
+            f"Requested {select_count} movable APs, but only {len(candidate_ids)} candidate AP positions exist"
+        )
+    if select_count == 0:
+        score = evaluator(tuple())
+        return [], score, False, 1
+
+    best_ids: list[str] | None = None
+    best_score: PlacementScore | None = None
+    evaluations = 0
+    capped = False
+
+    for subset in itertools.combinations(sorted(candidate_ids), select_count):
+        if evaluations >= max(max_iterations, 1):
+            capped = True
+            break
+        score = evaluator(tuple(subset))
+        evaluations += 1
+        if best_score is None or score.score > best_score.score:
+            best_ids = list(subset)
+            best_score = score
+
+    if best_ids is None or best_score is None:
+        raise RuntimeError("Exact search evaluated no candidate combinations")
+    logger.info(
+        "Exact search evaluated %d combinations%s",
+        evaluations,
+        " before hitting the cap" if capped else "",
+    )
+    return best_ids, best_score, capped, evaluations

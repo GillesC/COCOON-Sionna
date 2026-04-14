@@ -127,25 +127,22 @@ class SolverConfig:
 
 
 @dataclass(slots=True)
-class OptimizationConfig:
-    enable_optimization: bool = True
-    num_selected_aps: int = 3
+class PlacementConfig:
     num_fixed_aps: int = 0
-    num_mobile_aps: int | None = None
+    num_movable_aps: int = 3
     sinr_threshold_db: float = 3.0
-    grid_weight: float = 0.7
-    trajectory_weight: float = 0.3
     outage_weight: float = 1.0
     percentile_weight: float = 0.05
     peer_tiebreak_weight: float = 0.01
     candidate_min_spacing_m: float = 8.0
-    max_candidate_ue_positions: int = 24
-    wall_candidate_spacing_m: float = 18.0
-    wall_corner_clearance_m: float = 2.0
-    wall_mount_height_m: float = 7.0
-    wall_mount_offset_m: float = 0.25
-    relocation_interval_s: float = 6.0
-    baseline_site_ids: list[str] = field(default_factory=list)
+    candidate_wall_spacing_m: float = 18.0
+    candidate_corner_clearance_m: float = 2.0
+    candidate_wall_height_m: float = 1.5
+    candidate_wall_offset_m: float = 0.25
+    window_interval_s: float = 6.0
+    random_seed: int = 7
+    heuristic_k_nearest: int = 8
+    exact_max_iterations: int = 50000
 
 
 @dataclass(slots=True)
@@ -165,7 +162,7 @@ class ScenarioConfig:
     coverage: CoverageConfig
     mobility: MobilityConfig
     solver: SolverConfig
-    optimization: OptimizationConfig
+    placement: PlacementConfig
     candidate_sites_path: Path
     outputs: OutputConfig
     scenario_path: Path = field(repr=False)
@@ -330,35 +327,23 @@ def _load_solver(data: dict[str, Any], access_point_spec: AccessPointSpec) -> So
     )
 
 
-def _load_optimization(data: dict[str, Any]) -> OptimizationConfig:
-    return OptimizationConfig(
-        enable_optimization=bool(data.get("enable_optimization", True)),
-        num_selected_aps=int(data.get("num_selected_aps", 3)),
+def _load_placement(data: dict[str, Any]) -> PlacementConfig:
+    return PlacementConfig(
         num_fixed_aps=int(data.get("num_fixed_aps", 0)),
-        num_mobile_aps=(
-            int(data["num_mobile_aps"])
-            if data.get("num_mobile_aps") is not None
-            else None
-        ),
+        num_movable_aps=int(data.get("num_movable_aps", 3)),
         sinr_threshold_db=float(data.get("sinr_threshold_db", 3.0)),
-        grid_weight=float(data.get("grid_weight", 0.7)),
-        trajectory_weight=float(data.get("trajectory_weight", 0.3)),
         outage_weight=float(data.get("outage_weight", 1.0)),
         percentile_weight=float(data.get("percentile_weight", 0.05)),
         peer_tiebreak_weight=float(data.get("peer_tiebreak_weight", 0.01)),
         candidate_min_spacing_m=float(data.get("candidate_min_spacing_m", 8.0)),
-        max_candidate_ue_positions=int(data.get("max_candidate_ue_positions", 24)),
-        wall_candidate_spacing_m=float(data.get("wall_candidate_spacing_m", 18.0)),
-        wall_corner_clearance_m=float(data.get("wall_corner_clearance_m", 2.0)),
-        wall_mount_height_m=float(data.get("wall_mount_height_m", 7.0)),
-        wall_mount_offset_m=float(data.get("wall_mount_offset_m", 0.25)),
-        relocation_interval_s=float(
-            data.get(
-                "relocation_interval_s",
-                float(data.get("relocation_interval_min", 0.1)) * 60.0,
-            )
-        ),
-        baseline_site_ids=[str(site_id) for site_id in data.get("baseline_site_ids", [])],
+        candidate_wall_spacing_m=float(data.get("candidate_wall_spacing_m", 18.0)),
+        candidate_corner_clearance_m=float(data.get("candidate_corner_clearance_m", 2.0)),
+        candidate_wall_height_m=float(data.get("candidate_wall_height_m", 1.5)),
+        candidate_wall_offset_m=float(data.get("candidate_wall_offset_m", 0.25)),
+        window_interval_s=float(data.get("window_interval_s", 6.0)),
+        random_seed=int(data.get("random_seed", 7)),
+        heuristic_k_nearest=int(data.get("heuristic_k_nearest", 8)),
+        exact_max_iterations=int(data.get("exact_max_iterations", 50000)),
     )
 
 
@@ -379,7 +364,7 @@ def load_scenario_config(path: str | Path) -> ScenarioConfig:
         coverage=_load_coverage(raw.get("coverage", {})),
         mobility=_load_mobility(base_dir, raw["mobility"]),
         solver=_load_solver(raw.get("solver", {}), access_point_spec),
-        optimization=_load_optimization(raw.get("optimization", {})),
+        placement=_load_placement(raw.get("placement", {})),
         candidate_sites_path=_resolve_path(base_dir, raw["candidate_sites_path"]),
         outputs=OutputConfig(
             output_dir=outputs_dir,

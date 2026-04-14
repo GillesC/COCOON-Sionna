@@ -6,17 +6,18 @@ pipeline built on top of Sionna RT. The project:
 - validating placement logic on the bundled `etoile` scene
 - building an OSM-derived outdoor scene for KU Leuven Gent Campus Rabot
 - simulating pedestrian mobility and pairwise CSI for `AP-AP`, `AP-UE`, and `UE-UE`
-- anchoring fixed APs to building walls and selecting a spread-out baseline constellation
-- optimizing a second mobile AP constellation on wall anchors using UE-UE and UE-AP CSI
+- generating wall-mounted candidate AP positions at `1.5 m`
+- splitting each deployment into fixed APs plus movable APs
+- comparing three placement strategies over the same CSI-derived objective
 
 At a high level, each scenario does the following:
 
 1. Build or load an outdoor scene and its walk graph.
-2. Generate UE trajectories over the walkable space.
-3. Compute path-based wireless channels with Sionna RT.
-4. Evaluate fixed and mobile wall-mounted AP constellations using CSI-derived trajectory SINR.
-5. Reposition the mobile AP constellation on a configured relocation schedule.
-6. Export CSI, optional coverage maps, trajectories, SINR comparison plots, and AP movement schedules.
+2. Generate wall-mounted candidate AP positions over building boundaries at `1.5 m`.
+3. Generate UE trajectories over the walkable space.
+4. Compute path-based wireless channels with Sionna RT.
+5. Compare the `random_baseline`, `local_csi_p90`, and `capped_exact_search` placement strategies.
+6. Export CSI, optional coverage maps, trajectories, per-strategy summaries, and placement schedules.
 
 ## System Model
 
@@ -141,164 +142,112 @@ Under perfect CSI and ideal ZF, the multi-user interference terms vanish,
 In the current implementation, the total AP power budget is the sum of all AP
 transmit powers and is split equally across active user streams.
 
-## Optimization Model
+## Placement Model
 
-The optimization implemented in this repository is a placement and relocation
-problem over a finite set of AP candidate sites.
+Each run compares three placement strategies over the same deployment model.
 
-- A fixed AP constellation is always defined first.
-- For OSM scenes, candidate AP sites are generated along building walls and the
-  fixed baseline is chosen as a far-apart subset of those wall anchors.
-- For non-OSM scenes, baseline APs come from `candidate_sites_path`.
-- A second, mobile AP constellation can then be optimized over the same
-  candidate pool.
+- `num_fixed_aps`: APs that remain active and stationary for the full scenario
+- `num_movable_aps`: APs selected from the candidate AP positions
+- baseline = initial AP constellation = fixed APs plus the initial movable AP placement
+- `N` always refers to `num_movable_aps`
 
-Two deployment modes are supported:
+### Candidate AP Positions
 
-- `optimization.enable_optimization: true`: the mobile AP constellation is
-  optimized and may relocate over time.
-- `optimization.enable_optimization: false`: the mobile AP constellation is
-  disabled and the fixed AP constellation is reused unchanged.
+Candidate AP positions are the potential wall-mounted positions available to
+the movable APs. They are generated along building walls at `1.5 m` height and
+are not part of the fixed AP set.
 
-In all cases, the fixed AP constellation remains the reference deployment used
-for comparison.
+Candidate generation is controlled by:
 
-You can now split the deployment into:
-
-- `num_fixed_aps`: APs that stay at their seed positions for the whole run
-- `num_mobile_aps`: APs that are optimized over the candidate AP pool
-
-If `num_mobile_aps` is omitted, the code falls back to the legacy
-`num_selected_aps` field for backward compatibility.
-
-### Candidate Sites
-
-Candidate APs are the possible positions that the movable APs are allowed to
-occupy during optimization. They are not the same thing as the always-fixed APs.
-
-For OSM-derived outdoor scenes, the code extracts building footprints, creates
-wall-mounted anchor points, and enforces spacing/clearance constraints via:
-
-- `wall_candidate_spacing_m`
-- `wall_corner_clearance_m`
-- `wall_mount_height_m`
-- `wall_mount_offset_m`
+- `candidate_wall_height_m`
+- `candidate_wall_spacing_m`
+- `candidate_corner_clearance_m`
+- `candidate_wall_offset_m`
 - `candidate_min_spacing_m`
 
-For non-OSM scenes, the pipeline loads the candidate AP list from
-`candidate_sites_path`. It can also augment that list with a bounded number of
-trajectory-derived candidate sites near UE motion.
+For scenes that do not expose wall geometry directly, the same candidate AP
+positions can be supplied explicitly. The fixed APs remain active in every CSI
+solve, but they are excluded from the movable candidate pool.
 
-### Fixed Baseline
+### Placement Config Example
 
-The fixed baseline is the non-relocated AP deployment:
-
-- In OSM scenes, the code selects a spread-out wall-mounted set using farthest
-  spacing.
-- In non-OSM scenes, the code takes the configured fixed and movable seed APs
-  from `candidate_sites_path`.
-
-The baseline deployment is the union of:
-
-- the always-fixed APs
-- the movable APs at their initial seed positions
-
-This baseline is used to compute:
-
-- fixed `AP-UE` CSI
-- fixed `AP-AP` CSI
-- an optional fixed coverage map
-- fixed instantaneous UE SINR samples
-
-These outputs form the reference against which the mobile or optimized
-deployment is compared.
-
-### Mobile Relocation
-
-When optimization is enabled, the code creates a second AP constellation with
-the configured `num_mobile_aps` count, while keeping the `num_fixed_aps` APs
-active in place.
-
-- Time is partitioned into relocation windows using
-  `optimization.relocation_interval_s`.
-- In each window, the optimizer chooses a subset of candidate wall anchors.
-- The chosen anchor positions are then assigned back to the original mobile AP
-  IDs using minimum-distance matching, so AP identities stay stable even when
-  positions move.
-- The always-fixed APs are included in the AP-UE and AP-AP CSI solves, but they
-  are excluded from the movable candidate pool.
-
-The resulting AP schedule is exported to `mobile_ap_schedule.csv`.
-
-### Objective Function
-
-Each candidate subset is scored from CSI-derived terms only:
-
-1. Instantaneous trajectory outage over all UE snapshots from `AP-UE` CSI.
-2. A trajectory percentile term from the same `AP-UE` CSI.
-3. A peer-aware tie-break term derived from `UE-UE` link quality.
-
-`AP-AP` CSI is still exported for downstream analysis, but the placement score no
-longer depends on a full radio map.
-
-For a candidate subset, the code computes:
-
-- `trajectory_outage`: fraction of UE snapshots with SINR below
-  `sinr_threshold_db`
-- `traj_p10`: 10th percentile SINR over UE trajectory samples
-
-The peer-aware term uses `UE-UE` link powers to produce `need_weights`, so weak
-peer connectivity increases the tie-break emphasis on the corresponding
-trajectory samples.
-
-The final score is:
-
-```math
-\mathrm{score}
-=
-- w_{\mathrm{out}} \,\mathrm{outage}
-+ w_{p10}\, p_{10}
-+ w_{\mathrm{peer}} \,\mathrm{peer\_tiebreak},
+```yaml
+placement:
+  num_fixed_aps: 2
+  num_movable_aps: 4
+  window_interval_s: 10.0
+  candidate_wall_height_m: 1.5
+  candidate_wall_spacing_m: 8.0
+  candidate_corner_clearance_m: 2.0
+  candidate_wall_offset_m: 0.5
+  candidate_min_spacing_m: 3.0
+  random_seed: 7
+  heuristic_k_nearest: 8
+  exact_max_iterations: 50000
 ```
 
-with weights:
+### Baseline
 
-- `outage_weight`
-- `percentile_weight`
-- `peer_tiebreak_weight`
+The baseline is the initial AP constellation:
 
-Higher score is better.
+- all fixed APs
+- `N` movable APs sampled once from the candidate AP positions
 
-### Search Strategy
+That initial movable placement defines the `random_baseline` strategy and stays
+unchanged across all relocation windows. It is the reference deployment used in
+the strategy comparison.
 
-The optimizer does not solve a continuous placement problem. It performs a
-discrete search over the configured candidate IDs:
+### Strategies To Compare
 
-1. Greedy selection: add one candidate at a time, each time choosing the site
-   that gives the best score improvement.
-2. One-swap refinement: attempt single replacements of selected sites with
-   unselected candidates and accept any improving swap.
+Each scenario compares these three strategies:
 
-This is implemented in `src/cocoon_sionna/optimization.py`.
+- `random_baseline`: place `N` movable APs randomly on candidate AP positions
+  once, then keep that constellation fixed for the full run
+- `local_csi_p90`: for each candidate AP position, gather the `K` nearest UE
+  snapshots, score the candidate with local CSI-derived `P90` SINR, then select
+  the movable AP positions per relocation window with this non-exhaustive
+  heuristic
+- `capped_exact_search`: evaluate movable-AP combinations over the full
+  candidate AP pool for each relocation window, stop at `exact_max_iterations`,
+  and return the best combination found so far together with an explicit capped
+  status when the full search is not completed
+
+### Placement Scoring
+
+Placement evaluation uses CSI only:
+
+1. `AP-UE` CSI provides the trajectory SINR samples used for outage and
+   percentile-based scoring.
+2. `UE-UE` CSI provides the peer-aware weighting used as a tie-break term.
+3. `AP-AP` CSI is exported for analysis, but the placement score does not
+   depend on a full radio map.
+
+The `local_csi_p90` heuristic uses the `K` nearest UE snapshots around each
+candidate AP position and ranks candidates by their local `P90` SINR. The
+comparison summary still reports the full trajectory-level score for each
+strategy.
 
 ### Evaluation Flow Per Scenario
 
 With ray tracing enabled, a full scenario run proceeds as follows:
 
 1. Build or load the scene and mobility graph.
-2. Generate UE trajectories.
-3. Compute `UE-UE` CSI and derive peer need weights.
-4. Compute the fixed AP baseline:
-   `AP-UE`, `AP-AP`, and optional coverage.
-5. If optimization is enabled, optimize the mobile AP constellation over the
-   relocation windows using CSI-derived scoring; otherwise reuse the fixed AP constellation.
-6. Export fixed/mobile CSI, optional coverage maps, SINR comparisons, AP schedules, and
-   summary metrics.
+2. Generate candidate AP positions along the walls at `1.5 m`.
+3. Generate UE trajectories.
+4. Compute the CSI used for scoring:
+   `UE-UE`, `AP-UE`, and exported `AP-AP`.
+5. Build the baseline as the initial AP constellation:
+   fixed APs plus the sampled `random_baseline` movable APs.
+6. Compare the three strategies over the relocation windows:
+   `random_baseline` stays fixed, while `local_csi_p90` and
+   `capped_exact_search` choose movable AP positions per window.
+7. Export per-strategy placements, schedules, optional coverage maps, SINR
+   comparisons, and summary metrics.
 
-When `solver.enable_ray_tracing: false`, the pipeline skips CSI, coverage, and
-optimization scoring, but it still exports trajectories, AP layouts, schedules,
-and scene visualizations. When `coverage.enabled: false`, the pipeline still
-runs CSI and optimization but skips coverage-map computation and exports.
+When `solver.enable_ray_tracing: false`, the pipeline skips CSI-driven
+placement scoring but still exports trajectories, AP layouts, schedules, and
+scene visualizations. When `coverage.enabled: false`, the pipeline still runs
+the placement comparison but skips coverage-map computation and exports.
 
 ## Layout
 
@@ -358,27 +307,34 @@ assets before running the scenario again:
 .venv\Scripts\python.exe -m cocoon_sionna.cli build-scene scenarios/rabot.yaml
 ```
 
-Run the full Rabot optimization pipeline:
+Run the full Rabot placement-strategy comparison:
 
 ```powershell
 .venv\Scripts\python.exe -m cocoon_sionna.cli run scenarios/rabot.yaml
 ```
 
-For faster optimization runs with less disk I/O, you can disable CSI artifact
-writes and cache storage in the scenario YAML:
+For faster placement-comparison runs with less disk I/O, you can disable CSI
+artifact writes in the scenario YAML:
 
 ```yaml
 outputs:
   write_csi_exports: false
-  enable_csi_cache: false
 ```
 
 ## Outputs
 
 Each scenario writes to its configured output directory and produces:
 
-- `recommended_aps.csv`
 - `fixed_aps.csv`
+- `candidate_ap_positions.csv`
+- `random_baseline_movable_aps.csv`
+- `random_baseline_schedule.csv`
+- `local_csi_p90_movable_aps.csv`
+- `local_csi_p90_schedule.csv`
+- `capped_exact_search_movable_aps.csv`
+- `capped_exact_search_schedule.csv`
+- `strategy_comparison.csv`
+- `summary.json`
 - `infra_csi_snapshots.npz`
 - `peer_csi_snapshots.npz`
 - `trajectory.csv`
@@ -390,13 +346,11 @@ Each scenario writes to its configured output directory and produces:
 - `user_sinr_cdf.png`
 - `user_sinr_summary.csv`
 - `user_sinr_timeseries.csv`
-- `mobile_ap_schedule.csv`
 - `run.log`
 
 When `outputs.write_csi_exports: false`, the pipeline skips
 `peer_csi_snapshots.npz` and `infra_csi_snapshots.npz` and also avoids the full
-CFR/CIR/tau export path. When `outputs.enable_csi_cache: false`, the run does
-not read or write `.csi_cache`.
+CFR/CIR/tau export path.
 
 When `solver.enable_ray_tracing: true` and `coverage.enabled: true`, the output
 directory also includes:
@@ -406,9 +360,21 @@ directory also includes:
 - `fixed_coverage_map.npz`
 - `fixed_coverage_map.png`
 
-`infra_csi_snapshots.npz` contains fixed/mobile `AP-AP` and fixed/mobile `AP-UE` CSI exports.
+`candidate_ap_positions.csv` stores the wall-generated candidate AP positions
+available to the movable AP pool.
+`random_baseline_movable_aps.csv`, `local_csi_p90_movable_aps.csv`, and
+`capped_exact_search_movable_aps.csv` store the movable AP placements chosen by
+each strategy.
+`random_baseline_schedule.csv`, `local_csi_p90_schedule.csv`, and
+`capped_exact_search_schedule.csv` store the per-window movable AP schedules.
+`strategy_comparison.csv` reports the per-strategy score, outage, percentile,
+and capped/exact status for the exhaustive search.
+`summary.json` records the same comparison metrics together with the selected
+compute backend and Mitsuba variant.
+`infra_csi_snapshots.npz` contains `AP-AP` and `AP-UE` CSI exports for the
+evaluated placements.
 `peer_csi_snapshots.npz` contains `UE-UE` CSI exports and the peer-derived
-weighting used to bias candidate placement evaluation.
+weighting used in the placement score.
 `scene_render.png` is a rendered view of the loaded Sionna scene using
 `scene.render(...)`, with the selected APs and the active UE snapshot shown as
 radio devices inside the 3D environment.
@@ -416,32 +382,19 @@ radio devices inside the 3D environment.
 using a fixed oblique camera while the UE devices move over time. This output
 requires `ffmpeg`.
 `scene_layout.png` shows a top-down view of the loaded scene, including the walk
-graph, building footprints when available, candidate APs, selected APs, and UE
-trajectories.
+graph, building footprints when available, fixed APs, candidate AP positions,
+selected placements, and UE trajectories.
 `scene_animation.mp4` animates the moving UEs over the loaded scene together
 with the AP placements. If `ffmpeg` is unavailable, the pipeline writes
 `scene_animation.gif` instead. Playback speed is controlled via
 `outputs.scene_animation_speedup` in the scenario YAML, so you can export the
 animation faster than real time, e.g. `10.0` for `10x`.
-`mobile_ap_schedule.csv` stores the mobile AP positions per relocation window.
-You can turn that schedule into a dedicated animation with:
-
-```powershell
-.venv\Scripts\python.exe scripts\visualize_mobile_ap_schedule.py scenarios/rabot.yaml
-```
-
-This writes `mobile_ap_schedule_animation.mp4` to the scenario output
-directory, or `mobile_ap_schedule_animation.gif` if `ffmpeg` is unavailable.
-The script reuses the scene background, overlays the mobile AP movement, and
-adds UE motion when `trajectory.csv` is present.
 `trajectory_colormap.png` shows the full UE trajectories in a single PNG, with a
 colormap over time so the motion direction can be followed visually. Initial UE
 seeding is spread across the walk graph, and route selection biases toward
 underexplored walkable edges to improve overall area coverage.
 `user_sinr_cdf.png` compares the CDF of instantaneous distributed-MIMO zero-forcing
-SINR samples across all user snapshots for a fixed static AP baseline versus the
-optimized AP placement.
-`summary.json` now also records the selected compute backend and Mitsuba variant.
+SINR samples across all user snapshots for the compared placement strategies.
 
 For OSM-built scenes, the generated Sionna assets are emitted as:
 
@@ -456,9 +409,15 @@ For OSM-built scenes, the generated Sionna assets are emitted as:
 - Default RF assumptions are `3.5 GHz`, `100 MHz`, and `256` CFR bins.
 - The runtime always probes the CUDA Mitsuba backend first. If the GPU probe fails,
   it falls back automatically to the LLVM CPU backend and logs the reason.
-- The baseline deployment is built from `num_fixed_aps` always-fixed APs plus
-  `num_mobile_aps` movable seed APs. If `num_mobile_aps` is omitted, the code
-  falls back to `num_selected_aps`.
+- Candidate AP positions are wall-based by default and use
+  `candidate_wall_height_m: 1.5`.
+- Fixed APs are always active and never part of the movable candidate pool.
+- The baseline is the initial AP constellation: fixed APs plus the initial
+  `random_baseline` movable AP placement.
+- `random_baseline` stays static across all relocation windows, while
+  `local_csi_p90` and `capped_exact_search` are evaluated per window.
+- `capped_exact_search` reports whether the full candidate-combination search
+  completed or stopped at `exact_max_iterations`.
 - v1 is outdoor-only and ignores vegetation, weather, traffic, and indoor areas.
 - The Rabot boundary and AP site files are seed inputs and can be tightened
   later without changing code.

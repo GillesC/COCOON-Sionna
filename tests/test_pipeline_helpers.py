@@ -3,7 +3,7 @@ import networkx as nx
 import numpy as np
 from matplotlib import animation as mpl_animation
 
-from cocoon_sionna.config import OptimizationConfig, load_scenario_config
+from cocoon_sionna.config import PlacementConfig, load_scenario_config
 from cocoon_sionna.mobility import Trajectory
 from cocoon_sionna.optimization import PlacementScore
 from cocoon_sionna.pipeline import (
@@ -12,12 +12,15 @@ from cocoon_sionna.pipeline import (
     _build_csi_cache_key,
     _cache_optional_artifact,
     _instantaneous_user_sinr_samples,
-    _ordered_enabled_sites,
+    _local_percentile_90,
+    _make_reference_movable_sites,
+    _movable_ap_count,
+    _nearest_snapshot_mask,
     _per_user_mean_best_sinr,
     _plot_scene_layout,
     _relocate_sites,
     _restore_cached_artifact,
-    _select_fixed_and_mobile_seed_sites,
+    _select_fixed_sites,
     _should_render_sionna_scene_artifacts,
     _try_load_csi_cache,
     _update_prefixed_export,
@@ -30,44 +33,44 @@ from cocoon_sionna.sites import CandidateSite
 
 
 class _DummyConfig:
-    def __init__(self, baseline_site_ids, num_fixed_aps=0, num_mobile_aps=None, num_selected_aps=2):
+    def __init__(self, num_fixed_aps=0, num_movable_aps=2):
         self.candidate_sites_path = "dummy.csv"
-        self.optimization = OptimizationConfig(
-            num_selected_aps=num_selected_aps,
+        self.placement = PlacementConfig(
             num_fixed_aps=num_fixed_aps,
-            num_mobile_aps=num_mobile_aps,
-            baseline_site_ids=list(baseline_site_ids),
+            num_movable_aps=num_movable_aps,
         )
 
 
-def test_ordered_enabled_sites_prioritizes_baseline_site_ids():
-    config = _DummyConfig(["site_b", "site_a"])
+def test_movable_ap_count_uses_placement_config():
+    config = _DummyConfig(num_movable_aps=3)
+    assert _movable_ap_count(config) == 3
+
+
+def test_select_fixed_sites_uses_farthest_spacing():
+    config = _DummyConfig(num_fixed_aps=2)
     sites = [
         CandidateSite("site_a", 0.0, 0.0, 5.0, 0.0, -10.0, "pole"),
         CandidateSite("site_b", 1.0, 0.0, 5.0, 0.0, -10.0, "pole"),
-        CandidateSite("site_c", 2.0, 0.0, 5.0, 0.0, -10.0, "pole"),
+        CandidateSite("site_c", 50.0, 0.0, 5.0, 0.0, -10.0, "pole"),
     ]
 
-    selected = _ordered_enabled_sites(config, sites)
+    selected = _select_fixed_sites(config, sites)
 
-    assert [site.site_id for site in selected] == ["site_b", "site_a", "site_c"]
+    assert len(selected) == 2
+    assert {site.site_id for site in selected} == {"site_a", "site_c"}
 
 
-def test_select_fixed_and_mobile_seed_sites_splits_ordered_pool():
-    config = _DummyConfig([])
+def test_make_reference_movable_sites_assigns_stable_ids():
     sites = [
-        CandidateSite("site_a", 0.0, 0.0, 5.0, 0.0, -10.0, "pole"),
-        CandidateSite("site_b", 1.0, 0.0, 5.0, 0.0, -10.0, "pole", enabled=False),
-        CandidateSite("site_c", 2.0, 0.0, 5.0, 0.0, -10.0, "pole"),
-        CandidateSite("site_d", 3.0, 0.0, 5.0, 0.0, -10.0, "pole"),
+        CandidateSite("cand_a", 0.0, 0.0, 1.5, 0.0, -10.0, "wall"),
+        CandidateSite("cand_b", 2.0, 0.0, 1.5, 0.0, -10.0, "wall"),
     ]
 
-    config.optimization.num_fixed_aps = 1
-    config.optimization.num_mobile_aps = 2
-    fixed_sites, mobile_sites = _select_fixed_and_mobile_seed_sites(config, sites, strategy="ordered")
+    movable_sites = _make_reference_movable_sites(sites)
 
-    assert [site.site_id for site in fixed_sites] == ["site_a"]
-    assert [site.site_id for site in mobile_sites] == ["site_c", "site_d"]
+    assert [site.site_id for site in movable_sites] == ["movable_ap_01", "movable_ap_02"]
+    assert movable_sites[0].source == "seed:cand_a"
+    assert movable_sites[1].source == "seed:cand_b"
 
 
 def test_relocate_sites_preserves_ap_ids_and_matches_nearest_candidates():
@@ -93,6 +96,26 @@ def test_window_slices_groups_snapshots_by_relocation_interval():
     windows = _window_slices(np.array([0.0, 2.0, 4.0, 7.0, 8.0, 14.0]), relocation_interval_s=6.0)
 
     assert [window.tolist() for window in windows] == [[0, 1, 2], [3, 4], [5]]
+
+
+def test_nearest_snapshot_mask_and_local_percentile():
+    trajectory = Trajectory(
+        times_s=np.array([0.0, 1.0]),
+        ue_ids=["ue_0", "ue_1"],
+        positions_m=np.array(
+            [
+                [[0.0, 0.0, 1.5], [10.0, 0.0, 1.5]],
+                [[1.0, 0.0, 1.5], [20.0, 0.0, 1.5]],
+            ]
+        ),
+        velocities_mps=np.zeros((2, 2, 3), dtype=float),
+    )
+    site = CandidateSite("cand", 0.0, 0.0, 1.5, 0.0, -10.0, "wall")
+
+    mask = _nearest_snapshot_mask(trajectory, site, k_nearest=2)
+
+    assert mask.tolist() == [True, False, True, False]
+    assert np.isclose(_local_percentile_90(np.array([[1.0, 100.0], [3.0, 200.0]]), mask), 2.8)
 
 
 def test_should_render_sionna_scene_artifacts_skips_cpu_llvm_backend():

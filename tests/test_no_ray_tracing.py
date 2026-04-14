@@ -24,22 +24,24 @@ def test_run_scenario_without_ray_tracing_writes_trajectory_outputs(tmp_path: Pa
     assert (config.outputs.output_dir / "trajectory.csv").exists()
     assert (config.outputs.output_dir / "scene_layout.png").exists()
     assert (config.outputs.output_dir / "trajectory_colormap.png").exists()
-    assert (config.outputs.output_dir / "recommended_aps.csv").exists()
+    assert (config.outputs.output_dir / "candidate_ap_positions.csv").exists()
     assert (config.outputs.output_dir / "fixed_aps.csv").exists()
-    assert (config.outputs.output_dir / "mobile_ap_schedule.csv").exists()
+    assert (config.outputs.output_dir / "random_baseline_schedule.csv").exists()
+    assert (config.outputs.output_dir / "local_csi_p90_schedule.csv").exists()
+    assert (config.outputs.output_dir / "capped_exact_search_schedule.csv").exists()
+    assert (config.outputs.output_dir / "strategy_comparison.csv").exists()
     assert not (config.outputs.output_dir / "coverage_map.npz").exists()
     assert not (config.outputs.output_dir / "infra_csi_snapshots.npz").exists()
     assert not (config.outputs.output_dir / "peer_csi_snapshots.npz").exists()
 
 
-def test_run_scenario_without_optimization_keeps_fixed_layout(tmp_path: Path):
+def test_run_scenario_without_ray_tracing_uses_random_baseline_as_reference(tmp_path: Path):
     config = load_scenario_config("scenarios/etoile_demo.yaml")
     config.outputs.output_dir = tmp_path / "etoile_no_opt"
     config.solver.enable_ray_tracing = False
-    config.optimization.enable_optimization = False
 
     summary = run_scenario(config)
 
     assert summary["ray_tracing_enabled"] is False
-    assert summary["optimization_enabled"] is False
-    assert summary["fixed_site_ids"] == summary["mobile_site_ids"]
+    assert summary["baseline_strategy"] == "random_baseline"
+    assert summary["best_strategy"] == "random_baseline"

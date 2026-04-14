@@ -61,32 +61,26 @@ solver:
   diffraction_lit_region: true
   seed: 17
 
-optimization:
-  # Set to false to keep the fixed AP constellation and skip AP relocation/search.
-  enable_optimization: true
-  # Backward-compatible movable AP count used when `num_mobile_aps` is omitted.
-  num_selected_aps: 4
-  # Always-on APs that stay fixed during optimization.
+placement:
+  # Always-on APs that stay fixed during the strategy comparison.
   num_fixed_aps: 0
-  # APs whose positions are optimized over the candidate AP pool.
-  num_mobile_aps: 4
+  # APs whose positions are selected from the candidate AP pool.
+  num_movable_aps: 4
   # AP scoring weights and placement constraints.
   sinr_threshold_db: 0.0
-  grid_weight: 0.6
-  trajectory_weight: 0.4
   outage_weight: 1.0
   percentile_weight: 0.05
   peer_tiebreak_weight: 0.01
   candidate_min_spacing_m: 35.0
-  max_candidate_ue_positions: 8
-  # Mobile AP relocation interval in seconds.
-  relocation_interval_s: 15.0
-  # Fixed baseline AP IDs used for the non-relocated reference deployment.
-  baseline_site_ids:
-    - etoile_fixed_01
-    - etoile_fixed_02
-    - etoile_fixed_03
-    - etoile_fixed_04
+  # Candidate AP generation / selection knobs.
+  candidate_wall_height_m: 1.5
+  candidate_wall_spacing_m: 35.0
+  candidate_corner_clearance_m: 2.0
+  candidate_wall_offset_m: 0.25
+  window_interval_s: 15.0
+  random_seed: 7
+  heuristic_k_nearest: 8
+  exact_max_iterations: 2000
 
 # Seed AP candidate file for the Etoile demo.
 candidate_sites_path: data/candidate_sites/etoile_demo_sites.csv

@@ -17,9 +17,9 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
     config = load_scenario_config("scenarios/etoile_demo.yaml")
     config.outputs.output_dir = tmp_path / "etoile"
     config.coverage.enabled = True
-    config.optimization.baseline_site_ids = []
-    config.optimization.num_fixed_aps = 1
-    config.optimization.num_mobile_aps = 1
+    config.placement.num_fixed_aps = 1
+    config.placement.num_movable_aps = 1
+    config.placement.exact_max_iterations = 2
     config.mobility.graph_path = tmp_path / "walk_graph.json"
     config.mobility.graph_path.write_text("{}", encoding="utf-8")
 
@@ -30,13 +30,9 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
         velocities_mps=np.zeros((2, 1, 3), dtype=float),
     )
     graph = nx.Graph()
-    base_sites = [
-        CandidateSite("base_01", 0.0, 0.0, 5.0, 0.0, -10.0, "pole"),
-        CandidateSite("base_02", 1.0, 0.0, 5.0, 0.0, -10.0, "pole"),
-    ]
     candidate_sites = [
-        CandidateSite("cand_a", 10.0, 0.0, 5.0, 0.0, -10.0, "pole"),
-        CandidateSite("cand_b", 20.0, 0.0, 5.0, 0.0, -10.0, "pole"),
+        CandidateSite("cand_a", 0.0, 0.0, 5.0, 0.0, -10.0, "pole"),
+        CandidateSite("cand_b", 10.0, 0.0, 5.0, 0.0, -10.0, "pole"),
         CandidateSite("cand_c", 50.0, 0.0, 5.0, 0.0, -10.0, "pole"),
     ]
     calls = {"radio_map": 0, "ap_ue_site_counts": []}
@@ -87,34 +83,20 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
                 "cell_centers": np.zeros((1, 1, 3), dtype=float),
             }
 
-    def fake_greedy_one_swap(candidate_ids, select_count, evaluator):
-        assert select_count == 1
-        subset_ab = tuple(sorted((candidate_ids[0],)))
-        subset_ac = tuple(sorted((candidate_ids[2],)))
-        score_ab = evaluator(subset_ab)
-        score_ac = evaluator(subset_ac)
-        if score_ac.score > score_ab.score:
-            return list(subset_ac), score_ac
-        return list(subset_ab), score_ab
-
     monkeypatch.setattr("cocoon_sionna.pipeline.SionnaRtRunner", FakeRunner)
     monkeypatch.setattr("cocoon_sionna.pipeline.load_graph_json", lambda _path: graph)
     monkeypatch.setattr("cocoon_sionna.pipeline.generate_trajectory", lambda *args, **kwargs: trajectory)
-    monkeypatch.setattr("cocoon_sionna.pipeline.load_candidate_sites", lambda _path: list(base_sites))
-    monkeypatch.setattr("cocoon_sionna.pipeline.augment_with_trajectory_sites", lambda **_kwargs: list(candidate_sites))
-    monkeypatch.setattr("cocoon_sionna.pipeline.greedy_one_swap", fake_greedy_one_swap)
+    monkeypatch.setattr("cocoon_sionna.pipeline.load_candidate_sites", lambda _path: list(candidate_sites))
     monkeypatch.setattr("cocoon_sionna.pipeline._plot_scene_layout", lambda *args, **kwargs: None)
     monkeypatch.setattr("cocoon_sionna.pipeline._animate_scene", lambda *args, **kwargs: None)
     monkeypatch.setattr("cocoon_sionna.pipeline._plot_colored_trajectories", lambda *args, **kwargs: None)
-    monkeypatch.setattr("cocoon_sionna.pipeline._write_ap_relocation_csv", lambda *args, **kwargs: None)
     monkeypatch.setattr("cocoon_sionna.pipeline._write_user_sinr_artifacts", lambda *args, **kwargs: None)
 
     summary = run_scenario(config)
 
     assert summary["radio_map_enabled"] is True
-    assert summary["always_fixed_site_ids"] == ["base_01"]
-    assert summary["baseline_mobile_site_ids"] == ["base_02"]
-    assert summary["selected_mobile_site_ids"] == ["mobile_ap_01"]
+    assert summary["baseline_strategy"] == "random_baseline"
+    assert summary["best_strategy"] in {"random_baseline", "local_csi_p90", "capped_exact_search"}
     assert calls["radio_map"] == 2
     assert all(site_count == 2 for site_count in calls["ap_ue_site_counts"])
     assert (config.outputs.output_dir / "coverage_map.npz").exists()
@@ -127,9 +109,9 @@ def test_run_scenario_can_skip_csi_storage_and_full_exports(monkeypatch, tmp_pat
     config.outputs.write_csi_exports = False
     config.outputs.enable_csi_cache = False
     config.coverage.enabled = False
-    config.optimization.enable_optimization = False
-    config.optimization.baseline_site_ids = []
-    config.optimization.num_mobile_aps = 1
+    config.placement.num_fixed_aps = 0
+    config.placement.num_movable_aps = 1
+    config.placement.exact_max_iterations = 2
     config.mobility.graph_path = tmp_path / "walk_graph.json"
     config.mobility.graph_path.write_text("{}", encoding="utf-8")
 
@@ -140,8 +122,9 @@ def test_run_scenario_can_skip_csi_storage_and_full_exports(monkeypatch, tmp_pat
         velocities_mps=np.zeros((2, 1, 3), dtype=float),
     )
     graph = nx.Graph()
-    base_sites = [
+    candidate_sites = [
         CandidateSite("base_01", 0.0, 0.0, 5.0, 0.0, -10.0, "pole"),
+        CandidateSite("base_02", 10.0, 0.0, 5.0, 0.0, -10.0, "pole"),
     ]
     calls = {"ue_ue_export_full": [], "ap_ue_export_full": [], "ap_ap_export_full": []}
 
@@ -182,12 +165,10 @@ def test_run_scenario_can_skip_csi_storage_and_full_exports(monkeypatch, tmp_pat
     monkeypatch.setattr("cocoon_sionna.pipeline.SionnaRtRunner", FakeRunner)
     monkeypatch.setattr("cocoon_sionna.pipeline.load_graph_json", lambda _path: graph)
     monkeypatch.setattr("cocoon_sionna.pipeline.generate_trajectory", lambda *args, **kwargs: trajectory)
-    monkeypatch.setattr("cocoon_sionna.pipeline.load_candidate_sites", lambda _path: list(base_sites))
-    monkeypatch.setattr("cocoon_sionna.pipeline.augment_with_trajectory_sites", lambda **_kwargs: list(base_sites))
+    monkeypatch.setattr("cocoon_sionna.pipeline.load_candidate_sites", lambda _path: list(candidate_sites))
     monkeypatch.setattr("cocoon_sionna.pipeline._plot_scene_layout", lambda *args, **kwargs: None)
     monkeypatch.setattr("cocoon_sionna.pipeline._animate_scene", lambda *args, **kwargs: None)
     monkeypatch.setattr("cocoon_sionna.pipeline._plot_colored_trajectories", lambda *args, **kwargs: None)
-    monkeypatch.setattr("cocoon_sionna.pipeline._write_ap_relocation_csv", lambda *args, **kwargs: None)
     monkeypatch.setattr("cocoon_sionna.pipeline._write_user_sinr_artifacts", lambda *args, **kwargs: None)
 
     summary = run_scenario(config)
@@ -195,8 +176,10 @@ def test_run_scenario_can_skip_csi_storage_and_full_exports(monkeypatch, tmp_pat
     assert summary["csi_exports_enabled"] is False
     assert summary["csi_cache_enabled"] is False
     assert calls["ue_ue_export_full"] == [False]
-    assert calls["ap_ue_export_full"] == [False]
-    assert calls["ap_ap_export_full"] == [False]
+    assert calls["ap_ue_export_full"]
+    assert calls["ap_ap_export_full"]
+    assert all(value is False for value in calls["ap_ue_export_full"])
+    assert all(value is False for value in calls["ap_ap_export_full"])
     assert not (config.outputs.output_dir / "peer_csi_snapshots.npz").exists()
     assert not (config.outputs.output_dir / "infra_csi_snapshots.npz").exists()
     assert not (config.outputs.output_dir / ".csi_cache").exists()

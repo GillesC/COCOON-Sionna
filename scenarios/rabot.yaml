@@ -86,38 +86,25 @@ solver:
   diffraction_lit_region: true
   seed: 23
 
-optimization:
-  # Set to false to keep the fixed AP constellation and skip AP relocation/search.
-  enable_optimization: true
-  # Backward-compatible movable AP count used when `num_mobile_aps` is omitted.
-  num_selected_aps: 6
-  # Always-on APs that stay fixed during optimization.
+placement:
+  # Always-on APs that stay fixed during the strategy comparison.
   num_fixed_aps: 0
-  # APs whose positions are optimized over the candidate AP pool.
-  num_mobile_aps: 6
+  # APs whose positions are selected from the candidate AP pool.
+  num_movable_aps: 6
   # AP scoring weights and placement constraints.
   sinr_threshold_db: 0.0
-  grid_weight: 0.6
-  trajectory_weight: 0.4
   outage_weight: 1.0
   percentile_weight: 0.05
   peer_tiebreak_weight: 0.01
   candidate_min_spacing_m: 12.0
-  max_candidate_ue_positions: 12
-  wall_candidate_spacing_m: 18.0
-  wall_corner_clearance_m: 3.0
-  wall_mount_height_m: 7.0
-  wall_mount_offset_m: 0.25
-  # Mobile AP relocation interval in seconds.
-  relocation_interval_s: 60.0
-  # Fixed baseline AP IDs used for the non-relocated reference deployment.
-  baseline_site_ids:
-    - rabot_seed_01
-    - rabot_seed_02
-    - rabot_seed_03
-    - rabot_seed_04
-    - rabot_seed_05
-    - rabot_seed_06
+  candidate_wall_spacing_m: 18.0
+  candidate_corner_clearance_m: 3.0
+  candidate_wall_height_m: 1.5
+  candidate_wall_offset_m: 0.25
+  window_interval_s: 60.0
+  random_seed: 11
+  heuristic_k_nearest: 10
+  exact_max_iterations: 50000
 
 # Seed AP candidate file. For OSM scenarios, extra wall candidates are generated automatically.
 candidate_sites_path: data/candidate_sites/rabot_seed_sites.csv
