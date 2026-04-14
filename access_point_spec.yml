@@ -1,0 +1,16 @@
+# Shared AP hardware template loaded by scenario YAML files.
+# Distances are expressed in wavelengths, not meters.
+model: wall_ap_default
+# Per-AP transmit power in dBm.
+tx_power_dbm: 28.0
+# AP array shape. 2 x 3 means 6 antenna elements in a planar array.
+num_rows: 2
+num_cols: 3
+# Inter-element spacing of the AP array in wavelengths.
+vertical_spacing: 0.5
+horizontal_spacing: 0.5
+# Sionna/Mitsuba antenna settings.
+array_pattern: tr38901
+array_polarization: VH
+# Whether Sionna should use the synthetic array approximation.
+synthetic_array: true

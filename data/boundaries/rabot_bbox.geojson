@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "KU Leuven Gent Campus Rabot seed boundary"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [3.706070, 51.058968],
+            [3.712513, 51.058968],
+            [3.712513, 51.060592],
+            [3.706070, 51.060592],
+            [3.706070, 51.058968]
+          ]
+        ]
+      }
+    }
+  ]
+}

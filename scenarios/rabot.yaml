@@ -1,0 +1,122 @@
+name: rabot_outdoor
+
+# Shared AP hardware description.
+access_point_spec_path: access_point_spec.yml
+
+scene:
+  # `osm` builds the scene from OpenStreetMap inside the configured boundary.
+  kind: osm
+  # OSM export order: [west, south, east, north]
+  boundary_bbox: [3.706314, 51.059071, 3.710852, 51.060614]
+  # Generated scene assets are written here by `build-scene`.
+  scene_output_dir: generated/rabot_scene
+  # Used when OSM buildings do not provide an explicit height.
+  default_building_height_m: 12.0
+  building_height_per_level_m: 3.0
+  # Radio material names used in the generated Mitsuba scene.
+  material_ground: concrete
+  material_wall: concrete
+  material_roof: metal
+
+radio:
+  # Carrier and bandwidth configuration.
+  frequency_hz: 3500000000.0
+  bandwidth_hz: 100000000.0
+  # Number of CFR frequency bins exported per link.
+  cfr_bins: 128
+  sampling_frequency_hz: 100000000.0
+  # UE array shape. 1 x 1 means one antenna element per user device.
+  ue_num_rows: 1
+  ue_num_cols: 1
+  tx_power_dbm_ue: 18.0
+  # UE antenna height above ground in meters.
+  ue_height_m: 1.5
+
+coverage:
+  # Coverage-map grid resolution in meters.
+  cell_size_m: [8.0, 8.0]
+  height_m: 1.5
+
+mobility:
+  # `scene_metadata` uses the scene boundary/buildings produced by `build-scene`.
+  source: scene_metadata
+  num_users: 10
+  # Simulation horizon and temporal resolution in seconds.
+  duration_s: 600.0
+  step_s: 10.0
+  # Allow users to move through open outdoor space, not only along OSM paths.
+  allow_open_area: true
+  # Spacing and connectivity of the free-space mobility roadmap, in meters.
+  open_area_grid_spacing_m: 8.0
+  open_area_connection_radius_m: 14.0
+  # Keep this clearance away from building walls.
+  open_area_clearance_m: 0.75
+  # Generic, pedestrian, and bike speed ranges in m/s.
+  speed_mps_range: [0.9, 1.5]
+  pedestrian_speed_mps_range: [0.9, 1.6]
+  bike_speed_mps_range: [3.0, 5.5]
+  # Fraction of users assigned a bike profile.
+  bike_fraction: 0.25
+  # Per-step random speed variation around each user's preferred speed.
+  speed_variation_fraction: 0.15
+  # Optional pause duration range when users dwell at nodes, in seconds.
+  dwell_s_range: [4.0, 12.0]
+  seed: 11
+
+solver:
+  # Set to false to skip Sionna ray tracing and only generate geometric outputs.
+  enable_ray_tracing: true
+  # Require the CUDA backend and fail fast instead of falling back to CPU LLVM.
+  require_gpu: true
+  # Sionna path/coverage tracing depth and Monte Carlo sample budgets.
+  path_max_depth: 2
+  radio_map_max_depth: 2
+  samples_per_src: 4000
+  samples_per_tx: 6000
+  # Channel/path-model feature toggles.
+  synthetic_array: true
+  los: true
+  specular_reflection: true
+  diffuse_reflection: false
+  refraction: true
+  diffraction: false
+  edge_diffraction: false
+  diffraction_lit_region: true
+  seed: 23
+
+optimization:
+  # Set to false to keep the fixed AP constellation and skip AP relocation/search.
+  enable_optimization: true
+  # All enabled fixed APs stay active; this controls how many wall-mounted APs exist.
+  num_selected_aps: 6
+  # AP scoring weights and placement constraints.
+  sinr_threshold_db: 0.0
+  grid_weight: 0.6
+  trajectory_weight: 0.4
+  outage_weight: 1.0
+  percentile_weight: 0.05
+  peer_tiebreak_weight: 0.01
+  candidate_min_spacing_m: 12.0
+  max_candidate_ue_positions: 12
+  wall_candidate_spacing_m: 18.0
+  wall_corner_clearance_m: 3.0
+  wall_mount_height_m: 7.0
+  wall_mount_offset_m: 0.25
+  # Mobile AP relocation interval in seconds.
+  relocation_interval_s: 60.0
+  # Fixed baseline AP IDs used for the non-relocated reference deployment.
+  baseline_site_ids:
+    - rabot_seed_01
+    - rabot_seed_02
+    - rabot_seed_03
+    - rabot_seed_04
+    - rabot_seed_05
+    - rabot_seed_06
+
+# Seed AP candidate file. For OSM scenarios, extra wall candidates are generated automatically.
+candidate_sites_path: data/candidate_sites/rabot_seed_sites.csv
+
+outputs:
+  output_dir: outputs/rabot
+  # Playback speed multiplier for the exported scene animation.
+  scene_animation_speedup: 10.0

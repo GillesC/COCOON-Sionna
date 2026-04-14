@@ -1,0 +1,91 @@
+name: etoile_demo
+
+# Shared AP hardware description.
+access_point_spec_path: access_point_spec.yml
+
+scene:
+  # `builtin` uses a Sionna-provided demo scene instead of building one from OSM.
+  kind: builtin
+  sionna_scene: etoile
+
+radio:
+  # Carrier and bandwidth configuration.
+  frequency_hz: 3500000000.0
+  bandwidth_hz: 100000000.0
+  # Number of CFR frequency bins exported per link.
+  cfr_bins: 64
+  sampling_frequency_hz: 100000000.0
+  # UE array shape. 1 x 1 means one antenna element per user device.
+  ue_num_rows: 1
+  ue_num_cols: 1
+  tx_power_dbm_ue: 18.0
+  # UE antenna height above ground in meters.
+  ue_height_m: 1.5
+
+coverage:
+  # Coverage-map grid resolution in meters.
+  cell_size_m: [50.0, 50.0]
+  height_m: 1.5
+
+mobility:
+  # `file` means the mobility graph is loaded directly from `graph_path`.
+  source: file
+  graph_path: data/mobility/etoile_walk_graph.json
+  num_users: 4
+  # Simulation horizon and temporal resolution in seconds.
+  duration_s: 60.0
+  step_s: 1.0
+  # User speed range in m/s and random per-step variation.
+  speed_mps_range: [0.9, 1.4]
+  speed_variation_fraction: 0.12
+  # Optional pause duration range when users dwell at nodes, in seconds.
+  dwell_s_range: [2.0, 6.0]
+  seed: 7
+
+solver:
+  # When true, run the full Sionna/Mitsuba ray-tracing pipeline.
+  enable_ray_tracing: true
+  # Sionna path/coverage tracing depth and Monte Carlo sample budgets.
+  path_max_depth: 2
+  radio_map_max_depth: 2
+  samples_per_src: 2000
+  samples_per_tx: 3000
+  # Channel/path-model feature toggles.
+  synthetic_array: true
+  los: true
+  specular_reflection: true
+  diffuse_reflection: false
+  refraction: true
+  diffraction: false
+  edge_diffraction: false
+  diffraction_lit_region: true
+  seed: 17
+
+optimization:
+  # Set to false to keep the fixed AP constellation and skip AP relocation/search.
+  enable_optimization: true
+  # Number of fixed APs kept active in both baseline and optimized comparisons.
+  num_selected_aps: 4
+  # AP scoring weights and placement constraints.
+  sinr_threshold_db: 0.0
+  grid_weight: 0.6
+  trajectory_weight: 0.4
+  outage_weight: 1.0
+  percentile_weight: 0.05
+  peer_tiebreak_weight: 0.01
+  candidate_min_spacing_m: 35.0
+  max_candidate_ue_positions: 8
+  # Mobile AP relocation interval in seconds.
+  relocation_interval_s: 15.0
+  # Fixed baseline AP IDs used for the non-relocated reference deployment.
+  baseline_site_ids:
+    - etoile_fixed_01
+    - etoile_fixed_02
+    - etoile_fixed_03
+    - etoile_fixed_04
+
+# Seed AP candidate file for the Etoile demo.
+candidate_sites_path: data/candidate_sites/etoile_demo_sites.csv
+
+outputs:
+  output_dir: outputs/etoile_demo

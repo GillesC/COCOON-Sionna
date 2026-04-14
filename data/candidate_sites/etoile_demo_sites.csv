@@ -1,0 +1,5 @@
+site_id,x_m,y_m,z_m,yaw_deg,pitch_deg,mount_type,enabled,source
+etoile_fixed_01,-220.0,-40.0,10.0,10.0,-10.0,facade,true,file
+etoile_fixed_02,-40.0,190.0,10.0,-78.0,-10.0,facade,true,file
+etoile_fixed_03,175.0,110.0,10.0,-148.0,-10.0,facade,true,file
+etoile_fixed_04,200.0,-120.0,10.0,149.0,-10.0,facade,true,file

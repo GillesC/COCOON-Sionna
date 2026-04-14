@@ -1,0 +1,7 @@
+site_id,x_m,y_m,z_m,yaw_deg,pitch_deg,mount_type,enabled,source
+rabot_seed_01,-55.0,-45.0,7.0,40.0,-10.0,facade,true,file
+rabot_seed_02,5.0,-55.0,7.0,90.0,-10.0,facade,true,file
+rabot_seed_03,55.0,-15.0,7.0,140.0,-10.0,pole,true,file
+rabot_seed_04,45.0,40.0,7.0,-150.0,-10.0,facade,true,file
+rabot_seed_05,-5.0,62.0,7.0,-95.0,-10.0,facade,true,file
+rabot_seed_06,-60.0,20.0,7.0,-25.0,-10.0,pole,true,file

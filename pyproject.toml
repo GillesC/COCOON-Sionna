@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cocoon-sionna"
+version = "0.1.0"
+description = "Outdoor Sionna-RT campus simulation and AP placement pipeline"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "matplotlib>=3.10",
+  "networkx>=3.4",
+  "numpy>=2.0",
+  "PyYAML>=6.0",
+  "pyproj>=3.7",
+  "requests>=2.32",
+  "scipy>=1.14",
+  "shapely>=2.0",
+  "sionna-rt>=2.0.1",
+  "tqdm>=4.67",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+]
+
+[project.scripts]
+cocoon-sionna = "cocoon_sionna.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+  "integration: end-to-end scenario checks against the installed Sionna-RT runtime",
+]

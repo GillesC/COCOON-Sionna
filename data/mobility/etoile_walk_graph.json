@@ -1,0 +1,24 @@
+{
+  "nodes": [
+    {"id": 1, "x": -260.0, "y": -70.0, "entry_candidate": true},
+    {"id": 2, "x": -180.0, "y": 10.0, "entry_candidate": false},
+    {"id": 3, "x": -90.0, "y": 90.0, "entry_candidate": false},
+    {"id": 4, "x": 20.0, "y": 150.0, "entry_candidate": false},
+    {"id": 5, "x": 170.0, "y": 70.0, "entry_candidate": true},
+    {"id": 6, "x": 150.0, "y": -110.0, "entry_candidate": true},
+    {"id": 7, "x": -20.0, "y": -180.0, "entry_candidate": true},
+    {"id": 8, "x": -210.0, "y": 130.0, "entry_candidate": true}
+  ],
+  "edges": [
+    {"u": 1, "v": 2, "length": 113.137},
+    {"u": 2, "v": 3, "length": 120.416},
+    {"u": 3, "v": 4, "length": 125.300},
+    {"u": 4, "v": 5, "length": 170.000},
+    {"u": 5, "v": 6, "length": 181.108},
+    {"u": 6, "v": 7, "length": 183.848},
+    {"u": 7, "v": 1, "length": 264.764},
+    {"u": 3, "v": 8, "length": 126.491},
+    {"u": 8, "v": 2, "length": 125.299},
+    {"u": 2, "v": 7, "length": 247.386}
+  ]
+}
