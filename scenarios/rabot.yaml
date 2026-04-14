@@ -89,8 +89,12 @@ solver:
 optimization:
   # Set to false to keep the fixed AP constellation and skip AP relocation/search.
   enable_optimization: true
-  # All enabled fixed APs stay active; this controls how many wall-mounted APs exist.
+  # Backward-compatible movable AP count used when `num_mobile_aps` is omitted.
   num_selected_aps: 6
+  # Always-on APs that stay fixed during optimization.
+  num_fixed_aps: 0
+  # APs whose positions are optimized over the candidate AP pool.
+  num_mobile_aps: 6
   # AP scoring weights and placement constraints.
   sinr_threshold_db: 0.0
   grid_weight: 0.6

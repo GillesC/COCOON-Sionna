@@ -12,11 +12,12 @@ from cocoon_sionna.pipeline import (
     _build_csi_cache_key,
     _cache_optional_artifact,
     _instantaneous_user_sinr_samples,
+    _ordered_enabled_sites,
     _per_user_mean_best_sinr,
     _plot_scene_layout,
     _relocate_sites,
     _restore_cached_artifact,
-    _select_static_baseline_sites,
+    _select_fixed_and_mobile_seed_sites,
     _should_render_sionna_scene_artifacts,
     _try_load_csi_cache,
     _update_prefixed_export,
@@ -29,15 +30,17 @@ from cocoon_sionna.sites import CandidateSite
 
 
 class _DummyConfig:
-    def __init__(self, baseline_site_ids):
+    def __init__(self, baseline_site_ids, num_fixed_aps=0, num_mobile_aps=None, num_selected_aps=2):
         self.candidate_sites_path = "dummy.csv"
         self.optimization = OptimizationConfig(
-            num_selected_aps=2,
+            num_selected_aps=num_selected_aps,
+            num_fixed_aps=num_fixed_aps,
+            num_mobile_aps=num_mobile_aps,
             baseline_site_ids=list(baseline_site_ids),
         )
 
 
-def test_select_static_baseline_sites_uses_all_enabled_sites():
+def test_ordered_enabled_sites_prioritizes_baseline_site_ids():
     config = _DummyConfig(["site_b", "site_a"])
     sites = [
         CandidateSite("site_a", 0.0, 0.0, 5.0, 0.0, -10.0, "pole"),
@@ -45,22 +48,26 @@ def test_select_static_baseline_sites_uses_all_enabled_sites():
         CandidateSite("site_c", 2.0, 0.0, 5.0, 0.0, -10.0, "pole"),
     ]
 
-    selected = _select_static_baseline_sites(config, sites)
+    selected = _ordered_enabled_sites(config, sites)
 
-    assert [site.site_id for site in selected] == ["site_a", "site_b", "site_c"]
+    assert [site.site_id for site in selected] == ["site_b", "site_a", "site_c"]
 
 
-def test_select_static_baseline_sites_defaults_to_first_enabled_sites():
+def test_select_fixed_and_mobile_seed_sites_splits_ordered_pool():
     config = _DummyConfig([])
     sites = [
         CandidateSite("site_a", 0.0, 0.0, 5.0, 0.0, -10.0, "pole"),
         CandidateSite("site_b", 1.0, 0.0, 5.0, 0.0, -10.0, "pole", enabled=False),
         CandidateSite("site_c", 2.0, 0.0, 5.0, 0.0, -10.0, "pole"),
+        CandidateSite("site_d", 3.0, 0.0, 5.0, 0.0, -10.0, "pole"),
     ]
 
-    selected = _select_static_baseline_sites(config, sites)
+    config.optimization.num_fixed_aps = 1
+    config.optimization.num_mobile_aps = 2
+    fixed_sites, mobile_sites = _select_fixed_and_mobile_seed_sites(config, sites, strategy="ordered")
 
-    assert [site.site_id for site in selected] == ["site_a", "site_c"]
+    assert [site.site_id for site in fixed_sites] == ["site_a"]
+    assert [site.site_id for site in mobile_sites] == ["site_c", "site_d"]
 
 
 def test_relocate_sites_preserves_ap_ids_and_matches_nearest_candidates():

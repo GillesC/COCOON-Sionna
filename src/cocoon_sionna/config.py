@@ -130,6 +130,8 @@ class SolverConfig:
 class OptimizationConfig:
     enable_optimization: bool = True
     num_selected_aps: int = 3
+    num_fixed_aps: int = 0
+    num_mobile_aps: int | None = None
     sinr_threshold_db: float = 3.0
     grid_weight: float = 0.7
     trajectory_weight: float = 0.3
@@ -332,6 +334,12 @@ def _load_optimization(data: dict[str, Any]) -> OptimizationConfig:
     return OptimizationConfig(
         enable_optimization=bool(data.get("enable_optimization", True)),
         num_selected_aps=int(data.get("num_selected_aps", 3)),
+        num_fixed_aps=int(data.get("num_fixed_aps", 0)),
+        num_mobile_aps=(
+            int(data["num_mobile_aps"])
+            if data.get("num_mobile_aps") is not None
+            else None
+        ),
         sinr_threshold_db=float(data.get("sinr_threshold_db", 3.0)),
         grid_weight=float(data.get("grid_weight", 0.7)),
         trajectory_weight=float(data.get("trajectory_weight", 0.3)),

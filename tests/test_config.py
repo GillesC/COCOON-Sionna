@@ -17,6 +17,8 @@ def test_load_etoile_config():
     assert config.solver.require_gpu is False
     assert config.solver.synthetic_array is True
     assert config.optimization.enable_optimization is True
+    assert config.optimization.num_fixed_aps == 0
+    assert config.optimization.num_mobile_aps == 4
     assert config.candidate_sites_path.exists()
     assert config.optimization.max_candidate_ue_positions == 8
     assert config.optimization.baseline_site_ids == [
@@ -43,4 +45,6 @@ def test_load_rabot_boundary_bbox():
     assert config.coverage.enabled is False
     assert config.outputs.write_csi_exports is False
     assert config.outputs.enable_csi_cache is False
+    assert config.optimization.num_fixed_aps == 0
+    assert config.optimization.num_mobile_aps == 6
     assert config.solver.require_gpu is True

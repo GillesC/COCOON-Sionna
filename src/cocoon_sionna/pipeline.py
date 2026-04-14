@@ -615,7 +615,14 @@ def _plot_colored_trajectories(trajectory, output_path: Path) -> None:
     plt.close(fig)
 
 
-def _select_static_baseline_sites(config: ScenarioConfig, base_sites: list[CandidateSite]) -> list[CandidateSite]:
+def _mobile_ap_count(config: ScenarioConfig) -> int:
+    count = config.optimization.num_mobile_aps
+    if count is None:
+        count = config.optimization.num_selected_aps
+    return max(int(count), 0)
+
+
+def _ordered_enabled_sites(config: ScenarioConfig, base_sites: list[CandidateSite]) -> list[CandidateSite]:
     enabled_sites = [site for site in base_sites if site.enabled]
     if not enabled_sites:
         logger.warning("No enabled fixed baseline AP sites were found in %s", config.candidate_sites_path)
@@ -626,11 +633,49 @@ def _select_static_baseline_sites(config: ScenarioConfig, base_sites: list[Candi
         missing = [site_id for site_id in config.optimization.baseline_site_ids if site_id not in enabled_ids]
         if missing:
             logger.warning("Ignoring unknown baseline site ids: %s", ", ".join(missing))
+        site_by_id = {site.site_id: site for site in enabled_sites}
+        ordered = [site_by_id[site_id] for site_id in config.optimization.baseline_site_ids if site_id in site_by_id]
         logger.info(
-            "Using all %d enabled fixed APs as the movable baseline; baseline_site_ids no longer restrict selection",
-            len(enabled_sites),
+            "Using %d preferred seed AP ids first when choosing fixed/mobile baseline APs",
+            len(config.optimization.baseline_site_ids),
         )
+        selected_by_id = {site.site_id for site in ordered}
+        ordered.extend(site for site in enabled_sites if site.site_id not in selected_by_id)
+        return ordered
     return enabled_sites
+
+
+def _select_fixed_and_mobile_seed_sites(
+    config: ScenarioConfig,
+    base_sites: list[CandidateSite],
+    strategy: str,
+) -> tuple[list[CandidateSite], list[CandidateSite]]:
+    fixed_count = max(int(config.optimization.num_fixed_aps), 0)
+    mobile_count = _mobile_ap_count(config)
+    enabled_sites = [site for site in base_sites if site.enabled]
+    if not enabled_sites:
+        return [], []
+
+    if strategy == "farthest":
+        fixed_sites = select_farthest_sites(enabled_sites, fixed_count)
+        fixed_ids = {site.site_id for site in fixed_sites}
+        mobile_seed_sites = select_farthest_sites(
+            [site for site in enabled_sites if site.site_id not in fixed_ids],
+            mobile_count,
+        )
+    elif strategy == "ordered":
+        ordered_sites = _ordered_enabled_sites(config, enabled_sites)
+        fixed_sites = ordered_sites[:fixed_count]
+        mobile_seed_sites = ordered_sites[fixed_count : fixed_count + mobile_count]
+    else:
+        raise ValueError(f"Unsupported AP site selection strategy: {strategy}")
+
+    if len(fixed_sites) != fixed_count or len(mobile_seed_sites) != mobile_count:
+        raise ValueError(
+            "Requested %d fixed APs and %d movable APs, but only %d enabled seed sites are available"
+            % (fixed_count, mobile_count, len(enabled_sites))
+        )
+    return fixed_sites, mobile_seed_sites
 
 
 def _relocate_sites(
@@ -1113,13 +1158,11 @@ def _load_ap_site_pool(config: ScenarioConfig, metadata: dict[str, Any] | None) 
             min_spacing_m=config.optimization.candidate_min_spacing_m,
         )
         if candidate_sites:
-            fixed_sites = select_farthest_sites(candidate_sites, config.optimization.num_selected_aps)
             logger.info(
-                "Generated %d wall-mounted AP anchors and selected %d far-apart fixed anchors",
+                "Generated %d wall-mounted AP anchors for movable AP candidate selection",
                 len(candidate_sites),
-                len(fixed_sites),
             )
-            return fixed_sites, candidate_sites
+            return candidate_sites, candidate_sites
 
     base_sites = load_candidate_sites(config.candidate_sites_path)
     return base_sites, list(base_sites)
@@ -1302,14 +1345,24 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
 
         if metadata is not None and metadata.get("buildings"):
             base_sites, candidate_sites = _load_ap_site_pool(config, metadata)
-            baseline_sites = list(base_sites)
+            fixed_sites, mobile_seed_sites = _select_fixed_and_mobile_seed_sites(
+                config,
+                candidate_sites,
+                strategy="farthest",
+            )
             logger.info(
-                "Using %d fixed wall-mounted APs and %d wall anchor candidates",
-                len(baseline_sites),
+                "Using %d fixed wall-mounted APs, %d movable APs, and %d wall-anchor candidates",
+                len(fixed_sites),
+                len(mobile_seed_sites),
                 len(candidate_sites),
             )
         else:
             base_sites = load_candidate_sites(config.candidate_sites_path)
+            fixed_sites, mobile_seed_sites = _select_fixed_and_mobile_seed_sites(
+                config,
+                base_sites,
+                strategy="ordered",
+            )
             candidate_sites = augment_with_trajectory_sites(
                 base_sites=base_sites,
                 trajectory=trajectory,
@@ -1317,14 +1370,18 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 max_new_sites=config.optimization.max_candidate_ue_positions,
             )
             logger.info(
-                "Loaded %d base candidate sites and expanded to %d candidates with UE-derived positions",
+                "Loaded %d seed AP sites, keeping %d fixed APs, %d movable APs, and expanding to %d candidates",
                 len(base_sites),
+                len(fixed_sites),
+                len(mobile_seed_sites),
                 len(candidate_sites),
             )
-            baseline_sites = _select_static_baseline_sites(config, base_sites)
+        fixed_site_ids = {site.site_id for site in fixed_sites}
+        mobile_candidate_sites = [site for site in candidate_sites if site.enabled and site.site_id not in fixed_site_ids]
+        baseline_sites = [*fixed_sites, *mobile_seed_sites]
         if not baseline_sites:
             raise ValueError("At least one enabled fixed AP site is required for fixed/mobile comparison")
-        logger.info("Using fixed AP sites: %s", ", ".join(site.site_id for site in baseline_sites))
+        logger.info("Using active baseline AP sites: %s", ", ".join(site.site_id for site in baseline_sites))
         scenario_progress.update(1)
 
         if not config.solver.enable_ray_tracing:
@@ -1340,30 +1397,39 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 ]
             )
             selected_sites = list(baseline_sites)
+            selected_mobile_sites = list(mobile_seed_sites)
+            final_selected_candidate_ids = [site.site_id for site in mobile_seed_sites]
             write_candidate_sites(
                 output_dir / "recommended_aps.csv",
-                candidate_sites,
-                selected_ids={site.site_id for site in selected_sites},
+                mobile_candidate_sites,
+                selected_ids=set(final_selected_candidate_ids),
             )
             write_candidate_sites(
                 output_dir / "fixed_aps.csv",
-                baseline_sites,
-                selected_ids={site.site_id for site in baseline_sites},
+                fixed_sites,
+                selected_ids={site.site_id for site in fixed_sites},
             )
-            _write_ap_relocation_csv(output_dir / "ap_relocation_summary.csv", baseline_sites, selected_sites)
+            _write_ap_relocation_csv(output_dir / "ap_relocation_summary.csv", mobile_seed_sites, selected_mobile_sites)
             _write_mobile_ap_schedule_csv(
                 output_dir / "mobile_ap_schedule.csv",
                 _build_static_mobile_schedule(
                     trajectory,
-                    selected_sites,
+                    selected_mobile_sites,
                     config.optimization.relocation_interval_s,
                 ),
             )
-            _plot_scene_layout(metadata, graph, base_sites, selected_sites, trajectory, output_dir / "scene_layout.png")
+            _plot_scene_layout(
+                metadata,
+                graph,
+                mobile_candidate_sites,
+                selected_sites,
+                trajectory,
+                output_dir / "scene_layout.png",
+            )
             animation_path = _animate_scene(
                 metadata,
                 graph,
-                base_sites,
+                mobile_candidate_sites,
                 selected_sites,
                 trajectory,
                 output_dir / "scene_animation.mp4",
@@ -1387,7 +1453,10 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 "relocation_interval_s": config.optimization.relocation_interval_s,
                 "fixed_site_ids": [site.site_id for site in baseline_sites],
                 "mobile_site_ids": [site.site_id for site in selected_sites],
-                "final_mobile_candidate_ids": [site.site_id for site in selected_sites],
+                "always_fixed_site_ids": [site.site_id for site in fixed_sites],
+                "baseline_mobile_site_ids": [site.site_id for site in mobile_seed_sites],
+                "selected_mobile_site_ids": [site.site_id for site in selected_mobile_sites],
+                "final_mobile_candidate_ids": final_selected_candidate_ids,
                 "status": "trajectory_only",
             }
             (output_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
@@ -1399,7 +1468,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             Path(graph_path),
             trajectory,
             base_sites,
-            candidate_sites,
+            mobile_candidate_sites,
             baseline_sites,
         )
         cache_hit = _try_load_csi_cache(output_dir, cache_key) if csi_cache_enabled else None
@@ -1424,6 +1493,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             fixed_radio_map = cache_hit["fixed_radio_map"] if radio_map_enabled else None
             final_radio_map = cache_hit["final_radio_map"] if radio_map_enabled else None
             selected_sites = cache_hit["selected_sites"]
+            selected_mobile_sites = selected_sites[len(fixed_sites) :]
             final_selected_candidate_ids = cache_hit["final_selected_candidate_ids"]
             selected_candidate_union = cache_hit["selected_candidate_union"]
             schedule_rows = cache_hit["schedule_rows"]
@@ -1501,22 +1571,26 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             )
             scenario_progress.update(1)
 
-            if not config.optimization.enable_optimization:
-                logger.info("AP optimization disabled by configuration; reusing fixed AP constellation")
+            if not config.optimization.enable_optimization or not mobile_seed_sites:
+                if mobile_seed_sites:
+                    logger.info("AP optimization disabled by configuration; reusing fixed + movable baseline constellation")
+                else:
+                    logger.info("No movable APs configured; using only always-fixed APs")
                 relocation_windows = _window_slices(trajectory.times_s, config.optimization.relocation_interval_s)
                 selected_sites = list(baseline_sites)
-                final_selected_candidate_ids = [site.site_id for site in baseline_sites]
+                selected_mobile_sites = list(mobile_seed_sites)
+                final_selected_candidate_ids = [site.site_id for site in mobile_seed_sites]
                 selected_candidate_union = set(final_selected_candidate_ids)
                 schedule_rows = _build_static_mobile_schedule(
                     trajectory,
-                    selected_sites,
+                    selected_mobile_sites,
                     config.optimization.relocation_interval_s,
                 )
                 final_ap_ue = fixed_ap_ue
                 final_ap_ap = fixed_ap_ap
                 best_score = fixed_score
             else:
-                candidate_index = {site.site_id: site for site in candidate_sites if site.enabled}
+                candidate_index = {site.site_id: site for site in mobile_candidate_sites if site.enabled}
                 mobile_window_segments: list[dict[str, Any]] = []
                 selected_candidate_union = set()
                 schedule_rows = []
@@ -1533,7 +1607,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                         enabled=True,
                         source=f"seed:{site.site_id}",
                     )
-                    for index, site in enumerate(baseline_sites)
+                    for index, site in enumerate(mobile_seed_sites)
                 ]
                 mobile_sites = list(mobile_reference_sites)
                 final_selected_candidate_ids = []
@@ -1552,7 +1626,8 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                     def evaluate_window(subset: tuple[str, ...]) -> PlacementScore:
                         if subset not in evaluation_cache:
                             selected = [candidate_index[site_id] for site_id in subset]
-                            ap_ue = runner.compute_ap_ue_csi(selected, window_trajectory, export_full=False)
+                            active_sites = [*fixed_sites, *selected]
+                            ap_ue = runner.compute_ap_ue_csi(active_sites, window_trajectory, export_full=False)
                             score = summarize_candidate_set(
                                 grid_best_sinr_db=np.asarray([], dtype=float),
                                 trajectory_best_sinr_db=ap_ue["best_sinr_db"],
@@ -1569,12 +1644,13 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                     )
                     selected_candidates = [candidate_index[site_id] for site_id in selected_candidate_ids]
                     mobile_sites = _relocate_sites(mobile_sites, selected_candidates)
+                    active_sites = [*fixed_sites, *mobile_sites]
                     mobile_segment = runner.compute_ap_ue_csi(
-                        mobile_sites,
+                        active_sites,
                         window_trajectory,
                         export_full=csi_exports_enabled,
                     )
-                    final_ap_ap = runner.compute_ap_ap_csi(mobile_sites, export_full=csi_exports_enabled)
+                    final_ap_ap = runner.compute_ap_ap_csi(active_sites, export_full=csi_exports_enabled)
                     final_selected_candidate_ids = selected_candidate_ids
                     mobile_window_segments.append(mobile_segment)
                     selected_candidate_union.update(selected_candidate_ids)
@@ -1595,7 +1671,8 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 if not mobile_window_segments or final_ap_ap is None:
                     raise RuntimeError("Mobile AP optimization produced no relocation windows")
 
-                selected_sites = list(mobile_sites)
+                selected_mobile_sites = list(mobile_sites)
+                selected_sites = [*fixed_sites, *selected_mobile_sites]
                 final_ap_ue = _concat_ap_ue_segments(mobile_window_segments)
                 best_score = summarize_candidate_set(
                     grid_best_sinr_db=np.asarray([], dtype=float),
@@ -1756,20 +1833,27 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 output_dir / "scene_camera.mp4",
             )
             logger.info("Skipping fresh scene render/video generation on CSI cache hit to avoid Dr.Jit re-entry")
-        _plot_scene_layout(metadata, graph, base_sites, selected_sites, trajectory, output_dir / "scene_layout.png")
+        _plot_scene_layout(
+            metadata,
+            graph,
+            mobile_candidate_sites,
+            selected_sites,
+            trajectory,
+            output_dir / "scene_layout.png",
+        )
         animation_path = _animate_scene(
             metadata,
             graph,
-            base_sites,
+            mobile_candidate_sites,
             selected_sites,
             trajectory,
             output_dir / "scene_animation.mp4",
             speedup=config.outputs.scene_animation_speedup,
         )
         _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")
-        write_candidate_sites(output_dir / "recommended_aps.csv", candidate_sites, selected_ids=selected_candidate_union)
-        write_candidate_sites(output_dir / "fixed_aps.csv", baseline_sites, selected_ids={site.site_id for site in baseline_sites})
-        _write_ap_relocation_csv(output_dir / "ap_relocation_summary.csv", baseline_sites, selected_sites)
+        write_candidate_sites(output_dir / "recommended_aps.csv", mobile_candidate_sites, selected_ids=selected_candidate_union)
+        write_candidate_sites(output_dir / "fixed_aps.csv", fixed_sites, selected_ids={site.site_id for site in fixed_sites})
+        _write_ap_relocation_csv(output_dir / "ap_relocation_summary.csv", mobile_seed_sites, selected_mobile_sites)
         _write_mobile_ap_schedule_csv(output_dir / "mobile_ap_schedule.csv", schedule_rows)
         if scene_render_path is not None:
             logger.info("Wrote scene render to %s", scene_render_path)
@@ -1805,6 +1889,9 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             "relocation_interval_s": config.optimization.relocation_interval_s,
             "fixed_site_ids": [site.site_id for site in baseline_sites],
             "mobile_site_ids": [site.site_id for site in selected_sites],
+            "always_fixed_site_ids": [site.site_id for site in fixed_sites],
+            "baseline_mobile_site_ids": [site.site_id for site in mobile_seed_sites],
+            "selected_mobile_site_ids": [site.site_id for site in selected_mobile_sites],
             "final_mobile_candidate_ids": final_selected_candidate_ids,
             "fixed_score": fixed_score.score,
             "fixed_outage": fixed_score.outage,

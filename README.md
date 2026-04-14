@@ -163,7 +163,18 @@ Two deployment modes are supported:
 In all cases, the fixed AP constellation remains the reference deployment used
 for comparison.
 
+You can now split the deployment into:
+
+- `num_fixed_aps`: APs that stay at their seed positions for the whole run
+- `num_mobile_aps`: APs that are optimized over the candidate AP pool
+
+If `num_mobile_aps` is omitted, the code falls back to the legacy
+`num_selected_aps` field for backward compatibility.
+
 ### Candidate Sites
+
+Candidate APs are the possible positions that the movable APs are allowed to
+occupy during optimization. They are not the same thing as the always-fixed APs.
 
 For OSM-derived outdoor scenes, the code extracts building footprints, creates
 wall-mounted anchor points, and enforces spacing/clearance constraints via:
@@ -184,7 +195,13 @@ The fixed baseline is the non-relocated AP deployment:
 
 - In OSM scenes, the code selects a spread-out wall-mounted set using farthest
   spacing.
-- In non-OSM scenes, all enabled fixed APs are used as the baseline.
+- In non-OSM scenes, the code takes the configured fixed and movable seed APs
+  from `candidate_sites_path`.
+
+The baseline deployment is the union of:
+
+- the always-fixed APs
+- the movable APs at their initial seed positions
 
 This baseline is used to compute:
 
@@ -199,7 +216,8 @@ deployment is compared.
 ### Mobile Relocation
 
 When optimization is enabled, the code creates a second AP constellation with
-the same number of APs as the fixed baseline.
+the configured `num_mobile_aps` count, while keeping the `num_fixed_aps` APs
+active in place.
 
 - Time is partitioned into relocation windows using
   `optimization.relocation_interval_s`.
@@ -207,6 +225,8 @@ the same number of APs as the fixed baseline.
 - The chosen anchor positions are then assigned back to the original mobile AP
   IDs using minimum-distance matching, so AP identities stay stable even when
   positions move.
+- The always-fixed APs are included in the AP-UE and AP-AP CSI solves, but they
+  are excluded from the movable candidate pool.
 
 The resulting AP schedule is exported to `mobile_ap_schedule.csv`.
 
@@ -436,9 +456,9 @@ For OSM-built scenes, the generated Sionna assets are emitted as:
 - Default RF assumptions are `3.5 GHz`, `100 MHz`, and `256` CFR bins.
 - The runtime always probes the CUDA Mitsuba backend first. If the GPU probe fails,
   it falls back automatically to the LLVM CPU backend and logs the reason.
-- The static AP CDF baseline uses the configured `baseline_site_ids` when provided.
-  Otherwise it uses the first enabled fixed AP sites from `candidate_sites_path`,
-  truncated to `num_selected_aps` so the baseline and optimized curves use the same AP count.
+- The baseline deployment is built from `num_fixed_aps` always-fixed APs plus
+  `num_mobile_aps` movable seed APs. If `num_mobile_aps` is omitted, the code
+  falls back to `num_selected_aps`.
 - v1 is outdoor-only and ignores vegetation, weather, traffic, and indoor areas.
 - The Rabot boundary and AP site files are seed inputs and can be tightened
   later without changing code.

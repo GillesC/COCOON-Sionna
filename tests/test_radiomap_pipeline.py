@@ -18,6 +18,8 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
     config.outputs.output_dir = tmp_path / "etoile"
     config.coverage.enabled = True
     config.optimization.baseline_site_ids = []
+    config.optimization.num_fixed_aps = 1
+    config.optimization.num_mobile_aps = 1
     config.mobility.graph_path = tmp_path / "walk_graph.json"
     config.mobility.graph_path.write_text("{}", encoding="utf-8")
 
@@ -37,7 +39,7 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
         CandidateSite("cand_b", 20.0, 0.0, 5.0, 0.0, -10.0, "pole"),
         CandidateSite("cand_c", 50.0, 0.0, 5.0, 0.0, -10.0, "pole"),
     ]
-    calls = {"radio_map": 0}
+    calls = {"radio_map": 0, "ap_ue_site_counts": []}
 
     class FakeRunner:
         def __init__(self, **_kwargs):
@@ -56,6 +58,7 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
             }
 
         def compute_ap_ue_csi(self, sites, trajectory, export_full):
+            calls["ap_ue_site_counts"].append(len(sites))
             signal = sum(float(site.x_m) for site in sites)
             return {
                 "tx_site_ids": [site.site_id for site in sites],
@@ -85,9 +88,9 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
             }
 
     def fake_greedy_one_swap(candidate_ids, select_count, evaluator):
-        assert select_count == 2
-        subset_ab = tuple(sorted(candidate_ids[:2]))
-        subset_ac = tuple(sorted((candidate_ids[0], candidate_ids[2])))
+        assert select_count == 1
+        subset_ab = tuple(sorted((candidate_ids[0],)))
+        subset_ac = tuple(sorted((candidate_ids[2],)))
         score_ab = evaluator(subset_ab)
         score_ac = evaluator(subset_ac)
         if score_ac.score > score_ab.score:
@@ -109,7 +112,11 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
     summary = run_scenario(config)
 
     assert summary["radio_map_enabled"] is True
+    assert summary["always_fixed_site_ids"] == ["base_01"]
+    assert summary["baseline_mobile_site_ids"] == ["base_02"]
+    assert summary["selected_mobile_site_ids"] == ["mobile_ap_01"]
     assert calls["radio_map"] == 2
+    assert all(site_count == 2 for site_count in calls["ap_ue_site_counts"])
     assert (config.outputs.output_dir / "coverage_map.npz").exists()
     assert (config.outputs.output_dir / "fixed_coverage_map.npz").exists()
 
@@ -122,6 +129,7 @@ def test_run_scenario_can_skip_csi_storage_and_full_exports(monkeypatch, tmp_pat
     config.coverage.enabled = False
     config.optimization.enable_optimization = False
     config.optimization.baseline_site_ids = []
+    config.optimization.num_mobile_aps = 1
     config.mobility.graph_path = tmp_path / "walk_graph.json"
     config.mobility.graph_path.write_text("{}", encoding="utf-8")
 
