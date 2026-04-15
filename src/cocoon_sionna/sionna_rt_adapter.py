@@ -166,7 +166,10 @@ def _probe_gpu_variant(variant: str) -> tuple[bool, str]:
         mi.set_variant({variant!r})
         import sionna.rt as rt
 
-        scene = rt.load_scene(rt.scene.etoile)
+        probe_scene_names = sorted(name for name in dir(rt.scene) if not name.startswith("_"))
+        if not probe_scene_names:
+            raise RuntimeError("No builtin Sionna RT scenes are available for backend probing")
+        scene = rt.load_scene(getattr(rt.scene, probe_scene_names[0]))
         scene.frequency = 3.5e9
         scene.tx_array = rt.PlanarArray(
             num_rows=1,

@@ -119,7 +119,7 @@ def select_local_csi_candidates(
             chosen.append(local_best[0])
             selection_progress.update(1)
             logger.info(
-                "Local CSI step %d/%d selected %s with local P90 %.2f dB",
+                "Local CSI step %d/%d selected %s with local P10 %.2f dB",
                 len(chosen),
                 select_count,
                 local_best[0],

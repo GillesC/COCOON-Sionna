@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 import sys
 from types import SimpleNamespace
 
@@ -86,7 +87,7 @@ def test_detect_backend_selection_skips_gpu_probe_below_sm70(monkeypatch, caplog
 
 def test_cpu_backend_disables_full_csi_export(monkeypatch):
     runner = SionnaRtRunner(
-        scene_cfg=SceneConfig(kind="builtin", sionna_scene="etoile"),
+        scene_cfg=SceneConfig(kind="xml", scene_xml_path=Path("unused.xml")),
         radio=RadioConfig(),
         solver_cfg=SolverConfig(),
         scene_inputs=SceneInputs(scene_path=None, metadata=None),
@@ -99,7 +100,7 @@ def test_cpu_backend_disables_full_csi_export(monkeypatch):
 
 def test_runtime_info_raises_when_gpu_is_required(monkeypatch):
     runner = SionnaRtRunner(
-        scene_cfg=SceneConfig(kind="builtin", sionna_scene="etoile"),
+        scene_cfg=SceneConfig(kind="xml", scene_xml_path=Path("unused.xml")),
         radio=RadioConfig(),
         solver_cfg=SolverConfig(require_gpu=True),
         scene_inputs=SceneInputs(scene_path=None, metadata=None),

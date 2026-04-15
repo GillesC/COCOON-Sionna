@@ -3,7 +3,6 @@
 COCOON-Sionna is an outdoor distributed-MIMO simulation and AP-placement
 pipeline built on top of Sionna RT. The project:
 
-- validating placement logic on the bundled `etoile` scene
 - building an OSM-derived outdoor scene for KU Leuven Gent Campus Rabot
 - simulating pedestrian mobility and pairwise CSI for `AP-AP`, `AP-UE`, and `UE-UE`
 - generating wall-mounted candidate AP positions at `1.5 m`
@@ -16,7 +15,7 @@ At a high level, each scenario does the following:
 2. Generate wall-mounted candidate AP positions over building boundaries at `1.5 m`.
 3. Generate UE trajectories over the walkable space.
 4. Compute path-based wireless channels with Sionna RT.
-5. Compare the `random_baseline`, `local_csi_p90`, and `capped_exact_search` placement strategies.
+5. Compare the `random_baseline`, `local_csi_p10`, and `capped_exact_search` placement strategies.
 6. Export CSI, optional coverage maps, trajectories, per-strategy summaries, and placement schedules.
 
 ## System Model
@@ -204,8 +203,8 @@ Each scenario compares these three strategies:
 
 - `random_baseline`: place `N` movable APs randomly on candidate AP positions
   once, then keep that constellation fixed for the full run
-- `local_csi_p90`: for each candidate AP position, gather the `K` nearest UE
-  snapshots, score the candidate with local CSI-derived `P90` SINR, then select
+- `local_csi_p10`: for each candidate AP position, gather the `K` nearest UE
+  snapshots, score the candidate with local CSI-derived `P10` SINR, then select
   the movable AP positions per relocation window with this non-exhaustive
   heuristic
 - `capped_exact_search`: evaluate movable-AP combinations over the full
@@ -214,7 +213,7 @@ Each scenario compares these three strategies:
   status when the full search is not completed
 
 Set `enable_capped_exact_search: false` to compare only `random_baseline` and
-`local_csi_p90`.
+`local_csi_p10`.
 
 ### Placement Scoring
 
@@ -226,8 +225,9 @@ Placement evaluation uses CSI only:
 3. `AP-AP` CSI is exported for analysis, but the placement score does not
    depend on a full radio map.
 
-The `local_csi_p90` heuristic uses the `K` nearest UE snapshots around each
-candidate AP position and ranks candidates by their local `P90` SINR. The
+The `local_csi_p10` heuristic uses the `K` nearest UE snapshots around each
+candidate AP position and ranks candidates by their local `P10` SINR. This
+targets a 90%-user SINR floor rather than peak local performance. The
 comparison summary still reports the full trajectory-level score for each
 strategy.
 
@@ -243,7 +243,7 @@ With ray tracing enabled, a full scenario run proceeds as follows:
 5. Build the baseline as the initial AP constellation:
    fixed APs plus the sampled `random_baseline` movable APs.
 6. Compare the three strategies over the relocation windows:
-   `random_baseline` stays fixed, while `local_csi_p90` and
+   `random_baseline` stays fixed, while `local_csi_p10` and
    `capped_exact_search` choose movable AP positions per window.
 7. Export per-strategy placements, schedules, optional coverage maps, SINR
    comparisons, and summary metrics.
@@ -273,16 +273,16 @@ Install into the repo venv:
 
 ## Run
 
-Build and run the bundled validation scenario:
+Run the Rabot scenario:
 
 ```powershell
-.venv\Scripts\python.exe -m cocoon_sionna.cli run scenarios/etoile_demo.yaml
+.venv\Scripts\python.exe -m cocoon_sionna.cli run scenarios/rabot.yaml
 ```
 
 Enable more verbose progress logging:
 
 ```powershell
-.venv\Scripts\python.exe -m cocoon_sionna.cli --log-level DEBUG run scenarios/etoile_demo.yaml
+.venv\Scripts\python.exe -m cocoon_sionna.cli --log-level DEBUG run scenarios/rabot.yaml
 ```
 
 During interactive runs, the CLI now shows:
@@ -333,8 +333,8 @@ Each scenario writes to its configured output directory and produces:
 - `candidate_ap_positions.csv`
 - `random_baseline_movable_aps.csv`
 - `random_baseline_schedule.csv`
-- `local_csi_p90_movable_aps.csv`
-- `local_csi_p90_schedule.csv`
+- `local_csi_p10_movable_aps.csv`
+- `local_csi_p10_schedule.csv`
 - `capped_exact_search_movable_aps.csv`
 - `capped_exact_search_schedule.csv`
 - `strategy_comparison.csv`
@@ -366,10 +366,10 @@ directory also includes:
 
 `candidate_ap_positions.csv` stores the wall-generated candidate AP positions
 available to the movable AP pool.
-`random_baseline_movable_aps.csv`, `local_csi_p90_movable_aps.csv`, and
+`random_baseline_movable_aps.csv`, `local_csi_p10_movable_aps.csv`, and
 `capped_exact_search_movable_aps.csv` store the movable AP placements chosen by
 each strategy.
-`random_baseline_schedule.csv`, `local_csi_p90_schedule.csv`, and
+`random_baseline_schedule.csv`, `local_csi_p10_schedule.csv`, and
 `capped_exact_search_schedule.csv` store the per-window movable AP schedules.
 `strategy_comparison.csv` reports the per-strategy score, outage, percentile,
 and capped/exact status for the exhaustive search.
@@ -419,7 +419,7 @@ For OSM-built scenes, the generated Sionna assets are emitted as:
 - The baseline is the initial AP constellation: fixed APs plus the initial
   `random_baseline` movable AP placement.
 - `random_baseline` stays static across all relocation windows, while
-  `local_csi_p90` and `capped_exact_search` are evaluated per window.
+  `local_csi_p10` and `capped_exact_search` are evaluated per window.
 - `capped_exact_search` reports whether the full candidate-combination search
   completed or stopped at `exact_max_iterations`.
 - v1 is outdoor-only and ignores vegetation, weather, traffic, and indoor areas.

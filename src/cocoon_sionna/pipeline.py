@@ -46,7 +46,7 @@ from .sites import (
 
 logger = logging.getLogger(__name__)
 
-ALL_STRATEGY_NAMES = ("random_baseline", "local_csi_p90", "capped_exact_search")
+ALL_STRATEGY_NAMES = ("random_baseline", "local_csi_p10", "capped_exact_search")
 
 
 @dataclass(slots=True)
@@ -65,7 +65,7 @@ class StrategyArtifacts:
 
 
 def _active_strategy_names(config: ScenarioConfig) -> tuple[str, ...]:
-    names = ["random_baseline", "local_csi_p90"]
+    names = ["random_baseline", "local_csi_p10"]
     if config.placement.enable_capped_exact_search:
         names.append("capped_exact_search")
     return tuple(names)
@@ -360,6 +360,84 @@ def _render_scene_view(
     return output_path
 
 
+def _group_schedule_rows(schedule_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[int, list[dict[str, Any]]] = {}
+    for row in schedule_rows:
+        grouped.setdefault(int(row["window_index"]), []).append(row)
+    windows: list[dict[str, Any]] = []
+    for window_index in sorted(grouped):
+        rows = grouped[window_index]
+        windows.append(
+            {
+                "window_index": window_index,
+                "start_time_s": float(rows[0]["start_time_s"]),
+                "end_time_s": float(rows[0]["end_time_s"]),
+                "sites": [
+                    CandidateSite(
+                        site_id=str(row["ap_id"]),
+                        x_m=float(row["x_m"]),
+                        y_m=float(row["y_m"]),
+                        z_m=float(row["z_m"]),
+                        yaw_deg=0.0,
+                        pitch_deg=0.0,
+                        mount_type=str(row.get("source", "schedule")),
+                        source=str(row.get("source", "schedule")),
+                    )
+                    for row in rows
+                ],
+            }
+        )
+    return windows
+
+
+def _schedule_window_for_time(schedule_windows: list[dict[str, Any]], time_s: float) -> dict[str, Any]:
+    if not schedule_windows:
+        raise ValueError("schedule_windows must not be empty")
+    for window in schedule_windows:
+        if window["start_time_s"] - 1e-9 <= time_s <= window["end_time_s"] + 1e-9:
+            return window
+    return schedule_windows[-1]
+
+
+def _schedule_positions_array(schedule_windows: list[dict[str, Any]]) -> np.ndarray:
+    points: list[list[float]] = []
+    for window in schedule_windows:
+        for site in window["sites"]:
+            points.append([float(site.x_m), float(site.y_m)])
+    if not points:
+        return np.zeros((0, 2), dtype=float)
+    return np.asarray(points, dtype=float)
+
+
+def _schedule_has_movement(schedule_rows: list[dict[str, Any]]) -> bool:
+    by_ap: dict[str, set[tuple[float, float, float]]] = {}
+    for row in schedule_rows:
+        by_ap.setdefault(str(row["ap_id"]), set()).add(
+            (float(row["x_m"]), float(row["y_m"]), float(row["z_m"]))
+        )
+    return any(len(positions) > 1 for positions in by_ap.values())
+
+
+def _scene_animation_strategy_name(
+    strategy_results: dict[str, StrategyArtifacts],
+    preferred_name: str,
+) -> str:
+    preferred = strategy_results[preferred_name]
+    if _schedule_has_movement(preferred.schedule_rows):
+        return preferred_name
+
+    moving_names = [
+        name
+        for name in ALL_STRATEGY_NAMES
+        if name in strategy_results
+        and name != "random_baseline"
+        and _schedule_has_movement(strategy_results[name].schedule_rows)
+    ]
+    if not moving_names:
+        return preferred_name
+    return max(moving_names, key=lambda name: strategy_results[name].score.score)
+
+
 def _animate_scene(
     metadata: dict[str, Any] | None,
     graph,
@@ -368,10 +446,15 @@ def _animate_scene(
     trajectory,
     output_path: Path,
     speedup: float = 1.0,
+    schedule_rows: list[dict[str, Any]] | None = None,
+    fixed_sites: list[CandidateSite] | None = None,
 ) -> Path | None:
     positions = np.asarray(trajectory.positions_m[..., :2], dtype=float)
     if positions.ndim != 3 or positions.shape[0] == 0 or positions.shape[1] == 0:
         return None
+    schedule_windows = _group_schedule_rows(schedule_rows or [])
+    schedule_has_movement = _schedule_has_movement(schedule_rows or [])
+    display_sites = [*base_sites, *(fixed_sites or [])]
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(9, 7))
@@ -387,8 +470,39 @@ def _animate_scene(
             alpha=0.5,
             zorder=3,
         )
-    if selected_sites:
+    if fixed_sites:
         ax.scatter(
+            [site.x_m for site in fixed_sites],
+            [site.y_m for site in fixed_sites],
+            c="#4c566a",
+            s=55,
+            marker="P",
+            edgecolors="black",
+            linewidths=0.4,
+            zorder=5,
+        )
+    if schedule_windows:
+        initial_window = schedule_windows[0]
+        movable_scatter = ax.scatter(
+            [site.x_m for site in initial_window["sites"]],
+            [site.y_m for site in initial_window["sites"]],
+            c="#cb3a2a",
+            s=80,
+            marker="^",
+            edgecolors="black",
+            linewidths=0.5,
+            zorder=6,
+        )
+        movable_trails = (
+            {
+                site.site_id: ax.plot([], [], color="#cb3a2a", linewidth=1.5, alpha=0.35, zorder=4)[0]
+                for site in initial_window["sites"]
+            }
+            if schedule_has_movement
+            else {}
+        )
+    elif selected_sites:
+        movable_scatter = ax.scatter(
             [site.x_m for site in selected_sites],
             [site.y_m for site in selected_sites],
             c="#cb3a2a",
@@ -396,8 +510,12 @@ def _animate_scene(
             marker="^",
             edgecolors="black",
             linewidths=0.5,
-            zorder=5,
+            zorder=6,
         )
+        movable_trails = {}
+    else:
+        movable_scatter = ax.scatter([], [], c="#cb3a2a", s=80, marker="^", edgecolors="black", linewidths=0.5, zorder=6)
+        movable_trails = {}
 
     ue_scatter = ax.scatter(
         positions[0, :, 0],
@@ -423,30 +541,88 @@ def _animate_scene(
 
     legend_handles = [
         Line2D([0], [0], marker="s", linestyle="", color="#2f5d8a", markersize=7, label="Candidate APs"),
-        Line2D(
-            [0],
-            [0],
-            marker="^",
-            linestyle="",
-            color="#cb3a2a",
-            markeredgecolor="black",
-            markersize=9,
-            label="Selected APs",
-        ),
-        Line2D([0], [0], marker="o", linestyle="", color="#2ca25f", markeredgecolor="black", markersize=7, label="UE"),
-        Line2D([0], [0], color="#f28e2b", linewidth=1.8, label="UE trail"),
     ]
+    if fixed_sites:
+        legend_handles.append(
+            Line2D([0], [0], marker="P", linestyle="", color="#4c566a", markeredgecolor="black", markersize=8, label="Fixed APs")
+        )
+    legend_handles.extend(
+        [
+            Line2D(
+                [0],
+                [0],
+                marker="^",
+                linestyle="",
+                color="#cb3a2a",
+                markeredgecolor="black",
+                markersize=9,
+                label="Movable APs",
+            ),
+            Line2D([0], [0], marker="o", linestyle="", color="#2ca25f", markeredgecolor="black", markersize=7, label="UE"),
+            Line2D([0], [0], color="#f28e2b", linewidth=1.8, label="UE trail"),
+        ]
+    )
+    if schedule_has_movement:
+        legend_handles.append(Line2D([0], [0], color="#cb3a2a", linewidth=1.5, alpha=0.35, label="AP path"))
     ax.legend(handles=legend_handles, loc="best")
-    _set_scene_axes(ax, metadata, graph, positions=positions, sites=base_sites)
-    ax.set_title("Scene animation with AP placement and moving UEs")
+    if schedule_windows:
+        schedule_positions = _schedule_positions_array(schedule_windows)
+        bounds_positions = (
+            np.concatenate([positions.reshape(-1, 2), schedule_positions], axis=0)
+            if schedule_positions.size
+            else positions.reshape(-1, 2)
+        )
+        _set_scene_axes(
+            ax,
+            metadata,
+            graph,
+            positions=bounds_positions,
+            sites=display_sites,
+        )
+    else:
+        _set_scene_axes(ax, metadata, graph, positions=positions, sites=display_sites)
+    ax.set_title(
+        "Scene animation with AP movement and moving UEs"
+        if schedule_has_movement
+        else "Scene animation with AP placement and moving UEs"
+    )
 
     def _update(frame_index: int):
         ue_scatter.set_offsets(positions[frame_index])
         for u_idx, line in enumerate(trail_lines):
             trail = positions[: frame_index + 1, u_idx, :]
             line.set_data(trail[:, 0], trail[:, 1])
-        timestamp.set_text(f"t = {float(trajectory.times_s[frame_index]):.1f} s")
-        artists = [ue_scatter, timestamp]
+        artists = [ue_scatter, timestamp, movable_scatter]
+        if schedule_windows:
+            time_s = float(trajectory.times_s[frame_index])
+            current_window = _schedule_window_for_time(schedule_windows, time_s)
+            current_sites = current_window["sites"]
+            offsets = np.asarray([[site.x_m, site.y_m] for site in current_sites], dtype=float)
+            if offsets.size == 0:
+                offsets = np.zeros((0, 2), dtype=float)
+            movable_scatter.set_offsets(offsets)
+            if schedule_has_movement:
+                for ap_id, line in movable_trails.items():
+                    path_points = []
+                    for window in schedule_windows:
+                        if window["start_time_s"] > current_window["end_time_s"] + 1e-9:
+                            break
+                        for site in window["sites"]:
+                            if site.site_id == ap_id:
+                                path_points.append([site.x_m, site.y_m])
+                                break
+                    if path_points:
+                        path = np.asarray(path_points, dtype=float)
+                        line.set_data(path[:, 0], path[:, 1])
+                    else:
+                        line.set_data([], [])
+            artists.extend(movable_trails.values())
+            timestamp.set_text(
+                f"t = {time_s:.1f} s\nwindow {current_window['window_index']}: "
+                f"{current_window['start_time_s']:.1f}-{current_window['end_time_s']:.1f} s"
+            )
+        else:
+            timestamp.set_text(f"t = {float(trajectory.times_s[frame_index]):.1f} s")
         artists.extend(trail_lines)
         return artists
 
@@ -1203,7 +1379,7 @@ def _nearest_snapshot_mask(trajectory: Trajectory, site: CandidateSite, k_neares
     return mask
 
 
-def _local_percentile_90(best_sinr_db: np.ndarray, snapshot_mask: np.ndarray) -> float:
+def _local_percentile_10(best_sinr_db: np.ndarray, snapshot_mask: np.ndarray) -> float:
     values = np.asarray(best_sinr_db, dtype=float).reshape(-1)
     if values.size == 0:
         return -120.0
@@ -1212,7 +1388,7 @@ def _local_percentile_90(best_sinr_db: np.ndarray, snapshot_mask: np.ndarray) ->
     local_values = values[snapshot_mask]
     if local_values.size == 0:
         return -120.0
-    return float(np.percentile(local_values, 90))
+    return float(np.percentile(local_values, 10))
 
 def _per_user_mean_best_sinr(best_sinr_db: np.ndarray) -> np.ndarray:
     values = np.asarray(best_sinr_db, dtype=float)
@@ -1263,7 +1439,7 @@ def _plot_user_sinr_cdf(strategy_ap_ue: dict[str, dict[str, Any]], output_path: 
     plt.figure(figsize=(8, 6))
     styles = {
         "random_baseline": ("#1f77b4", "-"),
-        "local_csi_p90": ("#ff7f0e", "--"),
+        "local_csi_p10": ("#ff7f0e", "--"),
         "capped_exact_search": ("#2ca02c", "-."),
     }
     minimum = None
@@ -1468,7 +1644,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
     logger.info("Starting scenario '%s'", config.name)
     logger.info("Writing outputs to %s", output_dir)
     if "capped_exact_search" not in strategy_names:
-        logger.info("Capped exhaustive search disabled; comparing only random_baseline and local_csi_p90")
+        logger.info("Capped exhaustive search disabled; comparing only random_baseline and local_csi_p10")
     if csi_cache_enabled:
         logger.warning("CSI cache reuse is not yet implemented for the multi-strategy placement pipeline; skipping cache")
         csi_cache_enabled = False
@@ -1566,6 +1742,8 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 for name in strategy_names
             }
             best_strategy_name = "random_baseline"
+            animation_strategy_name = _scene_animation_strategy_name(strategy_results, best_strategy_name)
+            animation_strategy = strategy_results[animation_strategy_name]
             visualized_sites = list(baseline_sites)
             write_candidate_sites(output_dir / "candidate_ap_positions.csv", movable_candidate_sites)
             write_candidate_sites(output_dir / "fixed_aps.csv", fixed_sites, selected_ids={site.site_id for site in fixed_sites})
@@ -1602,6 +1780,8 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 trajectory,
                 output_dir / "scene_animation.mp4",
                 speedup=config.outputs.scene_animation_speedup,
+                schedule_rows=animation_strategy.schedule_rows,
+                fixed_sites=fixed_sites,
             )
             _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")
             if animation_path is not None:
@@ -1618,6 +1798,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 "csi_cache_enabled": csi_cache_enabled,
                 "baseline_strategy": "random_baseline",
                 "best_strategy": best_strategy_name,
+                "scene_animation_strategy": animation_strategy_name,
                 "compute_device": "SKIPPED",
                 "mitsuba_variant": "",
                 "window_interval_s": config.placement.window_interval_s,
@@ -1705,7 +1886,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                         candidate_index[site_id],
                         config.placement.heuristic_k_nearest,
                     )
-                return _local_percentile_90(payload["ap_ue"]["best_sinr_db"], snapshot_mask)
+                return _local_percentile_10(payload["ap_ue"]["best_sinr_db"], snapshot_mask)
 
             selected_ids = select_local_csi_candidates(
                 movable_candidate_ids,
@@ -1750,8 +1931,8 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 random_selector,
                 csi_exports_enabled,
             ),
-            "local_csi_p90": _evaluate_strategy_windows(
-                "local_csi_p90",
+            "local_csi_p10": _evaluate_strategy_windows(
+                "local_csi_p10",
                 runner,
                 config,
                 fixed_sites,
@@ -1784,6 +1965,14 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         )
         baseline_strategy = strategy_results["random_baseline"]
         best_strategy = strategy_results[best_strategy_name]
+        animation_strategy_name = _scene_animation_strategy_name(strategy_results, best_strategy_name)
+        animation_strategy = strategy_results[animation_strategy_name]
+        if animation_strategy_name != best_strategy_name:
+            logger.info(
+                "Animating scene with %s because best strategy %s keeps movable APs static",
+                animation_strategy_name,
+                best_strategy_name,
+            )
 
         if csi_exports_enabled:
             np.savez_compressed(output_dir / "peer_csi_snapshots.npz", **peer_csi)
@@ -1899,10 +2088,12 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             metadata,
             graph,
             movable_candidate_sites,
-            best_strategy.selected_sites,
+            animation_strategy.selected_sites,
             trajectory,
             output_dir / "scene_animation.mp4",
             speedup=config.outputs.scene_animation_speedup,
+            schedule_rows=animation_strategy.schedule_rows,
+            fixed_sites=fixed_sites,
         )
         _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")
         selected_union = set().union(*(artifact.selected_candidate_union for artifact in strategy_results.values()))
@@ -1952,6 +2143,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             "csi_cache_enabled": csi_cache_enabled,
             "baseline_strategy": "random_baseline",
             "best_strategy": best_strategy_name,
+            "scene_animation_strategy": animation_strategy_name,
             "window_interval_s": config.placement.window_interval_s,
             "fixed_site_ids": [site.site_id for site in fixed_sites],
             "candidate_site_ids": movable_candidate_ids,

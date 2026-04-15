@@ -7,12 +7,13 @@ from cocoon_sionna.config import PlacementConfig, load_scenario_config
 from cocoon_sionna.mobility import Trajectory
 from cocoon_sionna.optimization import PlacementScore
 from cocoon_sionna.pipeline import (
+    StrategyArtifacts,
     _cache_dir,
     _animate_scene,
     _build_csi_cache_key,
     _cache_optional_artifact,
     _instantaneous_user_sinr_samples,
-    _local_percentile_90,
+    _local_percentile_10,
     _make_reference_movable_sites,
     _movable_ap_count,
     _nearest_snapshot_mask,
@@ -20,6 +21,7 @@ from cocoon_sionna.pipeline import (
     _plot_scene_layout,
     _relocate_sites,
     _restore_cached_artifact,
+    _scene_animation_strategy_name,
     _select_fixed_sites,
     _should_render_sionna_scene_artifacts,
     _try_load_csi_cache,
@@ -115,7 +117,7 @@ def test_nearest_snapshot_mask_and_local_percentile():
     mask = _nearest_snapshot_mask(trajectory, site, k_nearest=2)
 
     assert mask.tolist() == [True, False, True, False]
-    assert np.isclose(_local_percentile_90(np.array([[1.0, 100.0], [3.0, 200.0]]), mask), 2.8)
+    assert np.isclose(_local_percentile_10(np.array([[1.0, 100.0], [3.0, 200.0]]), mask), 1.2)
 
 
 def test_should_render_sionna_scene_artifacts_skips_cpu_llvm_backend():
@@ -246,6 +248,133 @@ def test_animate_scene_applies_speedup_to_gif_fps(tmp_path, monkeypatch):
     assert observed["fps"] == 10
 
 
+def test_animate_scene_writes_schedule_overlay_with_fixed_sites(tmp_path, monkeypatch):
+    matplotlib.use("Agg", force=True)
+    graph = nx.Graph()
+    graph.add_node(1, x=0.0, y=0.0, entry_candidate=True)
+    graph.add_node(2, x=10.0, y=0.0, entry_candidate=True)
+    graph.add_edge(1, 2, length=10.0)
+    trajectory = Trajectory(
+        times_s=np.array([0.0, 5.0, 10.0]),
+        ue_ids=["ue_000"],
+        positions_m=np.array(
+            [
+                [[0.0, 1.0, 1.5]],
+                [[5.0, 1.0, 1.5]],
+                [[10.0, 1.0, 1.5]],
+            ]
+        ),
+        velocities_mps=np.zeros((3, 1, 3), dtype=float),
+    )
+    candidate_sites = [
+        CandidateSite("cand_a", 1.0, 0.0, 1.5, 0.0, -10.0, "wall"),
+        CandidateSite("cand_b", 9.0, 0.0, 1.5, 0.0, -10.0, "wall"),
+    ]
+    fixed_sites = [CandidateSite("fixed_ap_01", 5.0, 5.0, 1.5, 0.0, -10.0, "wall")]
+    schedule_rows = [
+        {
+            "window_index": 0,
+            "start_time_s": 0.0,
+            "end_time_s": 5.0,
+            "ap_id": "movable_ap_01",
+            "x_m": 1.0,
+            "y_m": 0.0,
+            "z_m": 1.5,
+            "source": "relocated:cand_a",
+        },
+        {
+            "window_index": 1,
+            "start_time_s": 10.0,
+            "end_time_s": 10.0,
+            "ap_id": "movable_ap_01",
+            "x_m": 9.0,
+            "y_m": 0.0,
+            "z_m": 1.5,
+            "source": "relocated:cand_b",
+        },
+    ]
+
+    def _fake_save(self, path, writer=None, dpi=None):
+        target = tmp_path / "scene_animation.gif"
+        target.write_bytes(b"GIF89a")
+
+    monkeypatch.setattr("cocoon_sionna.pipeline.shutil.which", lambda _name: None)
+    monkeypatch.setattr(mpl_animation.FuncAnimation, "save", _fake_save, raising=False)
+
+    animation_path = _animate_scene(
+        None,
+        graph,
+        candidate_sites,
+        [],
+        trajectory,
+        tmp_path / "scene_animation.mp4",
+        schedule_rows=schedule_rows,
+        fixed_sites=fixed_sites,
+    )
+
+    assert animation_path == tmp_path / "scene_animation.gif"
+    assert animation_path.exists()
+
+
+def test_scene_animation_prefers_moving_optimized_strategy():
+    static_schedule = [
+        {
+            "window_index": 0,
+            "start_time_s": 0.0,
+            "end_time_s": 10.0,
+            "ap_id": "movable_ap_01",
+            "x_m": 1.0,
+            "y_m": 0.0,
+            "z_m": 1.5,
+            "source": "seed:cand_a",
+        },
+        {
+            "window_index": 1,
+            "start_time_s": 10.0,
+            "end_time_s": 20.0,
+            "ap_id": "movable_ap_01",
+            "x_m": 1.0,
+            "y_m": 0.0,
+            "z_m": 1.5,
+            "source": "seed:cand_a",
+        },
+    ]
+    moving_schedule = [
+        dict(static_schedule[0]),
+        {
+            "window_index": 1,
+            "start_time_s": 10.0,
+            "end_time_s": 20.0,
+            "ap_id": "movable_ap_01",
+            "x_m": 8.0,
+            "y_m": 0.0,
+            "z_m": 1.5,
+            "source": "relocated:cand_b",
+        },
+    ]
+
+    def _artifact(name, score, schedule_rows):
+        return StrategyArtifacts(
+            name=name,
+            selected_sites=[],
+            movable_sites=[],
+            ap_ue={},
+            ap_ap={},
+            score=PlacementScore(score, 0.0, 0.0, 0.0, 0.0, 0.0),
+            schedule_rows=schedule_rows,
+            final_candidate_ids=[],
+            selected_candidate_union=set(),
+        )
+
+    strategy_results = {
+        "random_baseline": _artifact("random_baseline", 10.0, static_schedule),
+        "local_csi_p10": _artifact("local_csi_p10", 8.0, moving_schedule),
+        "capped_exact_search": _artifact("capped_exact_search", 7.0, moving_schedule),
+    }
+
+    assert _scene_animation_strategy_name(strategy_results, "random_baseline") == "local_csi_p10"
+
+
 def test_update_prefixed_export_only_writes_available_keys():
     target = {"base": 1}
     _update_prefixed_export(target, "peer", {"cfr": np.array([1.0]), "tau": np.array([2.0])}, ("cfr", "cir", "tau"))
@@ -278,7 +407,7 @@ def test_write_ap_relocation_csv_supports_mobile_ap_ids(tmp_path):
 
 
 def test_csi_cache_roundtrip(tmp_path):
-    config = load_scenario_config("scenarios/etoile_demo.yaml")
+    config = load_scenario_config("scenarios/rabot.yaml")
     config.outputs.output_dir = tmp_path / "out"
     trajectory = Trajectory(
         times_s=np.array([0.0, 1.0]),
@@ -355,7 +484,7 @@ def test_csi_cache_roundtrip(tmp_path):
 
 
 def test_csi_cache_roundtrip_without_radiomap(tmp_path):
-    config = load_scenario_config("scenarios/etoile_demo.yaml")
+    config = load_scenario_config("scenarios/rabot.yaml")
     config.outputs.output_dir = tmp_path / "out"
     config.coverage.enabled = False
     trajectory = Trajectory(

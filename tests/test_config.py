@@ -1,10 +1,10 @@
 from cocoon_sionna.config import load_scenario_config
 
 
-def test_load_etoile_config():
-    config = load_scenario_config("scenarios/etoile_demo.yaml")
-    assert config.name == "etoile_demo"
-    assert config.scene.kind == "builtin"
+def test_load_rabot_config():
+    config = load_scenario_config("scenarios/rabot.yaml")
+    assert config.name == "rabot_outdoor"
+    assert config.scene.kind == "osm"
     assert config.access_point_spec.model == "wall_ap_default"
     assert config.radio.frequency_hz == 3.5e9
     assert config.radio.tx_power_dbm_ap == 28.0
@@ -12,19 +12,19 @@ def test_load_etoile_config():
     assert config.radio.ap_num_cols == 3
     assert config.radio.ue_num_rows == 1
     assert config.radio.ue_num_cols == 1
-    assert config.coverage.enabled is True
+    assert config.coverage.enabled is False
     assert config.solver.enable_ray_tracing is True
-    assert config.solver.require_gpu is False
+    assert config.solver.require_gpu is True
     assert config.solver.synthetic_array is True
     assert config.placement.num_fixed_aps == 0
-    assert config.placement.num_movable_aps == 4
+    assert config.placement.num_movable_aps == 6
     assert config.placement.enable_capped_exact_search is True
     assert config.candidate_sites_path.exists()
-    assert config.placement.heuristic_k_nearest == 8
-    assert config.mobility.speed_variation_fraction == 0.12
-    assert config.placement.window_interval_s == 15.0
-    assert config.outputs.write_csi_exports is True
-    assert config.outputs.enable_csi_cache is True
+    assert config.placement.heuristic_k_nearest == 10
+    assert config.mobility.speed_variation_fraction == 0.15
+    assert config.placement.window_interval_s == 60.0
+    assert config.outputs.write_csi_exports is False
+    assert config.outputs.enable_csi_cache is False
 
 
 def test_load_rabot_boundary_bbox():

@@ -7,6 +7,7 @@ import numpy as np
 from cocoon_sionna.config import load_scenario_config
 from cocoon_sionna.mobility import Trajectory
 from cocoon_sionna.pipeline import run_scenario
+from cocoon_sionna.scene_builder import SceneArtifacts
 from cocoon_sionna.sites import CandidateSite
 
 
@@ -14,14 +15,23 @@ matplotlib.use("Agg", force=True)
 
 
 def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, tmp_path: Path):
-    config = load_scenario_config("scenarios/etoile_demo.yaml")
-    config.outputs.output_dir = tmp_path / "etoile"
+    config = load_scenario_config("scenarios/rabot.yaml")
+    config.outputs.output_dir = tmp_path / "rabot"
     config.coverage.enabled = True
+    config.outputs.write_csi_exports = True
     config.placement.num_fixed_aps = 1
     config.placement.num_movable_aps = 1
     config.placement.exact_max_iterations = 2
     config.mobility.graph_path = tmp_path / "walk_graph.json"
     config.mobility.graph_path.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(
+        "cocoon_sionna.pipeline._resolve_scene_inputs",
+        lambda _config: SceneArtifacts(
+            scene_xml_path=tmp_path / "scene.xml",
+            metadata_path=None,
+            walk_graph_path=config.mobility.graph_path,
+        ),
+    )
 
     trajectory = Trajectory(
         times_s=np.array([0.0, 5.0]),
@@ -96,7 +106,7 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
 
     assert summary["radio_map_enabled"] is True
     assert summary["baseline_strategy"] == "random_baseline"
-    assert summary["best_strategy"] in {"random_baseline", "local_csi_p90", "capped_exact_search"}
+    assert summary["best_strategy"] in {"random_baseline", "local_csi_p10", "capped_exact_search"}
     assert calls["radio_map"] == 2
     assert all(site_count == 2 for site_count in calls["ap_ue_site_counts"])
     assert (config.outputs.output_dir / "coverage_map.npz").exists()
@@ -104,8 +114,8 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
 
 
 def test_run_scenario_can_skip_csi_storage_and_full_exports(monkeypatch, tmp_path: Path):
-    config = load_scenario_config("scenarios/etoile_demo.yaml")
-    config.outputs.output_dir = tmp_path / "etoile_no_store"
+    config = load_scenario_config("scenarios/rabot.yaml")
+    config.outputs.output_dir = tmp_path / "rabot_no_store"
     config.outputs.write_csi_exports = False
     config.outputs.enable_csi_cache = False
     config.coverage.enabled = False
@@ -114,6 +124,14 @@ def test_run_scenario_can_skip_csi_storage_and_full_exports(monkeypatch, tmp_pat
     config.placement.exact_max_iterations = 2
     config.mobility.graph_path = tmp_path / "walk_graph.json"
     config.mobility.graph_path.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(
+        "cocoon_sionna.pipeline._resolve_scene_inputs",
+        lambda _config: SceneArtifacts(
+            scene_xml_path=tmp_path / "scene.xml",
+            metadata_path=None,
+            walk_graph_path=config.mobility.graph_path,
+        ),
+    )
 
     trajectory = Trajectory(
         times_s=np.array([0.0, 5.0]),
