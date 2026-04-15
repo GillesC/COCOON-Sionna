@@ -406,6 +406,36 @@ strategy, including an explicit `snapshot_index` column for postprocessing.
 `snapshot_index`, `times_s`, `ue_ids`, `strategy_names`, and one
 `<strategy>_sinr_db` matrix per strategy.
 
+## Postprocessing
+
+For manuscript work, the fastest option is to run the bundled helper script:
+
+```bash
+python scripts/run_all_postprocessing.py scenarios/rabot.yaml
+```
+
+This resolves the scenario output directory automatically and runs the full
+postprocessing bundle in one pass:
+
+- strategy summary tables
+- SINR snapshot analysis tables and figures
+- AP relocation schedule analysis
+- a combined manuscript summary and manifest
+
+You can also point it directly at an output directory:
+
+```bash
+python scripts/run_all_postprocessing.py outputs/rabot
+```
+
+The lower-level analysis scripts remain available when you only want one part
+of the toolkit:
+
+- `python scripts/analyze_strategy_performance.py outputs/rabot`
+- `python scripts/analyze_sinr_snapshots.py outputs/rabot`
+- `python scripts/analyze_ap_schedule.py outputs/rabot`
+- `python scripts/build_manuscript_report.py outputs/rabot`
+
 For OSM-built scenes, the generated Sionna assets are emitted as:
 
 - `scene.xml`
