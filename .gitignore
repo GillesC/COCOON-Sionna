@@ -180,6 +180,3 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-# Project outputs
-outputs/
-generated/
