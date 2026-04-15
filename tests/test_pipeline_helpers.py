@@ -28,6 +28,7 @@ from cocoon_sionna.pipeline import (
     _update_prefixed_export,
     _write_ap_relocation_csv,
     _write_csi_cache,
+    _write_user_sinr_artifacts,
     _window_slices,
 )
 from cocoon_sionna.scene_builder import SceneArtifacts
@@ -382,6 +383,43 @@ def test_update_prefixed_export_only_writes_available_keys():
     assert "peer_cfr" in target
     assert "peer_tau" in target
     assert "peer_cir" not in target
+
+
+def test_write_user_sinr_artifacts_exports_snapshot_csv_and_npz(tmp_path):
+    trajectory = Trajectory(
+        times_s=np.array([0.0, 5.0]),
+        ue_ids=["ue_000", "ue_001"],
+        positions_m=np.zeros((2, 2, 3), dtype=float),
+        velocities_mps=np.zeros((2, 2, 3), dtype=float),
+    )
+    strategy_ap_ue = {
+        "random_baseline": {
+            "best_sinr_db": np.array([[1.0, 2.0], [3.0, 4.0]], dtype=float),
+        },
+        "local_csi_p10": {
+            "best_sinr_db": np.array([[5.0, 6.0], [7.0, 8.0]], dtype=float),
+        },
+    }
+
+    _write_user_sinr_artifacts(tmp_path, trajectory, strategy_ap_ue)
+
+    csv_lines = (tmp_path / "user_sinr_timeseries.csv").read_text(encoding="utf-8").splitlines()
+    assert csv_lines[0] == "snapshot_index,time_s,ue_id,random_baseline_sinr_db,local_csi_p10_sinr_db"
+    assert csv_lines[1] == "0,0.0,ue_000,1.0,5.0"
+    assert csv_lines[4] == "1,5.0,ue_001,4.0,8.0"
+
+    payload = np.load(tmp_path / "user_sinr_snapshots.npz", allow_pickle=True)
+    np.testing.assert_array_equal(payload["snapshot_index"], np.array([0, 1], dtype=int))
+    np.testing.assert_array_equal(payload["times_s"], np.array([0.0, 5.0], dtype=float))
+    np.testing.assert_array_equal(payload["ue_ids"], np.array(["ue_000", "ue_001"], dtype=object))
+    np.testing.assert_array_equal(
+        payload["strategy_names"],
+        np.array(["random_baseline", "local_csi_p10"], dtype=object),
+    )
+    np.testing.assert_allclose(payload["random_baseline_sinr_db"], np.array([[1.0, 2.0], [3.0, 4.0]], dtype=float))
+    np.testing.assert_allclose(payload["local_csi_p10_sinr_db"], np.array([[5.0, 6.0], [7.0, 8.0]], dtype=float))
+    assert (tmp_path / "user_sinr_summary.csv").exists()
+    assert (tmp_path / "user_sinr_cdf.png").exists()
 
 
 def test_write_ap_relocation_csv_supports_mobile_ap_ids(tmp_path):

@@ -45,6 +45,7 @@ def test_run_scenario_without_ray_tracing_writes_trajectory_outputs(monkeypatch,
     config = load_scenario_config("scenarios/rabot.yaml")
     config.outputs.output_dir = tmp_path / "rabot_no_rt"
     config.solver.enable_ray_tracing = False
+    config.placement.enable_capped_exact_search = True
     config.mobility.graph_path = _stub_scene(monkeypatch, tmp_path)
     config.outputs.output_dir.mkdir(parents=True, exist_ok=True)
     (config.outputs.output_dir / "coverage_map.npz").write_bytes(b"stale")

@@ -350,6 +350,7 @@ Each scenario writes to its configured output directory and produces:
 - `user_sinr_cdf.png`
 - `user_sinr_summary.csv`
 - `user_sinr_timeseries.csv`
+- `user_sinr_snapshots.npz`
 - `run.log`
 
 When `outputs.write_csi_exports: false`, the pipeline skips
@@ -399,6 +400,11 @@ seeding is spread across the walk graph, and route selection biases toward
 underexplored walkable edges to improve overall area coverage.
 `user_sinr_cdf.png` compares the CDF of instantaneous distributed-MIMO zero-forcing
 SINR samples across all user snapshots for the compared placement strategies.
+`user_sinr_timeseries.csv` stores per-snapshot per-user SINR rows for each
+strategy, including an explicit `snapshot_index` column for postprocessing.
+`user_sinr_snapshots.npz` stores the same SINR data in array form with
+`snapshot_index`, `times_s`, `ue_ids`, `strategy_names`, and one
+`<strategy>_sinr_db` matrix per strategy.
 
 For OSM-built scenes, the generated Sionna assets are emitted as:
 

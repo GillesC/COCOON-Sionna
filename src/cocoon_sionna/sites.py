@@ -127,6 +127,62 @@ def _wall_normal(start_xy: np.ndarray, end_xy: np.ndarray, is_ccw: bool) -> np.n
     return normal / max(float(np.linalg.norm(normal)), 1e-9)
 
 
+def _boundary_ring(boundary_coords: object) -> np.ndarray | None:
+    ring = np.asarray(boundary_coords, dtype=float)
+    if ring.ndim != 2 or ring.shape[0] < 4 or ring.shape[1] != 2:
+        return None
+    if np.allclose(ring[0], ring[-1]):
+        ring = ring[:-1]
+    if ring.shape[0] < 3:
+        return None
+    return ring
+
+
+def _cross_2d(a: np.ndarray, b: np.ndarray) -> float:
+    return float(a[0] * b[1] - a[1] * b[0])
+
+
+def _ray_segment_intersection_distance(
+    origin_xy: np.ndarray,
+    direction_xy: np.ndarray,
+    start_xy: np.ndarray,
+    end_xy: np.ndarray,
+) -> float | None:
+    segment = end_xy - start_xy
+    denominator = _cross_2d(direction_xy, segment)
+    if abs(denominator) <= 1e-9:
+        return None
+    delta = start_xy - origin_xy
+    ray_distance = _cross_2d(delta, segment) / denominator
+    segment_fraction = _cross_2d(delta, direction_xy) / denominator
+    if ray_distance < 1e-9 or segment_fraction < -1e-9 or segment_fraction > 1.0 + 1e-9:
+        return None
+    return float(ray_distance)
+
+
+def _forward_boundary_distance(
+    boundary_ring: np.ndarray | None,
+    origin_xy: np.ndarray,
+    direction_xy: np.ndarray,
+) -> float | None:
+    if boundary_ring is None or boundary_ring.shape[0] < 3:
+        return None
+    direction_norm = float(np.linalg.norm(direction_xy))
+    if direction_norm <= 1e-9:
+        return None
+    direction = direction_xy / direction_norm
+    distances: list[float] = []
+    for index in range(boundary_ring.shape[0]):
+        start_xy = boundary_ring[index]
+        end_xy = boundary_ring[(index + 1) % boundary_ring.shape[0]]
+        distance = _ray_segment_intersection_distance(origin_xy, direction, start_xy, end_xy)
+        if distance is not None:
+            distances.append(distance)
+    if not distances:
+        return None
+    return min(distances)
+
+
 def generate_wall_candidate_sites(
     metadata: dict[str, object] | None,
     spacing_m: float,
@@ -140,6 +196,8 @@ def generate_wall_candidate_sites(
 
     sites: list[CandidateSite] = []
     accepted_xy: list[np.ndarray] = []
+    boundary_ring = _boundary_ring(metadata.get("boundary_local", []))
+    boundary_facing_clearance_m = max(float(corner_clearance_m), float(min_spacing_m), 0.5 * float(spacing_m))
     buildings = metadata.get("buildings", [])
     building_items = buildings if isinstance(buildings, list) else []
     for building in building_items:
@@ -170,6 +228,12 @@ def generate_wall_candidate_sites(
                 alpha = float(distance / edge_length)
                 point_xy = start_xy + alpha * (end_xy - start_xy)
                 mount_xy = point_xy + mount_offset_m * normal
+                forward_boundary_distance = _forward_boundary_distance(boundary_ring, mount_xy, normal)
+                if (
+                    forward_boundary_distance is not None
+                    and forward_boundary_distance < boundary_facing_clearance_m
+                ):
+                    continue
                 if accepted_xy:
                     distances = np.linalg.norm(np.asarray(accepted_xy, dtype=float) - mount_xy[None, :], axis=1)
                     if np.min(distances) < min_spacing_m:

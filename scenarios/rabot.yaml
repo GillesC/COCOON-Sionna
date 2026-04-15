@@ -7,7 +7,7 @@ scene:
   # `osm` builds the scene from OpenStreetMap inside the configured boundary.
   kind: osm
   # OSM export order: [west, south, east, north]
-  boundary_bbox: [3.706314, 51.059071, 3.710852, 51.060614]
+  boundary_bbox: [3.706920, 51.058836, 3.710187, 51.060565]
   # Generated scene assets are written here by `build-scene`.
   scene_output_dir: generated/rabot_scene
   # Used when OSM buildings do not provide an explicit height.
@@ -92,7 +92,7 @@ placement:
   # APs whose positions are selected from the candidate AP pool.
   num_movable_aps: 6
   # Set to false to skip the capped exhaustive-search strategy.
-  enable_capped_exact_search: true
+  enable_capped_exact_search: false
   # AP scoring weights and placement constraints.
   sinr_threshold_db: 0.0
   outage_weight: 1.0

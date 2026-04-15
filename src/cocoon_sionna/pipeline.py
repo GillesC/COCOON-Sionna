@@ -1479,15 +1479,26 @@ def _write_user_sinr_artifacts(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["time_s", "ue_id", *[f"{name}_sinr_db" for name in strategy_names]])
+        writer.writerow(["snapshot_index", "time_s", "ue_id", *[f"{name}_sinr_db" for name in strategy_names]])
         for t_idx, time_s in enumerate(trajectory.times_s):
             for u_idx, ue_id in enumerate(trajectory.ue_ids):
-                row = [float(time_s), ue_id]
+                row = [int(t_idx), float(time_s), ue_id]
                 for name in strategy_names:
                     payload = strategy_ap_ue.get(name)
                     if payload is not None:
                         row.append(float(np.asarray(payload["best_sinr_db"], dtype=float)[t_idx, u_idx]))
                 writer.writerow(row)
+    npz_payload: dict[str, Any] = {
+        "snapshot_index": np.arange(len(trajectory.times_s), dtype=int),
+        "times_s": np.asarray(trajectory.times_s, dtype=float),
+        "ue_ids": np.asarray(trajectory.ue_ids, dtype=object),
+        "strategy_names": np.asarray(strategy_names, dtype=object),
+    }
+    for name in strategy_names:
+        payload = strategy_ap_ue.get(name)
+        if payload is not None:
+            npz_payload[f"{name}_sinr_db"] = np.asarray(payload["best_sinr_db"], dtype=float)
+    np.savez_compressed(output_dir / "user_sinr_snapshots.npz", **npz_payload)
     _plot_user_sinr_cdf(strategy_ap_ue, output_dir / "user_sinr_cdf.png")
 
 
@@ -1720,6 +1731,10 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                     output_dir / "fixed_coverage_map.png",
                     output_dir / "peer_csi_snapshots.npz",
                     output_dir / "infra_csi_snapshots.npz",
+                    output_dir / "user_sinr_summary.csv",
+                    output_dir / "user_sinr_timeseries.csv",
+                    output_dir / "user_sinr_snapshots.npz",
+                    output_dir / "user_sinr_cdf.png",
                 ]
             )
             static_schedule = _build_static_movable_schedule(
