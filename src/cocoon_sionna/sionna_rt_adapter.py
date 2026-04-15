@@ -6,6 +6,7 @@ import gc
 import json
 from dataclasses import dataclass
 import logging
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -79,6 +80,20 @@ def _parse_nvidia_compute_capabilities(text: str) -> tuple[float, ...]:
         except ValueError:
             logger.debug("Ignoring unparseable NVIDIA compute capability entry: %s", value)
     return tuple(capabilities)
+
+
+def _resolve_builtin_scene_path(scene_module, scene_name: str) -> str:
+    if not scene_name:
+        raise ValueError("scene.sionna_scene is required for builtin scenes")
+    try:
+        scene_ref = getattr(scene_module, scene_name)
+    except AttributeError as exc:
+        raise ValueError(f"Unknown builtin Sionna scene: {scene_name}") from exc
+    if not isinstance(scene_ref, (str, os.PathLike)):
+        raise ValueError(
+            f"Builtin Sionna scene '{scene_name}' resolved to {type(scene_ref).__name__}, expected a filesystem path"
+        )
+    return os.fspath(scene_ref)
 
 
 def _query_nvidia_compute_capabilities() -> tuple[float, ...] | None:
@@ -166,10 +181,7 @@ def _probe_gpu_variant(variant: str) -> tuple[bool, str]:
         mi.set_variant({variant!r})
         import sionna.rt as rt
 
-        probe_scene_names = sorted(name for name in dir(rt.scene) if not name.startswith("_"))
-        if not probe_scene_names:
-            raise RuntimeError("No builtin Sionna RT scenes are available for backend probing")
-        scene = rt.load_scene(getattr(rt.scene, probe_scene_names[0]))
+        scene = rt.load_scene()
         scene.frequency = 3.5e9
         scene.tx_array = rt.PlanarArray(
             num_rows=1,
@@ -406,7 +418,7 @@ class SionnaRtRunner:
         rt = self._import_rt()
         load_scene = rt["load_scene"]
         if self.scene_cfg.kind == "builtin":
-            path = getattr(rt["rt"].scene, self.scene_cfg.sionna_scene)
+            path = _resolve_builtin_scene_path(rt["rt"].scene, self.scene_cfg.sionna_scene or "")
             scene = load_scene(path)
         else:
             if self.scene_inputs.scene_path is None:

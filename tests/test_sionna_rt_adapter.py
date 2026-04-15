@@ -8,6 +8,8 @@ import numpy as np
 import cocoon_sionna.sionna_rt_adapter as adapter
 from cocoon_sionna.sionna_rt_adapter import (
     _parse_nvidia_compute_capabilities,
+    _probe_gpu_variant,
+    _resolve_builtin_scene_path,
     _stack_padded,
     _zf_sinr_from_mimo_channel,
     SionnaRtRunner,
@@ -63,6 +65,36 @@ def test_parse_nvidia_compute_capabilities_ignores_invalid_rows():
     parsed = _parse_nvidia_compute_capabilities("6.1\n7.5\nnot-a-number\n\n8.9\n")
 
     assert parsed == (6.1, 7.5, 8.9)
+
+
+def test_resolve_builtin_scene_path_accepts_pathlike_and_rejects_non_pathlike():
+    scene_module = SimpleNamespace(munich="munich.xml", Scene=type("Scene", (), {}))
+
+    assert _resolve_builtin_scene_path(scene_module, "munich") == "munich.xml"
+
+    try:
+        _resolve_builtin_scene_path(scene_module, "Scene")
+    except ValueError as exc:
+        assert "expected a filesystem path" in str(exc)
+    else:
+        raise AssertionError("Expected builtin scene resolution to reject non-pathlike values")
+
+
+def test_probe_gpu_variant_uses_empty_scene(monkeypatch):
+    observed = {}
+
+    def _fake_run(command, capture_output, text, timeout, check):
+        observed["command"] = command
+        return SimpleNamespace(returncode=0, stdout="GPU_PROBE_OK\n", stderr="")
+
+    monkeypatch.setattr(adapter.subprocess, "run", _fake_run)
+
+    ok, detail = _probe_gpu_variant("cuda_ad_mono_polarized")
+
+    assert ok is True
+    assert "GPU_PROBE_OK" in detail
+    assert "scene = rt.load_scene()" in observed["command"][2]
+    assert "dir(rt.scene)" not in observed["command"][2]
 
 
 def test_detect_backend_selection_skips_gpu_probe_below_sm70(monkeypatch, caplog):
