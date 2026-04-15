@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
+import matplotlib
+matplotlib.use("Agg", force=True)
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -19,6 +21,13 @@ STRATEGY_LABELS = {
     "distributed_fixed": "Distributed fixed",
     "distributed_movable": "Distributed movable",
 }
+
+
+def _assert_artifacts_exist(artifacts: dict[str, Path]) -> dict[str, Path]:
+    missing = [str(path) for path in artifacts.values() if isinstance(path, Path) and not path.exists()]
+    if missing:
+        raise RuntimeError("Postprocessing did not produce the expected artifacts: " + ", ".join(sorted(missing)))
+    return artifacts
 
 
 def _ordered_strategies(names: Iterable[str]) -> list[str]:
@@ -169,10 +178,10 @@ def run_strategy_summary_analysis(output_dirs: Sequence[str | Path], analysis_di
         "capped",
         "evaluated_combinations",
     ]
-    return {
+    return _assert_artifacts_exist({
         "csv": _write_csv_rows(target_dir / "strategy_summary.csv", csv_headers, rows),
         "markdown": _write_markdown_table(target_dir / "strategy_summary.md", markdown_headers, rows),
-    }
+    })
 
 
 def _load_user_sinr_payload(output_dir: Path) -> tuple[np.ndarray, np.ndarray, list[str], dict[str, np.ndarray]]:
@@ -379,7 +388,7 @@ def run_sinr_snapshot_analysis(
             "No SINR samples available",
         )
 
-    return artifacts
+    return _assert_artifacts_exist(artifacts)
 
 
 def _load_schedule_rows(path: Path) -> list[dict[str, Any]]:
@@ -544,7 +553,7 @@ def run_schedule_analysis(output_dir: str | Path, analysis_dir: str | Path | Non
         _save_empty_plot(overview_path, "Schedule overview", "No schedule rows were available")
     artifacts["overview"] = overview_path
 
-    return artifacts
+    return _assert_artifacts_exist(artifacts)
 
 
 def run_manuscript_report(
@@ -620,13 +629,13 @@ def run_manuscript_report(
     }
     manifest_path = target_dir / "report_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    return {
+    return _assert_artifacts_exist({
         **{f"strategy_{key}": value for key, value in strategy_artifacts.items()},
         **{f"sinr_{key}": value for key, value in sinr_artifacts.items()},
         **{f"schedule_{key}": value for key, value in schedule_artifacts.items()},
         "summary_markdown": summary_path,
         "manifest": manifest_path,
-    }
+    })
 
 
 def _strategy_summary_parser() -> argparse.ArgumentParser:
