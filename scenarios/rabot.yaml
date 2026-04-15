@@ -87,12 +87,10 @@ solver:
   seed: 23
 
 placement:
-  # Always-on APs that stay fixed during the strategy comparison.
+  # This three-mode comparison assumes all distributed APs are part of the same budget.
   num_fixed_aps: 0
-  # APs whose positions are selected from the candidate AP pool.
+  # Number of distributed APs used by both the fixed and movable distributed modes.
   num_movable_aps: 6
-  # Set to false to skip the capped exhaustive-search strategy.
-  enable_capped_exact_search: false
   # AP scoring weights and placement constraints.
   sinr_threshold_db: 0.0
   outage_weight: 1.0

@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import json
 import logging
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 import hashlib
 import itertools
 from pathlib import Path
@@ -29,7 +29,6 @@ from .logging_utils import progress_bar
 from .mobility import Trajectory, generate_trajectory, load_graph_json
 from .optimization import (
     PlacementScore,
-    capped_exact_search,
     sample_random_candidates,
     select_local_csi_candidates,
     summarize_candidate_set,
@@ -46,7 +45,10 @@ from .sites import (
 
 logger = logging.getLogger(__name__)
 
-ALL_STRATEGY_NAMES = ("random_baseline", "local_csi_p10", "capped_exact_search")
+ALL_STRATEGY_NAMES = ("central_massive_mimo", "distributed_fixed", "distributed_movable")
+LEGACY_STRATEGY_NAMES = ("random_baseline", "local_csi_p10", "capped_exact_search")
+CENTRAL_AP_SITE_ID = "central_ap_01"
+CENTRAL_AP_ROOF_OFFSET_M = 1.5
 
 
 @dataclass(slots=True)
@@ -62,13 +64,122 @@ class StrategyArtifacts:
     selected_candidate_union: set[str]
     capped: bool = False
     evaluated_combinations: int = 0
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 def _active_strategy_names(config: ScenarioConfig) -> tuple[str, ...]:
-    names = ["random_baseline", "local_csi_p10"]
-    if config.placement.enable_capped_exact_search:
-        names.append("capped_exact_search")
-    return tuple(names)
+    return ALL_STRATEGY_NAMES
+
+
+def _validate_three_mode_config(config: ScenarioConfig) -> None:
+    if int(config.placement.num_fixed_aps) != 0:
+        raise ValueError(
+            "Three-mode comparison requires placement.num_fixed_aps == 0 because "
+            "the distributed baseline is the initial full AP constellation."
+        )
+
+
+def _strategy_site_csv_name(strategy_name: str) -> str:
+    if strategy_name == "central_massive_mimo":
+        return "central_massive_mimo_ap.csv"
+    return f"{strategy_name}_aps.csv"
+
+
+def _legacy_output_paths(output_dir: Path) -> list[Path]:
+    paths = [output_dir / "fixed_aps.csv"]
+    for name in LEGACY_STRATEGY_NAMES:
+        paths.append(output_dir / f"{name}_movable_aps.csv")
+        paths.append(output_dir / f"{name}_schedule.csv")
+    return paths
+
+
+def _factor_central_ap_array(total_elements: int) -> tuple[int, int]:
+    if total_elements <= 0:
+        raise ValueError("Central AP antenna budget must be positive")
+    rows = int(np.floor(np.sqrt(float(total_elements))))
+    while rows > 1 and total_elements % rows != 0:
+        rows -= 1
+    cols = total_elements // rows
+    return rows, cols
+
+
+def _central_ap_radio(base_radio, distributed_ap_count: int):
+    if distributed_ap_count <= 0:
+        raise ValueError("distributed_ap_count must be positive for the central AP radio budget")
+    total_elements = distributed_ap_count * int(base_radio.ap_num_rows) * int(base_radio.ap_num_cols)
+    rows, cols = _factor_central_ap_array(total_elements)
+    total_power_dbm = float(base_radio.tx_power_dbm_ap + 10.0 * np.log10(float(distributed_ap_count)))
+    return replace(base_radio, ap_num_rows=rows, ap_num_cols=cols, tx_power_dbm_ap=total_power_dbm)
+
+
+def _make_central_ap_site(candidate: CandidateSite) -> CandidateSite:
+    return CandidateSite(
+        site_id=CENTRAL_AP_SITE_ID,
+        x_m=candidate.x_m,
+        y_m=candidate.y_m,
+        z_m=candidate.z_m,
+        yaw_deg=candidate.yaw_deg,
+        pitch_deg=candidate.pitch_deg,
+        mount_type=candidate.mount_type,
+        enabled=True,
+        source=f"selected:{candidate.site_id}",
+    )
+
+
+def _generate_rooftop_candidates(metadata: dict[str, Any] | None) -> list[CandidateSite]:
+    if metadata is None:
+        return []
+    buildings = metadata.get("buildings", [])
+    if not isinstance(buildings, list):
+        return []
+
+    candidates: list[CandidateSite] = []
+    for index, building in enumerate(buildings):
+        polygon_coords = np.asarray(building.get("polygon_local", []), dtype=float)
+        if polygon_coords.ndim != 2 or polygon_coords.shape[0] < 4 or polygon_coords.shape[1] != 2:
+            continue
+        polygon = Polygon(polygon_coords)
+        if polygon.is_empty:
+            continue
+        representative = polygon.representative_point()
+        building_name = str(building.get("name", f"building_{index:03d}"))
+        height_m = float(building.get("height_m", 0.0)) + CENTRAL_AP_ROOF_OFFSET_M
+        candidates.append(
+            CandidateSite(
+                site_id=f"roof_{building_name}",
+                x_m=float(representative.x),
+                y_m=float(representative.y),
+                z_m=height_m,
+                yaw_deg=0.0,
+                pitch_deg=-90.0,
+                mount_type="rooftop",
+                enabled=True,
+                source="roof_metadata",
+            )
+        )
+    return candidates
+
+
+def _select_centroid_rooftop_candidate(
+    metadata: dict[str, Any] | None,
+    rooftop_candidates: list[CandidateSite],
+) -> CandidateSite:
+    if not rooftop_candidates:
+        raise ValueError("At least one rooftop candidate is required for the central AP comparison")
+
+    if metadata is not None and "boundary_local" in metadata:
+        boundary = np.asarray(metadata["boundary_local"], dtype=float)
+        centroid_xy = np.mean(boundary[:, :2], axis=0)
+    else:
+        centroid_xy = np.mean(
+            np.asarray([[site.x_m, site.y_m] for site in rooftop_candidates], dtype=float),
+            axis=0,
+        )
+
+    return min(
+        rooftop_candidates,
+        key=lambda site: float(np.hypot(site.x_m - centroid_xy[0], site.y_m - centroid_xy[1])),
+    )
 
 
 def _resolve_scene_inputs(config: ScenarioConfig) -> SceneArtifacts:
@@ -430,7 +541,7 @@ def _scene_animation_strategy_name(
         name
         for name in ALL_STRATEGY_NAMES
         if name in strategy_results
-        and name != "random_baseline"
+        and name != preferred_name
         and _schedule_has_movement(strategy_results[name].schedule_rows)
     ]
     if not moving_names:
@@ -1322,6 +1433,14 @@ def _write_mobile_ap_schedule_csv(
             )
 
 
+def _write_strategy_site_csv(output_dir: Path, artifact: StrategyArtifacts) -> None:
+    write_candidate_sites(
+        output_dir / _strategy_site_csv_name(artifact.name),
+        artifact.selected_sites,
+        selected_ids={site.site_id for site in artifact.selected_sites},
+    )
+
+
 def _load_ap_site_pool(config: ScenarioConfig, metadata: dict[str, Any] | None) -> tuple[list[CandidateSite], list[CandidateSite]]:
     if metadata is not None and metadata.get("buildings"):
         candidate_sites = generate_wall_candidate_sites(
@@ -1438,9 +1557,9 @@ def _plot_user_sinr_cdf(strategy_ap_ue: dict[str, dict[str, Any]], output_path: 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.figure(figsize=(8, 6))
     styles = {
-        "random_baseline": ("#1f77b4", "-"),
-        "local_csi_p10": ("#ff7f0e", "--"),
-        "capped_exact_search": ("#2ca02c", "-."),
+        "central_massive_mimo": ("#2ca02c", "-."),
+        "distributed_fixed": ("#1f77b4", "-"),
+        "distributed_movable": ("#ff7f0e", "--"),
     }
     minimum = None
     for name in strategy_names:
@@ -1450,7 +1569,7 @@ def _plot_user_sinr_cdf(strategy_ap_ue: dict[str, dict[str, Any]], output_path: 
         x_values, y_values = _cdf_points(_instantaneous_user_sinr_samples(payload["best_sinr_db"]))
         if x_values.size == 0:
             continue
-        color, linestyle = styles[name]
+        color, linestyle = styles.get(name, ("#444444", "-"))
         minimum = float(np.min(x_values)) if minimum is None else min(minimum, float(np.min(x_values)))
         plt.step(x_values, y_values, where="post", linewidth=2.0, linestyle=linestyle, color=color, label=name)
     plt.xlabel("Instantaneous distributed-MIMO ZF SINR per user snapshot [dB]")
@@ -1631,6 +1750,97 @@ def _evaluate_strategy_windows(
     )
 
 
+def _evaluate_static_strategy(
+    strategy_name: str,
+    runner: SionnaRtRunner,
+    config: ScenarioConfig,
+    selected_sites: list[CandidateSite],
+    trajectory: Trajectory,
+    peer_need_weights: np.ndarray,
+    export_full: bool,
+    final_candidate_ids: list[str],
+    details: dict[str, Any] | None = None,
+) -> StrategyArtifacts:
+    ap_ue = runner.compute_ap_ue_csi(selected_sites, trajectory, export_full=export_full)
+    ap_ap = runner.compute_ap_ap_csi(selected_sites, export_full=export_full)
+    score = summarize_candidate_set(
+        grid_best_sinr_db=np.asarray([], dtype=float),
+        trajectory_best_sinr_db=ap_ue["best_sinr_db"],
+        peer_need_weights=peer_need_weights,
+        cfg=config.placement,
+    )
+    return StrategyArtifacts(
+        name=strategy_name,
+        selected_sites=list(selected_sites),
+        movable_sites=list(selected_sites),
+        ap_ue=ap_ue,
+        ap_ap=ap_ap,
+        score=score,
+        schedule_rows=_build_static_movable_schedule(
+            trajectory,
+            selected_sites,
+            config.placement.window_interval_s,
+        ),
+        final_candidate_ids=list(final_candidate_ids),
+        selected_candidate_union=set(final_candidate_ids),
+        details=dict(details or {}),
+    )
+
+
+def _evaluate_central_massive_mimo(
+    runner: SionnaRtRunner,
+    config: ScenarioConfig,
+    rooftop_candidates: list[CandidateSite],
+    trajectory: Trajectory,
+    peer_need_weights: np.ndarray,
+    export_full: bool,
+) -> StrategyArtifacts:
+    if not rooftop_candidates:
+        raise ValueError("At least one rooftop candidate is required for central_massive_mimo")
+
+    best_candidate: CandidateSite | None = None
+    best_site: CandidateSite | None = None
+    best_ap_ue: dict[str, Any] | None = None
+    best_score: PlacementScore | None = None
+
+    for candidate in rooftop_candidates:
+        central_site = _make_central_ap_site(candidate)
+        ap_ue = runner.compute_ap_ue_csi([central_site], trajectory, export_full=export_full)
+        score = summarize_candidate_set(
+            grid_best_sinr_db=np.asarray([], dtype=float),
+            trajectory_best_sinr_db=ap_ue["best_sinr_db"],
+            peer_need_weights=peer_need_weights,
+            cfg=config.placement,
+        )
+        if best_score is None or score.score > best_score.score:
+            best_candidate = candidate
+            best_site = central_site
+            best_ap_ue = ap_ue
+            best_score = score
+
+    assert best_candidate is not None and best_site is not None and best_ap_ue is not None and best_score is not None
+    ap_ap = runner.compute_ap_ap_csi([best_site], export_full=export_full)
+    return StrategyArtifacts(
+        name="central_massive_mimo",
+        selected_sites=[best_site],
+        movable_sites=[best_site],
+        ap_ue=best_ap_ue,
+        ap_ap=ap_ap,
+        score=best_score,
+        schedule_rows=_build_static_movable_schedule(
+            trajectory,
+            [best_site],
+            config.placement.window_interval_s,
+        ),
+        final_candidate_ids=[best_candidate.site_id],
+        selected_candidate_union={best_candidate.site_id},
+        details={
+            "selection_mode": "best_scored_rooftop",
+            "rooftop_candidate_id": best_candidate.site_id,
+        },
+    )
+
+
 def build_scene_only(config_or_path: ScenarioConfig | str | Path) -> SceneArtifacts:
     config = load_scenario_config(config_or_path) if not isinstance(config_or_path, ScenarioConfig) else config_or_path
     logger.info("Starting scene build for scenario '%s'", config.name)
@@ -1645,17 +1855,16 @@ def build_scene_only(config_or_path: ScenarioConfig | str | Path) -> SceneArtifa
 
 def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
     config = load_scenario_config(config_or_path) if not isinstance(config_or_path, ScenarioConfig) else config_or_path
+    _validate_three_mode_config(config)
     output_dir = config.outputs.output_dir
     radio_map_enabled = bool(config.coverage.enabled)
     csi_exports_enabled = bool(config.outputs.write_csi_exports)
     csi_cache_enabled = bool(config.outputs.enable_csi_cache)
     strategy_names = _active_strategy_names(config)
-    inactive_strategy_names = [name for name in ALL_STRATEGY_NAMES if name not in strategy_names]
     output_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Starting scenario '%s'", config.name)
     logger.info("Writing outputs to %s", output_dir)
-    if "capped_exact_search" not in strategy_names:
-        logger.info("Capped exhaustive search disabled; comparing only random_baseline and local_csi_p10")
+    _remove_artifacts(_legacy_output_paths(output_dir))
     if csi_cache_enabled:
         logger.warning("CSI cache reuse is not yet implemented for the multi-strategy placement pipeline; skipping cache")
         csi_cache_enabled = False
@@ -1663,6 +1872,11 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
     with progress_bar(total=10, desc=f"Scenario {config.name}", unit="stage", leave=True) as scenario_progress:
         scene_artifacts = _resolve_scene_inputs(config)
         metadata = load_scene_metadata(scene_artifacts.metadata_path)
+        rooftop_candidates = _generate_rooftop_candidates(metadata)
+        if not rooftop_candidates:
+            raise ValueError(
+                "Three-mode comparison requires rooftop candidates derived from scene metadata buildings"
+            )
         if config.solver.enable_ray_tracing and config.solver.require_gpu:
             logger.info("Validating required GPU backend before trajectory generation")
             SionnaRtRunner(
@@ -1691,15 +1905,14 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         )
         scenario_progress.update(1)
 
-        base_sites, candidate_sites = _load_ap_site_pool(config, metadata)
-        fixed_sites = _select_fixed_sites(config, candidate_sites)
-        fixed_site_ids = {site.site_id for site in fixed_sites}
-        movable_candidate_sites = [site for site in candidate_sites if site.enabled and site.site_id not in fixed_site_ids]
+        _base_sites, candidate_sites = _load_ap_site_pool(config, metadata)
+        fixed_sites: list[CandidateSite] = []
+        movable_candidate_sites = [site for site in candidate_sites if site.enabled]
         movable_candidate_ids = sorted(site.site_id for site in movable_candidate_sites)
         movable_count = _movable_ap_count(config)
         if movable_count > len(movable_candidate_sites):
             raise ValueError(
-                "Requested %d movable APs, but only %d candidate AP positions remain after reserving fixed APs"
+                "Requested %d distributed APs, but only %d candidate AP positions are available"
                 % (movable_count, len(movable_candidate_sites))
             )
         random_candidate_ids = sample_random_candidates(
@@ -1709,15 +1922,15 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         )
         candidate_index = {site.site_id: site for site in movable_candidate_sites}
         baseline_seed_sites = [candidate_index[site_id] for site_id in random_candidate_ids]
-        baseline_movable_sites = _make_reference_movable_sites(baseline_seed_sites)
-        baseline_sites = [*fixed_sites, *baseline_movable_sites]
+        baseline_sites = _make_reference_movable_sites(baseline_seed_sites)
         if not baseline_sites:
             raise ValueError("At least one AP is required for placement comparison")
+        central_radio = _central_ap_radio(config.radio, movable_count)
         logger.info(
-            "Using %d fixed APs, %d movable APs, and %d candidate AP positions",
-            len(fixed_sites),
-            len(baseline_movable_sites),
+            "Comparing 1 central AP against %d distributed APs using %d wall candidates and %d rooftop candidates",
+            len(baseline_sites),
             len(movable_candidate_sites),
+            len(rooftop_candidates),
         )
         scenario_progress.update(1)
 
@@ -1739,50 +1952,85 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             )
             static_schedule = _build_static_movable_schedule(
                 trajectory,
-                baseline_movable_sites,
+                baseline_sites,
                 config.placement.window_interval_s,
             )
+            central_placeholder_candidate = _select_centroid_rooftop_candidate(metadata, rooftop_candidates)
+            central_placeholder_site = _make_central_ap_site(central_placeholder_candidate)
             strategy_results = {
-                name: StrategyArtifacts(
-                    name=name,
+                "distributed_fixed": StrategyArtifacts(
+                    name="distributed_fixed",
                     selected_sites=list(baseline_sites),
-                    movable_sites=list(baseline_movable_sites),
+                    movable_sites=list(baseline_sites),
                     ap_ue={},
                     ap_ap={},
                     score=PlacementScore(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
                     schedule_rows=list(static_schedule),
                     final_candidate_ids=list(random_candidate_ids),
                     selected_candidate_union=set(random_candidate_ids),
-                )
-                for name in strategy_names
+                    details={"selection_mode": "geometric_placeholder"},
+                ),
+                "distributed_movable": StrategyArtifacts(
+                    name="distributed_movable",
+                    selected_sites=list(baseline_sites),
+                    movable_sites=list(baseline_sites),
+                    ap_ue={},
+                    ap_ap={},
+                    score=PlacementScore(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    schedule_rows=list(static_schedule),
+                    final_candidate_ids=list(random_candidate_ids),
+                    selected_candidate_union=set(random_candidate_ids),
+                    details={"selection_mode": "geometric_placeholder"},
+                ),
+                "central_massive_mimo": StrategyArtifacts(
+                    name="central_massive_mimo",
+                    selected_sites=[central_placeholder_site],
+                    movable_sites=[central_placeholder_site],
+                    ap_ue={},
+                    ap_ap={},
+                    score=PlacementScore(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    schedule_rows=_build_static_movable_schedule(
+                        trajectory,
+                        [central_placeholder_site],
+                        config.placement.window_interval_s,
+                    ),
+                    final_candidate_ids=[central_placeholder_candidate.site_id],
+                    selected_candidate_union={central_placeholder_candidate.site_id},
+                    details={
+                        "selection_mode": "geometric_placeholder",
+                        "is_placeholder": True,
+                        "rooftop_candidate_id": central_placeholder_candidate.site_id,
+                        "central_ap_num_rows": int(central_radio.ap_num_rows),
+                        "central_ap_num_cols": int(central_radio.ap_num_cols),
+                        "central_ap_tx_power_dbm": float(central_radio.tx_power_dbm_ap),
+                    },
+                ),
             }
-            best_strategy_name = "random_baseline"
+            best_strategy_name = "distributed_fixed"
             animation_strategy_name = _scene_animation_strategy_name(strategy_results, best_strategy_name)
             animation_strategy = strategy_results[animation_strategy_name]
-            visualized_sites = list(baseline_sites)
-            write_candidate_sites(output_dir / "candidate_ap_positions.csv", movable_candidate_sites)
-            write_candidate_sites(output_dir / "fixed_aps.csv", fixed_sites, selected_ids={site.site_id for site in fixed_sites})
-            for name, artifact in strategy_results.items():
-                write_candidate_sites(
-                    output_dir / f"{name}_movable_aps.csv",
-                    artifact.movable_sites,
-                    selected_ids={site.site_id for site in artifact.movable_sites},
-                )
-                _write_mobile_ap_schedule_csv(output_dir / f"{name}_schedule.csv", artifact.schedule_rows)
-            _remove_artifacts(
-                [
-                    output_dir / f"{name}_movable_aps.csv"
-                    for name in inactive_strategy_names
-                ]
-                + [
-                    output_dir / f"{name}_schedule.csv"
-                    for name in inactive_strategy_names
-                ]
+            visualized_sites = list(strategy_results[best_strategy_name].selected_sites)
+            distributed_selected_union = set().union(
+                strategy_results["distributed_fixed"].selected_candidate_union,
+                strategy_results["distributed_movable"].selected_candidate_union,
             )
+            write_candidate_sites(
+                output_dir / "candidate_ap_positions.csv",
+                movable_candidate_sites,
+                selected_ids=distributed_selected_union,
+            )
+            write_candidate_sites(
+                output_dir / "central_ap_rooftop_candidates.csv",
+                rooftop_candidates,
+                selected_ids=strategy_results["central_massive_mimo"].selected_candidate_union,
+            )
+            for artifact in strategy_results.values():
+                _write_strategy_site_csv(output_dir, artifact)
+                _write_mobile_ap_schedule_csv(output_dir / f"{artifact.name}_schedule.csv", artifact.schedule_rows)
             _plot_scene_layout(
                 metadata,
                 graph,
-                movable_candidate_sites,
+                [*movable_candidate_sites, *rooftop_candidates],
                 visualized_sites,
                 trajectory,
                 output_dir / "scene_layout.png",
@@ -1790,13 +2038,12 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             animation_path = _animate_scene(
                 metadata,
                 graph,
-                movable_candidate_sites,
+                [*movable_candidate_sites, *rooftop_candidates],
                 visualized_sites,
                 trajectory,
                 output_dir / "scene_animation.mp4",
                 speedup=config.outputs.scene_animation_speedup,
                 schedule_rows=animation_strategy.schedule_rows,
-                fixed_sites=fixed_sites,
             )
             _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")
             if animation_path is not None:
@@ -1811,14 +2058,14 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 "radio_map_enabled": radio_map_enabled,
                 "csi_exports_enabled": csi_exports_enabled,
                 "csi_cache_enabled": csi_cache_enabled,
-                "baseline_strategy": "random_baseline",
+                "baseline_strategy": "distributed_fixed",
                 "best_strategy": best_strategy_name,
                 "scene_animation_strategy": animation_strategy_name,
                 "compute_device": "SKIPPED",
                 "mitsuba_variant": "",
                 "window_interval_s": config.placement.window_interval_s,
-                "fixed_site_ids": [site.site_id for site in fixed_sites],
                 "candidate_site_ids": movable_candidate_ids,
+                "central_rooftop_candidate_ids": [site.site_id for site in rooftop_candidates],
                 "selected_site_ids": [site.site_id for site in visualized_sites],
                 "strategies": {
                     name: {
@@ -1826,6 +2073,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                         "movable_site_ids": [site.site_id for site in artifact.movable_sites],
                         "final_candidate_ids": list(artifact.final_candidate_ids),
                         "capped": bool(artifact.capped),
+                        **artifact.details,
                     }
                     for name, artifact in strategy_results.items()
                 },
@@ -1836,7 +2084,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
 
         early_scene_render_path = None
         early_scene_camera_video_path = None
-        runner = SionnaRtRunner(
+        distributed_runner = SionnaRtRunner(
             scene_cfg=config.scene,
             radio=config.radio,
             solver_cfg=config.solver,
@@ -1845,7 +2093,16 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 metadata=metadata,
             ),
         )
-        runtime_info = runner.runtime_info()
+        central_runner = SionnaRtRunner(
+            scene_cfg=config.scene,
+            radio=central_radio,
+            solver_cfg=config.solver,
+            scene_inputs=SceneInputs(
+                scene_path=None if config.scene.kind == "builtin" else scene_artifacts.scene_xml_path,
+                metadata=metadata,
+            ),
+        )
+        runtime_info = distributed_runner.runtime_info()
         logger.info(
             "Compute backend: %s via Mitsuba variant %s",
             runtime_info["device"],
@@ -1854,7 +2111,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         scenario_progress.update(1)
         if _should_render_sionna_scene_artifacts(runtime_info):
             early_scene_render_path = _render_scene_view(
-                runner,
+                distributed_runner,
                 metadata,
                 graph,
                 baseline_sites,
@@ -1862,7 +2119,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 output_dir / "scene_render.png",
             )
             early_scene_camera_video_path = _render_scene_video(
-                runner,
+                distributed_runner,
                 metadata,
                 graph,
                 baseline_sites,
@@ -1873,22 +2130,18 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             logger.info("Skipping early Sionna scene render/video on CPU LLVM backend to avoid Dr.Jit instability")
 
         logger.info("Computing UE-UE CSI snapshots")
-        peer_csi = runner.compute_ue_ue_csi(trajectory, export_full=csi_exports_enabled)
+        peer_csi = distributed_runner.compute_ue_ue_csi(trajectory, export_full=csi_exports_enabled)
         scenario_progress.update(1)
 
-        baseline_candidate_tuple = tuple(sorted(random_candidate_ids))
-        initial_movable_sites = list(baseline_movable_sites)
-
-        def random_selector(_window_trajectory, _window_need_weights, _current_movable_sites):
-            return list(baseline_candidate_tuple), False, 1
+        initial_movable_sites = list(baseline_sites)
 
         def local_selector(window_trajectory: Trajectory, window_need_weights: np.ndarray, _current_movable_sites):
             evaluation_cache: dict[tuple[str, ...], dict[str, Any]] = {}
 
             def evaluate_subset(subset: tuple[str, ...]) -> dict[str, Any]:
                 if subset not in evaluation_cache:
-                    active_sites = [*fixed_sites, *[candidate_index[site_id] for site_id in subset]]
-                    ap_ue = runner.compute_ap_ue_csi(active_sites, window_trajectory, export_full=False)
+                    active_sites = [candidate_index[site_id] for site_id in subset]
+                    ap_ue = distributed_runner.compute_ap_ue_csi(active_sites, window_trajectory, export_full=False)
                     evaluation_cache[subset] = {"ap_ue": ap_ue}
                 return evaluation_cache[subset]
 
@@ -1910,78 +2163,63 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             )
             return selected_ids, False, len(evaluation_cache)
 
-        def exact_selector(window_trajectory: Trajectory, window_need_weights: np.ndarray, _current_movable_sites):
-            evaluation_cache: dict[tuple[str, ...], PlacementScore] = {}
-
-            def score_subset(subset: tuple[str, ...]) -> PlacementScore:
-                if subset not in evaluation_cache:
-                    active_sites = [*fixed_sites, *[candidate_index[site_id] for site_id in subset]]
-                    ap_ue = runner.compute_ap_ue_csi(active_sites, window_trajectory, export_full=False)
-                    evaluation_cache[subset] = summarize_candidate_set(
-                        grid_best_sinr_db=np.asarray([], dtype=float),
-                        trajectory_best_sinr_db=ap_ue["best_sinr_db"],
-                        peer_need_weights=window_need_weights,
-                        cfg=config.placement,
-                    )
-                return evaluation_cache[subset]
-
-            selected_ids, _score, capped, evaluations = capped_exact_search(
-                movable_candidate_ids,
-                len(initial_movable_sites),
-                score_subset,
-                config.placement.exact_max_iterations,
-            )
-            return selected_ids, capped, evaluations
-
+        peer_need_weights = np.asarray(peer_csi["need_weights"], dtype=float)
         strategy_results: dict[str, StrategyArtifacts] = {
-            "random_baseline": _evaluate_strategy_windows(
-                "random_baseline",
-                runner,
+            "distributed_fixed": _evaluate_static_strategy(
+                "distributed_fixed",
+                distributed_runner,
                 config,
-                fixed_sites,
-                initial_movable_sites,
-                candidate_index,
+                baseline_sites,
                 trajectory,
-                np.asarray(peer_csi["need_weights"], dtype=float),
-                random_selector,
+                peer_need_weights,
                 csi_exports_enabled,
+                list(random_candidate_ids),
+                details={"selection_mode": "seed_constellation"},
             ),
-            "local_csi_p10": _evaluate_strategy_windows(
-                "local_csi_p10",
-                runner,
+            "distributed_movable": _evaluate_strategy_windows(
+                "distributed_movable",
+                distributed_runner,
                 config,
-                fixed_sites,
+                [],
                 initial_movable_sites,
                 candidate_index,
                 trajectory,
-                np.asarray(peer_csi["need_weights"], dtype=float),
+                peer_need_weights,
                 local_selector,
                 csi_exports_enabled,
             ),
-        }
-        if "capped_exact_search" in strategy_names:
-            strategy_results["capped_exact_search"] = _evaluate_strategy_windows(
-                "capped_exact_search",
-                runner,
+            "central_massive_mimo": _evaluate_central_massive_mimo(
+                central_runner,
                 config,
-                fixed_sites,
-                initial_movable_sites,
-                candidate_index,
+                rooftop_candidates,
                 trajectory,
-                np.asarray(peer_csi["need_weights"], dtype=float),
-                exact_selector,
+                peer_need_weights,
                 csi_exports_enabled,
-            )
+            ),
+        }
+        strategy_results["distributed_movable"].details = {"selection_mode": "windowed_local_csi"}
+        strategy_results["central_massive_mimo"].details.update(
+            {
+                "central_ap_num_rows": int(central_radio.ap_num_rows),
+                "central_ap_num_cols": int(central_radio.ap_num_cols),
+                "central_ap_tx_power_dbm": float(central_radio.tx_power_dbm_ap),
+            }
+        )
         scenario_progress.update(2)
 
         best_strategy_name = max(
             strategy_names,
             key=lambda name: strategy_results[name].score.score,
         )
-        baseline_strategy = strategy_results["random_baseline"]
+        baseline_strategy = strategy_results["distributed_fixed"]
         best_strategy = strategy_results[best_strategy_name]
         animation_strategy_name = _scene_animation_strategy_name(strategy_results, best_strategy_name)
         animation_strategy = strategy_results[animation_strategy_name]
+        runner_by_strategy = {
+            "central_massive_mimo": central_runner,
+            "distributed_fixed": distributed_runner,
+            "distributed_movable": distributed_runner,
+        }
         if animation_strategy_name != best_strategy_name:
             logger.info(
                 "Animating scene with %s because best strategy %s keeps movable APs static",
@@ -2022,8 +2260,14 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         best_radio_map = None
         if radio_map_enabled:
             logger.info("Computing baseline and best-strategy coverage maps")
-            baseline_radio_map = runner.compute_radio_map(baseline_strategy.selected_sites, config.coverage)
-            best_radio_map = runner.compute_radio_map(best_strategy.selected_sites, config.coverage)
+            baseline_radio_map = runner_by_strategy["distributed_fixed"].compute_radio_map(
+                baseline_strategy.selected_sites,
+                config.coverage,
+            )
+            best_radio_map = runner_by_strategy[best_strategy_name].compute_radio_map(
+                best_strategy.selected_sites,
+                config.coverage,
+            )
             np.savez_compressed(
                 output_dir / "fixed_coverage_map.npz",
                 path_gain=baseline_radio_map["path_gain"],
@@ -2069,8 +2313,9 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         scene_render_path = early_scene_render_path
         scene_camera_video_path = early_scene_camera_video_path
         if _should_render_sionna_scene_artifacts(runtime_info):
+            final_runner = runner_by_strategy[best_strategy_name]
             final_scene_render_path = _render_scene_view(
-                runner,
+                final_runner,
                 metadata,
                 graph,
                 best_strategy.selected_sites,
@@ -2078,7 +2323,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 output_dir / "scene_render.png",
             )
             final_scene_camera_video_path = _render_scene_video(
-                runner,
+                final_runner,
                 metadata,
                 graph,
                 best_strategy.selected_sites,
@@ -2094,7 +2339,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         _plot_scene_layout(
             metadata,
             graph,
-            movable_candidate_sites,
+            [*movable_candidate_sites, *rooftop_candidates],
             best_strategy.selected_sites,
             trajectory,
             output_dir / "scene_layout.png",
@@ -2102,35 +2347,32 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         animation_path = _animate_scene(
             metadata,
             graph,
-            movable_candidate_sites,
+            [*movable_candidate_sites, *rooftop_candidates],
             animation_strategy.selected_sites,
             trajectory,
             output_dir / "scene_animation.mp4",
             speedup=config.outputs.scene_animation_speedup,
             schedule_rows=animation_strategy.schedule_rows,
-            fixed_sites=fixed_sites,
         )
         _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")
-        selected_union = set().union(*(artifact.selected_candidate_union for artifact in strategy_results.values()))
-        write_candidate_sites(output_dir / "candidate_ap_positions.csv", movable_candidate_sites, selected_ids=selected_union)
-        write_candidate_sites(output_dir / "fixed_aps.csv", fixed_sites, selected_ids={site.site_id for site in fixed_sites})
-        for name, artifact in strategy_results.items():
-            write_candidate_sites(
-                output_dir / f"{name}_movable_aps.csv",
-                artifact.movable_sites,
-                selected_ids={site.site_id for site in artifact.movable_sites},
-            )
-            _write_mobile_ap_schedule_csv(output_dir / f"{name}_schedule.csv", artifact.schedule_rows)
-        _remove_artifacts(
-            [
-                output_dir / f"{name}_movable_aps.csv"
-                for name in inactive_strategy_names
-            ]
-            + [
-                output_dir / f"{name}_schedule.csv"
-                for name in inactive_strategy_names
-            ]
+        distributed_selected_union = set().union(
+            strategy_results["distributed_fixed"].selected_candidate_union,
+            strategy_results["distributed_movable"].selected_candidate_union,
         )
+        write_candidate_sites(
+            output_dir / "candidate_ap_positions.csv",
+            movable_candidate_sites,
+            selected_ids=distributed_selected_union,
+        )
+        write_candidate_sites(
+            output_dir / "central_ap_rooftop_candidates.csv",
+            rooftop_candidates,
+            selected_ids=strategy_results["central_massive_mimo"].selected_candidate_union,
+        )
+        for artifact in strategy_results.values():
+            _write_strategy_site_csv(output_dir, artifact)
+            _write_mobile_ap_schedule_csv(output_dir / f"{artifact.name}_schedule.csv", artifact.schedule_rows)
+        _remove_artifacts(_legacy_output_paths(output_dir))
         _write_strategy_comparison_csv(output_dir / "strategy_comparison.csv", strategy_results)
         if scene_render_path is not None:
             logger.info("Wrote scene render to %s", scene_render_path)
@@ -2156,12 +2398,12 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             "radio_map_enabled": radio_map_enabled,
             "csi_exports_enabled": csi_exports_enabled,
             "csi_cache_enabled": csi_cache_enabled,
-            "baseline_strategy": "random_baseline",
+            "baseline_strategy": "distributed_fixed",
             "best_strategy": best_strategy_name,
             "scene_animation_strategy": animation_strategy_name,
             "window_interval_s": config.placement.window_interval_s,
-            "fixed_site_ids": [site.site_id for site in fixed_sites],
             "candidate_site_ids": movable_candidate_ids,
+            "central_rooftop_candidate_ids": [site.site_id for site in rooftop_candidates],
             "selected_site_ids": [site.site_id for site in best_strategy.selected_sites],
             "strategies": {
                 name: {
@@ -2174,6 +2416,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                     "peer_tiebreak": float(artifact.score.peer_tiebreak),
                     "capped": bool(artifact.capped),
                     "evaluated_combinations": int(artifact.evaluated_combinations),
+                    **artifact.details,
                 }
                 for name, artifact in strategy_results.items()
             },

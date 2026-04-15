@@ -3,15 +3,18 @@ import networkx as nx
 import numpy as np
 from matplotlib import animation as mpl_animation
 
-from cocoon_sionna.config import PlacementConfig, load_scenario_config
+from cocoon_sionna.config import PlacementConfig, RadioConfig, load_scenario_config
 from cocoon_sionna.mobility import Trajectory
 from cocoon_sionna.optimization import PlacementScore
 from cocoon_sionna.pipeline import (
     StrategyArtifacts,
+    _central_ap_radio,
     _cache_dir,
     _animate_scene,
     _build_csi_cache_key,
     _cache_optional_artifact,
+    _factor_central_ap_array,
+    _generate_rooftop_candidates,
     _instantaneous_user_sinr_samples,
     _local_percentile_10,
     _make_reference_movable_sites,
@@ -74,6 +77,47 @@ def test_make_reference_movable_sites_assigns_stable_ids():
     assert [site.site_id for site in movable_sites] == ["movable_ap_01", "movable_ap_02"]
     assert movable_sites[0].source == "seed:cand_a"
     assert movable_sites[1].source == "seed:cand_b"
+
+
+def test_factor_central_ap_array_prefers_near_square_layout():
+    assert _factor_central_ap_array(24) == (4, 6)
+    assert _factor_central_ap_array(36) == (6, 6)
+
+
+def test_central_ap_radio_matches_total_antenna_and_power_budget():
+    base = RadioConfig(ap_num_rows=2, ap_num_cols=3, tx_power_dbm_ap=28.0)
+
+    central = _central_ap_radio(base, distributed_ap_count=6)
+
+    assert central.ap_num_rows == 6
+    assert central.ap_num_cols == 6
+    assert central.ap_num_rows * central.ap_num_cols == 36
+    assert np.isclose(central.tx_power_dbm_ap, 28.0 + 10.0 * np.log10(6.0))
+
+
+def test_generate_rooftop_candidates_uses_representative_point_and_roof_offset():
+    metadata = {
+        "buildings": [
+            {
+                "name": "blok_a",
+                "height_m": 12.0,
+                "polygon_local": [[0.0, 0.0], [8.0, 0.0], [8.0, 4.0], [0.0, 4.0], [0.0, 0.0]],
+            }
+        ]
+    }
+
+    candidates = _generate_rooftop_candidates(metadata)
+
+    assert len(candidates) == 1
+    candidate = candidates[0]
+    assert candidate.site_id == "roof_blok_a"
+    assert np.isclose(candidate.x_m, 4.0)
+    assert np.isclose(candidate.y_m, 2.0)
+    assert np.isclose(candidate.z_m, 13.5)
+    assert candidate.yaw_deg == 0.0
+    assert candidate.pitch_deg == -90.0
+    assert candidate.mount_type == "rooftop"
+    assert candidate.source == "roof_metadata"
 
 
 def test_relocate_sites_preserves_ap_ids_and_matches_nearest_candidates():
@@ -368,12 +412,12 @@ def test_scene_animation_prefers_moving_optimized_strategy():
         )
 
     strategy_results = {
-        "random_baseline": _artifact("random_baseline", 10.0, static_schedule),
-        "local_csi_p10": _artifact("local_csi_p10", 8.0, moving_schedule),
-        "capped_exact_search": _artifact("capped_exact_search", 7.0, moving_schedule),
+        "central_massive_mimo": _artifact("central_massive_mimo", 10.0, static_schedule),
+        "distributed_fixed": _artifact("distributed_fixed", 8.0, static_schedule),
+        "distributed_movable": _artifact("distributed_movable", 7.0, moving_schedule),
     }
 
-    assert _scene_animation_strategy_name(strategy_results, "random_baseline") == "local_csi_p10"
+    assert _scene_animation_strategy_name(strategy_results, "central_massive_mimo") == "distributed_movable"
 
 
 def test_update_prefixed_export_only_writes_available_keys():
@@ -393,20 +437,26 @@ def test_write_user_sinr_artifacts_exports_snapshot_csv_and_npz(tmp_path):
         velocities_mps=np.zeros((2, 2, 3), dtype=float),
     )
     strategy_ap_ue = {
-        "random_baseline": {
+        "central_massive_mimo": {
             "best_sinr_db": np.array([[1.0, 2.0], [3.0, 4.0]], dtype=float),
         },
-        "local_csi_p10": {
+        "distributed_fixed": {
             "best_sinr_db": np.array([[5.0, 6.0], [7.0, 8.0]], dtype=float),
+        },
+        "distributed_movable": {
+            "best_sinr_db": np.array([[9.0, 10.0], [11.0, 12.0]], dtype=float),
         },
     }
 
     _write_user_sinr_artifacts(tmp_path, trajectory, strategy_ap_ue)
 
     csv_lines = (tmp_path / "user_sinr_timeseries.csv").read_text(encoding="utf-8").splitlines()
-    assert csv_lines[0] == "snapshot_index,time_s,ue_id,random_baseline_sinr_db,local_csi_p10_sinr_db"
-    assert csv_lines[1] == "0,0.0,ue_000,1.0,5.0"
-    assert csv_lines[4] == "1,5.0,ue_001,4.0,8.0"
+    assert (
+        csv_lines[0]
+        == "snapshot_index,time_s,ue_id,central_massive_mimo_sinr_db,distributed_fixed_sinr_db,distributed_movable_sinr_db"
+    )
+    assert csv_lines[1] == "0,0.0,ue_000,1.0,5.0,9.0"
+    assert csv_lines[4] == "1,5.0,ue_001,4.0,8.0,12.0"
 
     payload = np.load(tmp_path / "user_sinr_snapshots.npz", allow_pickle=True)
     np.testing.assert_array_equal(payload["snapshot_index"], np.array([0, 1], dtype=int))
@@ -414,10 +464,11 @@ def test_write_user_sinr_artifacts_exports_snapshot_csv_and_npz(tmp_path):
     np.testing.assert_array_equal(payload["ue_ids"], np.array(["ue_000", "ue_001"], dtype=object))
     np.testing.assert_array_equal(
         payload["strategy_names"],
-        np.array(["random_baseline", "local_csi_p10"], dtype=object),
+        np.array(["central_massive_mimo", "distributed_fixed", "distributed_movable"], dtype=object),
     )
-    np.testing.assert_allclose(payload["random_baseline_sinr_db"], np.array([[1.0, 2.0], [3.0, 4.0]], dtype=float))
-    np.testing.assert_allclose(payload["local_csi_p10_sinr_db"], np.array([[5.0, 6.0], [7.0, 8.0]], dtype=float))
+    np.testing.assert_allclose(payload["central_massive_mimo_sinr_db"], np.array([[1.0, 2.0], [3.0, 4.0]], dtype=float))
+    np.testing.assert_allclose(payload["distributed_fixed_sinr_db"], np.array([[5.0, 6.0], [7.0, 8.0]], dtype=float))
+    np.testing.assert_allclose(payload["distributed_movable_sinr_db"], np.array([[9.0, 10.0], [11.0, 12.0]], dtype=float))
     assert (tmp_path / "user_sinr_summary.csv").exists()
     assert (tmp_path / "user_sinr_cdf.png").exists()
 

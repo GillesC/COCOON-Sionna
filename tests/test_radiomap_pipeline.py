@@ -19,16 +19,20 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
     config.outputs.output_dir = tmp_path / "rabot"
     config.coverage.enabled = True
     config.outputs.write_csi_exports = True
-    config.placement.num_fixed_aps = 1
+    config.placement.num_fixed_aps = 0
     config.placement.num_movable_aps = 1
-    config.placement.exact_max_iterations = 2
     config.mobility.graph_path = tmp_path / "walk_graph.json"
     config.mobility.graph_path.write_text("{}", encoding="utf-8")
+    metadata_path = tmp_path / "scene_metadata.json"
+    metadata_path.write_text(
+        '{"buildings":[{"name":"blok_a","height_m":12.0,"polygon_local":[[0.0,0.0],[4.0,0.0],[4.0,4.0],[0.0,4.0],[0.0,0.0]]}]}',
+        encoding="utf-8",
+    )
     monkeypatch.setattr(
         "cocoon_sionna.pipeline._resolve_scene_inputs",
         lambda _config: SceneArtifacts(
             scene_xml_path=tmp_path / "scene.xml",
-            metadata_path=None,
+            metadata_path=metadata_path,
             walk_graph_path=config.mobility.graph_path,
         ),
     )
@@ -105,10 +109,10 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
     summary = run_scenario(config)
 
     assert summary["radio_map_enabled"] is True
-    assert summary["baseline_strategy"] == "random_baseline"
-    assert summary["best_strategy"] in {"random_baseline", "local_csi_p10", "capped_exact_search"}
+    assert summary["baseline_strategy"] == "distributed_fixed"
+    assert summary["best_strategy"] in {"central_massive_mimo", "distributed_fixed", "distributed_movable"}
     assert calls["radio_map"] == 2
-    assert all(site_count == 2 for site_count in calls["ap_ue_site_counts"])
+    assert all(site_count == 1 for site_count in calls["ap_ue_site_counts"])
     assert (config.outputs.output_dir / "coverage_map.npz").exists()
     assert (config.outputs.output_dir / "fixed_coverage_map.npz").exists()
 
@@ -121,14 +125,18 @@ def test_run_scenario_can_skip_csi_storage_and_full_exports(monkeypatch, tmp_pat
     config.coverage.enabled = False
     config.placement.num_fixed_aps = 0
     config.placement.num_movable_aps = 1
-    config.placement.exact_max_iterations = 2
     config.mobility.graph_path = tmp_path / "walk_graph.json"
     config.mobility.graph_path.write_text("{}", encoding="utf-8")
+    metadata_path = tmp_path / "scene_metadata.json"
+    metadata_path.write_text(
+        '{"buildings":[{"name":"blok_a","height_m":12.0,"polygon_local":[[0.0,0.0],[4.0,0.0],[4.0,4.0],[0.0,4.0],[0.0,0.0]]}]}',
+        encoding="utf-8",
+    )
     monkeypatch.setattr(
         "cocoon_sionna.pipeline._resolve_scene_inputs",
         lambda _config: SceneArtifacts(
             scene_xml_path=tmp_path / "scene.xml",
-            metadata_path=None,
+            metadata_path=metadata_path,
             walk_graph_path=config.mobility.graph_path,
         ),
     )

@@ -6,8 +6,8 @@ pipeline built on top of Sionna RT. The project:
 - building an OSM-derived outdoor scene for KU Leuven Gent Campus Rabot
 - simulating pedestrian mobility and pairwise CSI for `AP-AP`, `AP-UE`, and `UE-UE`
 - generating wall-mounted candidate AP positions at `1.5 m`
-- splitting each deployment into fixed APs plus movable APs
-- comparing three placement strategies over the same CSI-derived objective
+- generating one rooftop central-AP candidate per building
+- comparing three deployment modes over the same CSI-derived objective
 
 At a high level, each scenario does the following:
 
@@ -15,8 +15,8 @@ At a high level, each scenario does the following:
 2. Generate wall-mounted candidate AP positions over building boundaries at `1.5 m`.
 3. Generate UE trajectories over the walkable space.
 4. Compute path-based wireless channels with Sionna RT.
-5. Compare the `random_baseline`, `local_csi_p10`, and `capped_exact_search` placement strategies.
-6. Export CSI, optional coverage maps, trajectories, per-strategy summaries, and placement schedules.
+5. Compare `central_massive_mimo`, `distributed_fixed`, and `distributed_movable`.
+6. Export CSI, optional coverage maps, trajectories, per-mode summaries, and placement schedules.
 
 ## System Model
 
@@ -165,16 +165,17 @@ Candidate generation is controlled by:
 - `candidate_min_spacing_m`
 
 For scenes that do not expose wall geometry directly, the same candidate AP
-positions can be supplied explicitly. The fixed APs remain active in every CSI
-solve, but they are excluded from the movable candidate pool.
+positions can be supplied explicitly. In the current three-mode comparison,
+`placement.num_fixed_aps` must remain `0`: the distributed baseline is the
+initial sampled distributed AP constellation, and the central AP uses a
+separate rooftop candidate pool derived from building metadata.
 
 ### Placement Config Example
 
 ```yaml
 placement:
-  num_fixed_aps: 2
+  num_fixed_aps: 0
   num_movable_aps: 4
-  enable_capped_exact_search: true
   window_interval_s: 10.0
   candidate_wall_height_m: 1.5
   candidate_wall_spacing_m: 8.0
@@ -188,32 +189,27 @@ placement:
 
 ### Baseline
 
-The baseline is the initial AP constellation:
+The baseline is the initial distributed AP constellation:
 
-- all fixed APs
-- `N` movable APs sampled once from the candidate AP positions
+- sample `N` distributed APs once from the wall-mounted candidate AP positions
+- keep that sampled constellation fixed for the full run
 
-That initial movable placement defines the `random_baseline` strategy and stays
-unchanged across all relocation windows. It is the reference deployment used in
-the strategy comparison.
+That defines the `distributed_fixed` mode and serves as the comparison
+reference.
 
 ### Strategies To Compare
 
-Each scenario compares these three strategies:
+Each scenario compares these three deployment modes:
 
-- `random_baseline`: place `N` movable APs randomly on candidate AP positions
-  once, then keep that constellation fixed for the full run
-- `local_csi_p10`: for each candidate AP position, gather the `K` nearest UE
-  snapshots, score the candidate with local CSI-derived `P10` SINR, then select
-  the movable AP positions per relocation window with this non-exhaustive
-  heuristic
-- `capped_exact_search`: evaluate movable-AP combinations over the full
-  candidate AP pool for each relocation window, stop at `exact_max_iterations`,
-  and return the best combination found so far together with an explicit capped
-  status when the full search is not completed
-
-Set `enable_capped_exact_search: false` to compare only `random_baseline` and
-`local_csi_p10`.
+- `central_massive_mimo`: evaluate one rooftop central-AP candidate per
+  building, place the AP at the building representative rooftop point, mount it
+  `1.5 m` above the roof, and pick the best-scoring rooftop over the full UE
+  trajectory
+- `distributed_fixed`: sample `N` distributed APs once from the wall-mounted
+  candidate AP positions and keep that constellation fixed for the full run
+- `distributed_movable`: keep the same distributed AP budget, but relocate the
+  APs per window using the current local-CSI heuristic over the wall-mounted
+  candidate AP positions
 
 ### Placement Scoring
 
@@ -225,27 +221,27 @@ Placement evaluation uses CSI only:
 3. `AP-AP` CSI is exported for analysis, but the placement score does not
    depend on a full radio map.
 
-The `local_csi_p10` heuristic uses the `K` nearest UE snapshots around each
-candidate AP position and ranks candidates by their local `P10` SINR. This
+The `distributed_movable` heuristic uses the `K` nearest UE snapshots around
+each candidate AP position and ranks candidates by their local `P10` SINR. This
 targets a 90%-user SINR floor rather than peak local performance. The
-comparison summary still reports the full trajectory-level score for each
-strategy.
+comparison summary still reports the full trajectory-level score for each mode.
 
 ### Evaluation Flow Per Scenario
 
 With ray tracing enabled, a full scenario run proceeds as follows:
 
 1. Build or load the scene and mobility graph.
-2. Generate candidate AP positions along the walls at `1.5 m`.
-3. Generate UE trajectories.
-4. Compute the CSI used for scoring:
+2. Generate distributed candidate AP positions along the walls at `1.5 m`.
+3. Generate one rooftop central-AP candidate per building.
+4. Generate UE trajectories.
+5. Compute the CSI used for scoring:
    `UE-UE`, `AP-UE`, and exported `AP-AP`.
-5. Build the baseline as the initial AP constellation:
-   fixed APs plus the sampled `random_baseline` movable APs.
-6. Compare the three strategies over the relocation windows:
-   `random_baseline` stays fixed, while `local_csi_p10` and
-   `capped_exact_search` choose movable AP positions per window.
-7. Export per-strategy placements, schedules, optional coverage maps, SINR
+6. Build the distributed baseline as the initial sampled AP constellation.
+7. Compare the three modes:
+   `distributed_fixed` stays static, `distributed_movable` relocates APs per
+   window, and `central_massive_mimo` evaluates the rooftop central-AP
+   candidates over the full trajectory.
+8. Export per-mode placements, schedules, optional coverage maps, SINR
    comparisons, and summary metrics.
 
 When `solver.enable_ray_tracing: false`, the pipeline skips CSI-driven
@@ -329,14 +325,14 @@ outputs:
 
 Each scenario writes to its configured output directory and produces:
 
-- `fixed_aps.csv`
 - `candidate_ap_positions.csv`
-- `random_baseline_movable_aps.csv`
-- `random_baseline_schedule.csv`
-- `local_csi_p10_movable_aps.csv`
-- `local_csi_p10_schedule.csv`
-- `capped_exact_search_movable_aps.csv`
-- `capped_exact_search_schedule.csv`
+- `central_ap_rooftop_candidates.csv`
+- `central_massive_mimo_ap.csv`
+- `central_massive_mimo_schedule.csv`
+- `distributed_fixed_aps.csv`
+- `distributed_fixed_schedule.csv`
+- `distributed_movable_aps.csv`
+- `distributed_movable_schedule.csv`
 - `strategy_comparison.csv`
 - `summary.json`
 - `infra_csi_snapshots.npz`
@@ -365,17 +361,20 @@ directory also includes:
 - `fixed_coverage_map.npz`
 - `fixed_coverage_map.png`
 
-`candidate_ap_positions.csv` stores the wall-generated candidate AP positions
-available to the movable AP pool.
-`random_baseline_movable_aps.csv`, `local_csi_p10_movable_aps.csv`, and
-`capped_exact_search_movable_aps.csv` store the movable AP placements chosen by
-each strategy.
-`random_baseline_schedule.csv`, `local_csi_p10_schedule.csv`, and
-`capped_exact_search_schedule.csv` store the per-window movable AP schedules.
-`strategy_comparison.csv` reports the per-strategy score, outage, percentile,
-and capped/exact status for the exhaustive search.
+`candidate_ap_positions.csv` stores the wall-generated distributed candidate AP
+positions.
+`central_ap_rooftop_candidates.csv` stores the rooftop candidates considered by
+`central_massive_mimo`.
+`central_massive_mimo_ap.csv`, `distributed_fixed_aps.csv`, and
+`distributed_movable_aps.csv` store the selected deployment for each mode.
+`central_massive_mimo_schedule.csv`, `distributed_fixed_schedule.csv`, and
+`distributed_movable_schedule.csv` store the per-window AP schedules. The
+central and fixed distributed schedules remain static; the movable distributed
+schedule can change per relocation window.
+`strategy_comparison.csv` reports the per-mode score, outage, and percentile
+metrics.
 `summary.json` records the same comparison metrics together with the selected
-compute backend and Mitsuba variant.
+compute backend, Mitsuba variant, and the central-AP antenna/power budget.
 `infra_csi_snapshots.npz` contains `AP-AP` and `AP-UE` CSI exports for the
 evaluated placements.
 `peer_csi_snapshots.npz` contains `UE-UE` CSI exports and the peer-derived
@@ -387,7 +386,7 @@ radio devices inside the 3D environment.
 using a fixed oblique camera while the UE devices move over time. This output
 requires `ffmpeg`.
 `scene_layout.png` shows a top-down view of the loaded scene, including the walk
-graph, building footprints when available, fixed APs, candidate AP positions,
+graph, building footprints when available, candidate AP positions,
 selected placements, and UE trajectories.
 `scene_animation.mp4` animates the moving UEs over the loaded scene together
 with the AP placements. If `ffmpeg` is unavailable, the pipeline writes
@@ -451,13 +450,14 @@ For OSM-built scenes, the generated Sionna assets are emitted as:
   it falls back automatically to the LLVM CPU backend and logs the reason.
 - Candidate AP positions are wall-based by default and use
   `candidate_wall_height_m: 1.5`.
-- Fixed APs are always active and never part of the movable candidate pool.
-- The baseline is the initial AP constellation: fixed APs plus the initial
-  `random_baseline` movable AP placement.
-- `random_baseline` stays static across all relocation windows, while
-  `local_csi_p10` and `capped_exact_search` are evaluated per window.
-- `capped_exact_search` reports whether the full candidate-combination search
-  completed or stopped at `exact_max_iterations`.
+- The central AP is rooftop-mounted `1.5 m` above the roof and is selected from
+  one rooftop candidate per building.
+- The distributed baseline is the initial sampled AP constellation and remains
+  fixed for the full run.
+- `distributed_movable` reuses the same distributed AP budget but can relocate
+  the APs per optimization window.
+- The central AP is normalized to the same total antenna-element budget and the
+  same total transmit-power budget as the distributed deployments.
 - v1 is outdoor-only and ignores vegetation, weather, traffic, and indoor areas.
 - The Rabot boundary and AP site files are seed inputs and can be tightened
   later without changing code.

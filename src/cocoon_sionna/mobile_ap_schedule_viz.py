@@ -307,9 +307,9 @@ def run_mobile_ap_schedule_visualization(
     graph = load_graph_json(graph_path)
 
     output_dir = config.outputs.output_dir
-    schedule_path = schedule_csv or output_dir / "random_baseline_schedule.csv"
+    schedule_path = schedule_csv or output_dir / "distributed_movable_schedule.csv"
     trajectory_path = trajectory_csv or output_dir / "trajectory.csv"
-    fixed_path = fixed_sites_csv or output_dir / "fixed_aps.csv"
+    fixed_path = fixed_sites_csv or output_dir / "distributed_fixed_aps.csv"
     animation_path = output_path or output_dir / "mobile_ap_schedule_animation.mp4"
 
     windows = load_mobile_ap_schedule(schedule_path)
@@ -333,10 +333,15 @@ def main() -> None:
         "--schedule-csv",
         type=Path,
         default=None,
-        help="Override path to a per-strategy schedule CSV such as random_baseline_schedule.csv",
+        help="Override path to a per-mode schedule CSV such as distributed_movable_schedule.csv",
     )
     parser.add_argument("--trajectory-csv", type=Path, default=None, help="Optional trajectory.csv for UE overlays")
-    parser.add_argument("--fixed-sites-csv", type=Path, default=None, help="Optional fixed_aps.csv for reference markers")
+    parser.add_argument(
+        "--fixed-sites-csv",
+        type=Path,
+        default=None,
+        help="Optional distributed_fixed_aps.csv for reference markers",
+    )
     parser.add_argument("--output", type=Path, default=None, help="Output MP4 or GIF path")
     parser.add_argument("--speedup", type=float, default=None, help="Playback speed multiplier")
     args = parser.parse_args()

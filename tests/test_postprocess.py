@@ -30,13 +30,24 @@ def _build_fake_output_dir(tmp_path: Path) -> Path:
     output_dir.mkdir()
     summary = {
         "scenario": "rabot_outdoor",
-        "baseline_strategy": "random_baseline",
-        "best_strategy": "local_csi_p10",
-        "scene_animation_strategy": "local_csi_p10",
+        "baseline_strategy": "distributed_fixed",
+        "best_strategy": "distributed_movable",
+        "scene_animation_strategy": "distributed_movable",
         "strategies": {
-            "random_baseline": {
-                "selected_site_ids": ["fixed_ap_01", "movable_ap_01"],
-                "movable_site_ids": ["movable_ap_01"],
+            "central_massive_mimo": {
+                "selected_site_ids": ["central_ap_01"],
+                "movable_site_ids": ["central_ap_01"],
+                "final_candidate_ids": ["roof_a"],
+                "score": 0.5,
+                "outage": 0.35,
+                "percentile_10_db": -2.0,
+                "peer_tiebreak": 1.5,
+                "capped": False,
+                "evaluated_combinations": 2,
+            },
+            "distributed_fixed": {
+                "selected_site_ids": ["movable_ap_01", "movable_ap_02"],
+                "movable_site_ids": ["movable_ap_01", "movable_ap_02"],
                 "final_candidate_ids": ["cand_a"],
                 "score": 1.0,
                 "outage": 0.30,
@@ -45,9 +56,9 @@ def _build_fake_output_dir(tmp_path: Path) -> Path:
                 "capped": False,
                 "evaluated_combinations": 1,
             },
-            "local_csi_p10": {
-                "selected_site_ids": ["fixed_ap_01", "movable_ap_01"],
-                "movable_site_ids": ["movable_ap_01"],
+            "distributed_movable": {
+                "selected_site_ids": ["movable_ap_01", "movable_ap_02"],
+                "movable_site_ids": ["movable_ap_01", "movable_ap_02"],
                 "final_candidate_ids": ["cand_b"],
                 "score": 2.0,
                 "outage": 0.10,
@@ -74,7 +85,17 @@ def _build_fake_output_dir(tmp_path: Path) -> Path:
         ],
         [
             {
-                "strategy": "random_baseline",
+                "strategy": "central_massive_mimo",
+                "score": 0.5,
+                "outage": 0.35,
+                "percentile_10_db": -2.0,
+                "peer_tiebreak": 1.5,
+                "capped": False,
+                "evaluated_combinations": 2,
+                "final_candidate_ids": "roof_a",
+            },
+            {
+                "strategy": "distributed_fixed",
                 "score": 1.0,
                 "outage": 0.30,
                 "percentile_10_db": 0.5,
@@ -84,7 +105,7 @@ def _build_fake_output_dir(tmp_path: Path) -> Path:
                 "final_candidate_ids": "cand_a",
             },
             {
-                "strategy": "local_csi_p10",
+                "strategy": "distributed_movable",
                 "score": 2.0,
                 "outage": 0.10,
                 "percentile_10_db": 4.0,
@@ -101,13 +122,22 @@ def _build_fake_output_dir(tmp_path: Path) -> Path:
         snapshot_index=np.array([0, 1, 2], dtype=int),
         times_s=np.array([0.0, 10.0, 20.0], dtype=float),
         ue_ids=np.array(["ue_000", "ue_001"], dtype=object),
-        strategy_names=np.array(["random_baseline", "local_csi_p10"], dtype=object),
-        random_baseline_sinr_db=np.array([[0.0, 2.0], [1.0, 3.0], [2.0, 4.0]], dtype=float),
-        local_csi_p10_sinr_db=np.array([[3.0, 5.0], [4.0, 6.0], [5.0, 7.0]], dtype=float),
+        strategy_names=np.array(["central_massive_mimo", "distributed_fixed", "distributed_movable"], dtype=object),
+        central_massive_mimo_sinr_db=np.array([[-2.0, 0.0], [-1.0, 1.0], [0.0, 2.0]], dtype=float),
+        distributed_fixed_sinr_db=np.array([[0.0, 2.0], [1.0, 3.0], [2.0, 4.0]], dtype=float),
+        distributed_movable_sinr_db=np.array([[3.0, 5.0], [4.0, 6.0], [5.0, 7.0]], dtype=float),
     )
 
     _write_csv(
-        output_dir / "random_baseline_schedule.csv",
+        output_dir / "central_massive_mimo_schedule.csv",
+        ["window_index", "start_time_s", "end_time_s", "ap_id", "x_m", "y_m", "z_m", "source"],
+        [
+            {"window_index": 0, "start_time_s": 0.0, "end_time_s": 10.0, "ap_id": "central_ap_01", "x_m": 5.0, "y_m": 5.0, "z_m": 13.5, "source": "selected:roof_a"},
+            {"window_index": 1, "start_time_s": 20.0, "end_time_s": 20.0, "ap_id": "central_ap_01", "x_m": 5.0, "y_m": 5.0, "z_m": 13.5, "source": "selected:roof_a"},
+        ],
+    )
+    _write_csv(
+        output_dir / "distributed_fixed_schedule.csv",
         ["window_index", "start_time_s", "end_time_s", "ap_id", "x_m", "y_m", "z_m", "source"],
         [
             {"window_index": 0, "start_time_s": 0.0, "end_time_s": 10.0, "ap_id": "movable_ap_01", "x_m": 0.0, "y_m": 0.0, "z_m": 1.5, "source": "seed:cand_a"},
@@ -115,7 +145,7 @@ def _build_fake_output_dir(tmp_path: Path) -> Path:
         ],
     )
     _write_csv(
-        output_dir / "local_csi_p10_schedule.csv",
+        output_dir / "distributed_movable_schedule.csv",
         ["window_index", "start_time_s", "end_time_s", "ap_id", "x_m", "y_m", "z_m", "source"],
         [
             {"window_index": 0, "start_time_s": 0.0, "end_time_s": 10.0, "ap_id": "movable_ap_01", "x_m": 0.0, "y_m": 0.0, "z_m": 1.5, "source": "relocated:cand_a"},
@@ -133,8 +163,8 @@ def test_run_strategy_summary_analysis_writes_tables(tmp_path: Path):
     assert artifacts["csv"].exists()
     assert artifacts["markdown"].exists()
     rows = list(csv.DictReader(artifacts["csv"].open("r", encoding="utf-8", newline="")))
-    assert [row["strategy"] for row in rows] == ["random_baseline", "local_csi_p10"]
-    assert rows[1]["is_best_strategy"] == "True"
+    assert [row["strategy"] for row in rows] == ["central_massive_mimo", "distributed_fixed", "distributed_movable"]
+    assert rows[2]["is_best_strategy"] == "True"
 
 
 def test_resolve_output_dir_argument_accepts_yaml_and_output_dir():
@@ -153,8 +183,9 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     assert artifacts["cdf_plot"].exists()
     assert artifacts["threshold_plot"].exists()
     rows = list(csv.DictReader(artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
-    assert rows[0]["strategy"] == "random_baseline"
-    assert rows[1]["strategy"] == "local_csi_p10"
+    assert rows[0]["strategy"] == "central_massive_mimo"
+    assert rows[1]["strategy"] == "distributed_fixed"
+    assert rows[2]["strategy"] == "distributed_movable"
     assert "outage_at_3db" in rows[0]
 
 
@@ -167,9 +198,9 @@ def test_run_schedule_analysis_and_manuscript_report(tmp_path: Path):
     assert schedule_artifacts["summary_csv"].exists()
     assert schedule_artifacts["transition_csv"].exists()
     schedule_rows = list(csv.DictReader(schedule_artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
-    local_row = next(row for row in schedule_rows if row["strategy"] == "local_csi_p10")
+    local_row = next(row for row in schedule_rows if row["strategy"] == "distributed_movable")
     assert float(local_row["total_distance_m"]) == 10.0
     assert report_artifacts["summary_markdown"].exists()
     assert report_artifacts["manifest"].exists()
     summary_text = report_artifacts["summary_markdown"].read_text(encoding="utf-8")
-    assert "Best strategy: `local_csi_p10`" in summary_text
+    assert "Best strategy: `distributed_movable`" in summary_text

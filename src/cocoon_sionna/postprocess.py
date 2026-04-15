@@ -13,11 +13,11 @@ import numpy as np
 
 from .config import load_scenario_config
 
-STRATEGY_ORDER = ("random_baseline", "local_csi_p10", "capped_exact_search")
+STRATEGY_ORDER = ("central_massive_mimo", "distributed_fixed", "distributed_movable")
 STRATEGY_LABELS = {
-    "random_baseline": "Random baseline",
-    "local_csi_p10": "Local CSI P10",
-    "capped_exact_search": "Capped exact search",
+    "central_massive_mimo": "Central massive MIMO",
+    "distributed_fixed": "Distributed fixed",
+    "distributed_movable": "Distributed movable",
 }
 
 
