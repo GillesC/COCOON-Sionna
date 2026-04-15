@@ -18,6 +18,7 @@ def test_load_etoile_config():
     assert config.solver.synthetic_array is True
     assert config.placement.num_fixed_aps == 0
     assert config.placement.num_movable_aps == 4
+    assert config.placement.enable_capped_exact_search is True
     assert config.candidate_sites_path.exists()
     assert config.placement.heuristic_k_nearest == 8
     assert config.mobility.speed_variation_fraction == 0.12

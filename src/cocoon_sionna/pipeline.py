@@ -46,7 +46,7 @@ from .sites import (
 
 logger = logging.getLogger(__name__)
 
-STRATEGY_NAMES = ("random_baseline", "local_csi_p90", "capped_exact_search")
+ALL_STRATEGY_NAMES = ("random_baseline", "local_csi_p90", "capped_exact_search")
 
 
 @dataclass(slots=True)
@@ -62,6 +62,13 @@ class StrategyArtifacts:
     selected_candidate_union: set[str]
     capped: bool = False
     evaluated_combinations: int = 0
+
+
+def _active_strategy_names(config: ScenarioConfig) -> tuple[str, ...]:
+    names = ["random_baseline", "local_csi_p90"]
+    if config.placement.enable_capped_exact_search:
+        names.append("capped_exact_search")
+    return tuple(names)
 
 
 def _resolve_scene_inputs(config: ScenarioConfig) -> SceneArtifacts:
@@ -1233,23 +1240,25 @@ def _write_user_sinr_csv(
     ue_ids: list[str],
     strategy_ap_ue: dict[str, dict[str, Any]],
 ) -> None:
+    strategy_names = [name for name in ALL_STRATEGY_NAMES if name in strategy_ap_ue]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["ue_id", *[f"{name}_mean_zf_sinr_db" for name in STRATEGY_NAMES if name in strategy_ap_ue]])
+        writer.writerow(["ue_id", *[f"{name}_mean_zf_sinr_db" for name in strategy_names]])
         strategy_values = {
             name: _per_user_mean_best_sinr(payload["best_sinr_db"])
             for name, payload in strategy_ap_ue.items()
         }
         for index, ue_id in enumerate(ue_ids):
             row = [ue_id]
-            for name in STRATEGY_NAMES:
+            for name in strategy_names:
                 if name in strategy_values:
                     row.append(float(strategy_values[name][index]))
             writer.writerow(row)
 
 
 def _plot_user_sinr_cdf(strategy_ap_ue: dict[str, dict[str, Any]], output_path: Path) -> None:
+    strategy_names = [name for name in ALL_STRATEGY_NAMES if name in strategy_ap_ue]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.figure(figsize=(8, 6))
     styles = {
@@ -1258,7 +1267,7 @@ def _plot_user_sinr_cdf(strategy_ap_ue: dict[str, dict[str, Any]], output_path: 
         "capped_exact_search": ("#2ca02c", "-."),
     }
     minimum = None
-    for name in STRATEGY_NAMES:
+    for name in strategy_names:
         payload = strategy_ap_ue.get(name)
         if payload is None:
             continue
@@ -1284,6 +1293,7 @@ def _write_user_sinr_artifacts(
     trajectory: Trajectory,
     strategy_ap_ue: dict[str, dict[str, Any]],
 ) -> None:
+    strategy_names = [name for name in ALL_STRATEGY_NAMES if name in strategy_ap_ue]
     _write_user_sinr_csv(
         output_dir / "user_sinr_summary.csv",
         trajectory.ue_ids,
@@ -1293,11 +1303,11 @@ def _write_user_sinr_artifacts(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["time_s", "ue_id", *[f"{name}_sinr_db" for name in STRATEGY_NAMES if name in strategy_ap_ue]])
+        writer.writerow(["time_s", "ue_id", *[f"{name}_sinr_db" for name in strategy_names]])
         for t_idx, time_s in enumerate(trajectory.times_s):
             for u_idx, ue_id in enumerate(trajectory.ue_ids):
                 row = [float(time_s), ue_id]
-                for name in STRATEGY_NAMES:
+                for name in strategy_names:
                     payload = strategy_ap_ue.get(name)
                     if payload is not None:
                         row.append(float(np.asarray(payload["best_sinr_db"], dtype=float)[t_idx, u_idx]))
@@ -1306,6 +1316,7 @@ def _write_user_sinr_artifacts(
 
 
 def _write_strategy_comparison_csv(output_path: Path, strategies: dict[str, StrategyArtifacts]) -> None:
+    strategy_names = [name for name in ALL_STRATEGY_NAMES if name in strategies]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
@@ -1321,7 +1332,7 @@ def _write_strategy_comparison_csv(output_path: Path, strategies: dict[str, Stra
                 "final_candidate_ids",
             ]
         )
-        for name in STRATEGY_NAMES:
+        for name in strategy_names:
             if name not in strategies:
                 continue
             artifact = strategies[name]
@@ -1451,9 +1462,13 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
     radio_map_enabled = bool(config.coverage.enabled)
     csi_exports_enabled = bool(config.outputs.write_csi_exports)
     csi_cache_enabled = bool(config.outputs.enable_csi_cache)
+    strategy_names = _active_strategy_names(config)
+    inactive_strategy_names = [name for name in ALL_STRATEGY_NAMES if name not in strategy_names]
     output_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Starting scenario '%s'", config.name)
     logger.info("Writing outputs to %s", output_dir)
+    if "capped_exact_search" not in strategy_names:
+        logger.info("Capped exhaustive search disabled; comparing only random_baseline and local_csi_p90")
     if csi_cache_enabled:
         logger.warning("CSI cache reuse is not yet implemented for the multi-strategy placement pipeline; skipping cache")
         csi_cache_enabled = False
@@ -1548,7 +1563,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                     final_candidate_ids=list(random_candidate_ids),
                     selected_candidate_union=set(random_candidate_ids),
                 )
-                for name in STRATEGY_NAMES
+                for name in strategy_names
             }
             best_strategy_name = "random_baseline"
             visualized_sites = list(baseline_sites)
@@ -1561,6 +1576,16 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                     selected_ids={site.site_id for site in artifact.movable_sites},
                 )
                 _write_mobile_ap_schedule_csv(output_dir / f"{name}_schedule.csv", artifact.schedule_rows)
+            _remove_artifacts(
+                [
+                    output_dir / f"{name}_movable_aps.csv"
+                    for name in inactive_strategy_names
+                ]
+                + [
+                    output_dir / f"{name}_schedule.csv"
+                    for name in inactive_strategy_names
+                ]
+            )
             _plot_scene_layout(
                 metadata,
                 graph,
@@ -1712,7 +1737,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             )
             return selected_ids, capped, evaluations
 
-        strategy_results = {
+        strategy_results: dict[str, StrategyArtifacts] = {
             "random_baseline": _evaluate_strategy_windows(
                 "random_baseline",
                 runner,
@@ -1737,7 +1762,9 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 local_selector,
                 csi_exports_enabled,
             ),
-            "capped_exact_search": _evaluate_strategy_windows(
+        }
+        if "capped_exact_search" in strategy_names:
+            strategy_results["capped_exact_search"] = _evaluate_strategy_windows(
                 "capped_exact_search",
                 runner,
                 config,
@@ -1748,12 +1775,11 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 np.asarray(peer_csi["need_weights"], dtype=float),
                 exact_selector,
                 csi_exports_enabled,
-            ),
-        }
+            )
         scenario_progress.update(2)
 
         best_strategy_name = max(
-            STRATEGY_NAMES,
+            strategy_names,
             key=lambda name: strategy_results[name].score.score,
         )
         baseline_strategy = strategy_results["random_baseline"]
@@ -1766,7 +1792,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             _remove_artifacts([output_dir / "peer_csi_snapshots.npz"])
 
         infra_export: dict[str, Any] = {}
-        for name in STRATEGY_NAMES:
+        for name in strategy_names:
             artifact = strategy_results[name]
             ap_ue = artifact.ap_ue
             ap_ap = artifact.ap_ap
@@ -1889,6 +1915,16 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 selected_ids={site.site_id for site in artifact.movable_sites},
             )
             _write_mobile_ap_schedule_csv(output_dir / f"{name}_schedule.csv", artifact.schedule_rows)
+        _remove_artifacts(
+            [
+                output_dir / f"{name}_movable_aps.csv"
+                for name in inactive_strategy_names
+            ]
+            + [
+                output_dir / f"{name}_schedule.csv"
+                for name in inactive_strategy_names
+            ]
+        )
         _write_strategy_comparison_csv(output_dir / "strategy_comparison.csv", strategy_results)
         if scene_render_path is not None:
             logger.info("Wrote scene render to %s", scene_render_path)
@@ -1902,7 +1938,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         _write_user_sinr_artifacts(
             output_dir,
             trajectory,
-            {name: strategy_results[name].ap_ue for name in STRATEGY_NAMES},
+            {name: strategy_results[name].ap_ue for name in strategy_names},
         )
         logger.info("Wrote user SINR comparison artifacts to %s", output_dir)
         scenario_progress.update(1)

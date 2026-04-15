@@ -66,6 +66,8 @@ placement:
   num_fixed_aps: 0
   # APs whose positions are selected from the candidate AP pool.
   num_movable_aps: 4
+  # Set to false to skip the capped exhaustive-search strategy.
+  enable_capped_exact_search: true
   # AP scoring weights and placement constraints.
   sinr_threshold_db: 0.0
   outage_weight: 1.0

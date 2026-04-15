@@ -45,3 +45,20 @@ def test_run_scenario_without_ray_tracing_uses_random_baseline_as_reference(tmp_
     assert summary["ray_tracing_enabled"] is False
     assert summary["baseline_strategy"] == "random_baseline"
     assert summary["best_strategy"] == "random_baseline"
+
+
+def test_run_scenario_can_disable_capped_exact_search(tmp_path: Path):
+    config = load_scenario_config("scenarios/etoile_demo.yaml")
+    config.outputs.output_dir = tmp_path / "etoile_no_exact"
+    config.solver.enable_ray_tracing = False
+    config.placement.enable_capped_exact_search = False
+    config.outputs.output_dir.mkdir(parents=True, exist_ok=True)
+    (config.outputs.output_dir / "capped_exact_search_movable_aps.csv").write_text("stale", encoding="utf-8")
+    (config.outputs.output_dir / "capped_exact_search_schedule.csv").write_text("stale", encoding="utf-8")
+
+    summary = run_scenario(config)
+
+    assert summary["ray_tracing_enabled"] is False
+    assert set(summary["strategies"]) == {"random_baseline", "local_csi_p90"}
+    assert not (config.outputs.output_dir / "capped_exact_search_movable_aps.csv").exists()
+    assert not (config.outputs.output_dir / "capped_exact_search_schedule.csv").exists()

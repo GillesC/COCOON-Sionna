@@ -175,6 +175,7 @@ solve, but they are excluded from the movable candidate pool.
 placement:
   num_fixed_aps: 2
   num_movable_aps: 4
+  enable_capped_exact_search: true
   window_interval_s: 10.0
   candidate_wall_height_m: 1.5
   candidate_wall_spacing_m: 8.0
@@ -211,6 +212,9 @@ Each scenario compares these three strategies:
   candidate AP pool for each relocation window, stop at `exact_max_iterations`,
   and return the best combination found so far together with an explicit capped
   status when the full search is not completed
+
+Set `enable_capped_exact_search: false` to compare only `random_baseline` and
+`local_csi_p90`.
 
 ### Placement Scoring
 
