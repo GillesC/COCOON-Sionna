@@ -12,7 +12,7 @@ from cocoon_sionna.config import (
     SolverConfig,
 )
 from cocoon_sionna.pipeline import build_scene_only
-from cocoon_sionna.scene_builder import SceneArtifacts
+from cocoon_sionna.scene_builder import OSMSceneBuilder, SceneArtifacts
 
 
 def test_build_scene_only_forces_osm_rebuild(monkeypatch, tmp_path: Path):
@@ -59,3 +59,33 @@ def test_build_scene_only_forces_osm_rebuild(monkeypatch, tmp_path: Path):
 
     assert called["value"] is True
     assert artifacts.scene_xml_path == scene_output_dir / "scene.xml"
+
+
+def test_osm_scene_builder_preserves_existing_meshes_when_fetch_fails(monkeypatch, tmp_path: Path):
+    scene_output_dir = tmp_path / "generated"
+    mesh_dir = scene_output_dir / "meshes"
+    mesh_dir.mkdir(parents=True)
+    old_mesh = mesh_dir / "ground.ply"
+    old_mesh.write_text("old", encoding="utf-8")
+
+    scene_cfg = SceneConfig(
+        kind="osm",
+        boundary_bbox=(3.706070, 51.058969, 3.712513, 51.060592),
+        scene_output_dir=scene_output_dir,
+        rebuild=True,
+    )
+
+    def _fail_fetch(self, _boundary_lonlat):
+        raise RuntimeError("overpass unavailable")
+
+    monkeypatch.setattr("cocoon_sionna.scene_builder.OverpassClient.fetch", _fail_fetch)
+
+    try:
+        OSMSceneBuilder(scene_cfg).build()
+    except RuntimeError as exc:
+        assert "overpass unavailable" in str(exc)
+    else:
+        raise AssertionError("Expected the scene build to fail")
+
+    assert old_mesh.exists()
+    assert old_mesh.read_text(encoding="utf-8") == "old"

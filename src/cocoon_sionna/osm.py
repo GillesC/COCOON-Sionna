@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import logging
+from pathlib import Path
+import time
 from typing import Any
 
 import networkx as nx
@@ -13,6 +16,12 @@ from shapely.geometry import LineString, Point, Polygon
 from .geo import LocalFrame, boundary_entry_distance, line_to_local, parse_osm_height, polygon_to_local, sanitize_name
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_OVERPASS_ENDPOINTS = (
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://lz4.overpass-api.de/api/interpreter",
+)
 
 WALKABLE_HIGHWAYS = {
     "cycleway",
@@ -44,11 +53,82 @@ class ParsedOSM:
 
 
 class OverpassClient:
-    def __init__(self, url: str) -> None:
+    def __init__(
+        self,
+        url: str,
+        cache_path: Path | None = None,
+        max_attempts_per_endpoint: int = 2,
+        retry_backoff_s: float = 2.0,
+    ) -> None:
         self.url = url
+        self.cache_path = cache_path
+        self.max_attempts_per_endpoint = max(1, int(max_attempts_per_endpoint))
+        self.retry_backoff_s = max(0.0, float(retry_backoff_s))
+
+    def _endpoint_urls(self) -> list[str]:
+        urls = [self.url, *DEFAULT_OVERPASS_ENDPOINTS]
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for url in urls:
+            if url and url not in seen:
+                ordered.append(url)
+                seen.add(url)
+        return ordered
+
+    def _parse_payload(self, payload: dict[str, Any]) -> ParsedOSM:
+        nodes: dict[int, tuple[float, float]] = {}
+        ways: dict[int, dict[str, Any]] = {}
+        relations: list[dict[str, Any]] = []
+        for element in payload["elements"]:
+            kind = element["type"]
+            if kind == "node":
+                nodes[int(element["id"])] = (float(element["lon"]), float(element["lat"]))
+            elif kind == "way":
+                ways[int(element["id"])] = element
+            elif kind == "relation":
+                relations.append(element)
+        logger.info("Parsed OSM payload: %d nodes, %d ways, %d relations", len(nodes), len(ways), len(relations))
+        return ParsedOSM(nodes=nodes, ways=ways, relations=relations)
+
+    def _save_cache(self, bounds: tuple[float, float, float, float], payload: dict[str, Any], source_url: str) -> None:
+        if self.cache_path is None:
+            return
+        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+        wrapper = {
+            "bbox_lonlat": [float(value) for value in bounds],
+            "source_url": source_url,
+            "payload": payload,
+        }
+        self.cache_path.write_text(json.dumps(wrapper), encoding="utf-8")
+
+    def _load_cache(self, bounds: tuple[float, float, float, float]) -> dict[str, Any] | None:
+        if self.cache_path is None or not self.cache_path.exists():
+            return None
+        try:
+            wrapper = json.loads(self.cache_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning("Failed to read cached OSM payload from %s: %s", self.cache_path, exc)
+            return None
+
+        if isinstance(wrapper, dict) and "payload" in wrapper:
+            cached_bounds = wrapper.get("bbox_lonlat")
+            payload = wrapper["payload"]
+            if (
+                isinstance(cached_bounds, list)
+                and len(cached_bounds) == 4
+                and all(abs(float(a) - float(b)) <= 1e-9 for a, b in zip(cached_bounds, bounds, strict=True))
+            ):
+                return payload if isinstance(payload, dict) else None
+            logger.warning("Ignoring cached OSM payload at %s because the stored bbox does not match", self.cache_path)
+            return None
+
+        if isinstance(wrapper, dict) and "elements" in wrapper:
+            return wrapper
+        return None
 
     def fetch(self, boundary_lonlat: Polygon) -> ParsedOSM:
         min_lon, min_lat, max_lon, max_lat = boundary_lonlat.bounds
+        bounds = (float(min_lon), float(min_lat), float(max_lon), float(max_lat))
         logger.info(
             "Fetching OSM data for bbox lon/lat=(%.6f, %.6f, %.6f, %.6f)",
             min_lon,
@@ -66,39 +146,54 @@ class OverpassClient:
 (._;>;);
 out body;
 """
-        urls = [
-            self.url,
-            "https://overpass.kumi.systems/api/interpreter",
-            "https://lz4.overpass-api.de/api/interpreter",
-        ]
+        urls = self._endpoint_urls()
         errors: list[str] = []
         payload = None
         for url in urls:
-            try:
-                logger.info("Querying Overpass endpoint %s", url)
-                response = requests.post(url, data=query.encode("utf-8"), timeout=180)
-                response.raise_for_status()
-                payload = response.json()
-                logger.info("Overpass request succeeded via %s", url)
+            for attempt in range(self.max_attempts_per_endpoint):
+                try:
+                    if self.max_attempts_per_endpoint == 1:
+                        logger.info("Querying Overpass endpoint %s", url)
+                    else:
+                        logger.info(
+                            "Querying Overpass endpoint %s (attempt %d/%d)",
+                            url,
+                            attempt + 1,
+                            self.max_attempts_per_endpoint,
+                        )
+                    response = requests.post(
+                        url,
+                        data=query.encode("utf-8"),
+                        timeout=180,
+                        headers={
+                            "Content-Type": "text/plain; charset=utf-8",
+                            "User-Agent": "COCOON-Sionna/1.0",
+                        },
+                    )
+                    response.raise_for_status()
+                    payload = response.json()
+                    logger.info("Overpass request succeeded via %s", url)
+                    self._save_cache(bounds, payload, url)
+                    break
+                except (requests.RequestException, ValueError) as exc:
+                    logger.warning("Overpass request failed via %s: %s", url, exc)
+                    if attempt + 1 == self.max_attempts_per_endpoint:
+                        errors.append(f"{url}: {exc}")
+                    elif self.retry_backoff_s > 0.0:
+                        time.sleep(self.retry_backoff_s * float(attempt + 1))
+            if payload is not None:
                 break
-            except requests.RequestException as exc:
-                logger.warning("Overpass request failed via %s: %s", url, exc)
-                errors.append(f"{url}: {exc}")
         if payload is None:
-            raise RuntimeError("All Overpass endpoints failed: " + " | ".join(errors))
-        nodes: dict[int, tuple[float, float]] = {}
-        ways: dict[int, dict[str, Any]] = {}
-        relations: list[dict[str, Any]] = []
-        for element in payload["elements"]:
-            kind = element["type"]
-            if kind == "node":
-                nodes[int(element["id"])] = (float(element["lon"]), float(element["lat"]))
-            elif kind == "way":
-                ways[int(element["id"])] = element
-            elif kind == "relation":
-                relations.append(element)
-        logger.info("Parsed OSM payload: %d nodes, %d ways, %d relations", len(nodes), len(ways), len(relations))
-        return ParsedOSM(nodes=nodes, ways=ways, relations=relations)
+            cached = self._load_cache(bounds)
+            if cached is not None:
+                logger.warning(
+                    "All live Overpass endpoints failed; using cached OSM payload from %s",
+                    self.cache_path,
+                )
+                payload = cached
+            else:
+                raise RuntimeError("All Overpass endpoints failed: " + " | ".join(errors))
+        return self._parse_payload(payload)
 
 
 def _way_polygon_lonlat(way: dict[str, Any], nodes: dict[int, tuple[float, float]]) -> Polygon | None:

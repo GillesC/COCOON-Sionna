@@ -98,9 +98,6 @@ class OSMSceneBuilder:
         output_dir = self.scene_cfg.scene_output_dir
         mesh_dir = output_dir / "meshes"
         output_dir.mkdir(parents=True, exist_ok=True)
-        if mesh_dir.exists():
-            shutil.rmtree(mesh_dir)
-        mesh_dir.mkdir(parents=True, exist_ok=True)
         if self.scene_cfg.boundary_bbox is not None:
             boundary_source = {
                 "west": self.scene_cfg.boundary_bbox[0],
@@ -121,7 +118,10 @@ class OSMSceneBuilder:
             [frame.lonlat_to_local_xy(x, y) for x, y in boundary_lonlat.exterior.coords]
         )
 
-        parsed = OverpassClient(self.scene_cfg.overpass_url).fetch(boundary_lonlat)
+        parsed = OverpassClient(
+            self.scene_cfg.overpass_url,
+            cache_path=output_dir / "osm_overpass_cache.json",
+        ).fetch(boundary_lonlat)
         buildings = extract_buildings(
             parsed,
             boundary_lonlat=boundary_lonlat,
@@ -132,6 +132,10 @@ class OSMSceneBuilder:
         if not buildings:
             raise RuntimeError("No buildings were extracted from the configured OSM boundary")
         logger.info("Extracted %d buildings from OSM", len(buildings))
+
+        if mesh_dir.exists():
+            shutil.rmtree(mesh_dir)
+        mesh_dir.mkdir(parents=True, exist_ok=True)
 
         write_ascii_ply(mesh_dir / "ground.ply", build_ground_mesh(boundary_local))
 
