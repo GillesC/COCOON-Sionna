@@ -1,31 +1,38 @@
-\section{SINR-Oriented Results}
+\section{SINR- and ESR-Oriented Results}
 \label{sec:results_sinr}
 
-The primary quantitative block in the current manuscript should compare the placement strategies in terms of per-snapshot user \gls{sinr}. The repository already exposes stable postprocessed assets for the distributional view, the time-varying worst-user view, and the number of users below a threshold. These figures are sufficient to populate a first paper draft even before the final interpretation is written.
+This section should collect the radio-performance figures produced by postprocessing, but it should not interpret them until the Rabot scenario is rerun. The role of the present draft is to anchor each figure to a precise artifact path and to explain what each placeholder represents.
 
-\PaperSubfigurePair[t][0.47\textwidth]
-  {\SINRCdfFigurePath}{Empirical \gls{sinr} distribution across all user snapshots and compared placement strategies.}{fig:sinr_cdf}
-  {\SINRWorstUserFigurePath}{Worst-user \gls{sinr} over time, highlighting temporal robustness across relocation windows.}{fig:sinr_worst_user}
-  {Primary \gls{sinr} figures for the Rabot strategy comparison. The left panel captures distributional behavior, while the right panel emphasizes the time evolution of the weakest served user.}{fig:sinr_primary_pair}
+\PaperSubfigurePair[t]
+  {\SINRCdfFigurePath}{Empirical \gls{sinr} distribution across all user snapshots and compared placement strategies. Use the postprocessed \texttt{sinr\_cdf\_publication} asset here.}{fig:sinr_cdf}
+  {\PerUserMeanBoxplotFigurePath}{Per-user mean \gls{sinr} boxplot across strategies. Use this figure to summarize the distribution of user-level averages without adding interpretation yet.}{fig:sinr_boxplot}
+  {First pair of radio-performance placeholders. The left panel is the global \gls{sinr} distribution, and the right panel is the per-user mean boxplot.}{fig:sinr_primary_pair}
 
-\PaperFigure[t][0.90\linewidth]{\SINRUsersBelowFigurePath}{Supporting robustness view showing how many users fall below the chosen outage threshold over time. If the paper later prefers a threshold sweep instead, replace this panel with \texttt{\string\SINRThresholdSweepFigurePath}.}{fig:sinr_users_below}
+\PaperSubfigurePair[t]
+  {\ESRTimeseriesFigurePath}{\gls{esr} over time. Keep the relocation markers and step-like window averages visible, but defer any claim about increase or decrease until the outputs are rerun.}{fig:esr_timeseries}
+  {\ESRCdfFigurePath}{\gls{esr} \gls{cdf} across all evaluated snapshots. Use the \texttt{esr\_cdf} artifact directly.}{fig:esr_cdf}
+  {Second pair of radio-performance placeholders. These panels report the \gls{esr} time evolution and the global \gls{esr} distribution.}{fig:esr_primary_pair}
+
+\PaperFigure[t][0.90\linewidth]{\SINRWorstUserFigurePath}{Optional supporting placeholder for worst-user \gls{sinr} over time. Keep this panel if temporal robustness of the weakest user becomes part of the final narrative.}{fig:sinr_worst_user}
 
 \begin{table}[t]
     \centering
-    \caption{Placeholder summary table for strategy-level performance. Populate this from \texttt{strategy\_comparison.csv} or the postprocessed summary tables once the first stable result set is frozen.}
-    \label{tab:strategy_summary_placeholder}
-    \begin{tabular}{lllll}
+    \caption{Placeholder map between manuscript figures and postprocessed artifacts. Replace only the prose around the table after rerunning the pipeline.}
+    \label{tab:result_placeholders}
+    \begin{tabular}{p{0.31\linewidth}p{0.58\linewidth}}
         \toprule
-        Strategy & Score & P10 \gls{sinr} [dB] & Outage & Note \\
+        Manuscript placeholder & Expected postprocessed artifact \\
         \midrule
-        Baseline & \texttt{TBD} & \texttt{TBD} & \texttt{TBD} & static reference \\
-        Local heuristic & \texttt{TBD} & \texttt{TBD} & \texttt{TBD} & CSI-driven \\
-        Exact search & \texttt{TBD} & \texttt{TBD} & \texttt{TBD} & optional \\
+        Global \gls{sinr} distribution & \texttt{postprocessing/sinr/sinr\_cdf\_publication.png} \\
+        Per-user mean boxplot & \texttt{postprocessing/sinr/per\_user\_mean\_sinr\_boxplot.png} \\
+        \gls{esr} time series & \texttt{postprocessing/sinr/esr\_timeseries.png} \\
+        \gls{esr} \gls{cdf} & \texttt{postprocessing/sinr/esr\_cdf.png} \\
+        Optional worst-user view & \texttt{postprocessing/sinr/worst\_user\_sinr\_timeseries.png} \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-The prose in this section should remain intentionally restrained for now. It should explain what each figure measures, how it relates to the comparison objective, and which CSV/NPZ exports back the figure generation. The stronger claims about gains, tradeoffs, and statistical significance should be deferred to a later pass.
+The final prose in this section should answer only three structural questions: what metric is plotted, which exported file produced the figure, and which placement strategies appear in the comparison. Any statement about gains, fairness, outage reduction, or relocation benefit should be added only after the figures are regenerated and verified.
 
-\gilles{Later pass: add venue-specific result language, confidence statements, and exact numeric deltas once the selected figures and seeds are frozen.}
+\gilles{Later pass: decide whether \texttt{users\_below\_threshold} and \texttt{esr\_time\_conditioned\_cdf} should remain in the main paper or move to an appendix.}
 \FloatBarrier

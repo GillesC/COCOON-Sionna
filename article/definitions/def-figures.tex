@@ -8,6 +8,10 @@
 \newcommand{\SINRWorstUserFigurePath}{\postroot/sinr/worst_user_sinr_timeseries.png}
 \newcommand{\SINRUsersBelowFigurePath}{\postroot/sinr/users_below_threshold_timeseries.png}
 \newcommand{\SINRThresholdSweepFigurePath}{\postroot/sinr/sinr_threshold_sweep.png}
+\newcommand{\PerUserMeanBoxplotFigurePath}{\postroot/sinr/per_user_mean_sinr_boxplot.png}
+\newcommand{\ESRTimeseriesFigurePath}{\postroot/sinr/esr_timeseries.png}
+\newcommand{\ESRCdfFigurePath}{\postroot/sinr/esr_cdf.png}
+\newcommand{\ESRWindowCdfFigurePath}{\postroot/sinr/esr_time_conditioned_cdf.png}
 \newcommand{\ScheduleOverviewFigurePath}{\postroot/schedule/schedule_strategy_overview.png}
 \newcommand{\ScheduleHistogramFigurePath}{\postroot/schedule/schedule_transition_distance_histogram.png}
 \newcommand{\CoverageFigurePath}{\resultroot/coverage_map.png}
@@ -39,22 +43,22 @@
   \end{figure}%
 }
 
-\NewDocumentCommand{\PaperSubfigurePair}{ O{tb} O{0.48\textwidth} m m m m m m m m }{%
+\NewDocumentCommand{\PaperSubfigurePair}{ O{tb} m m m m m m m m }{%
   \begin{figure*}[#1]
     \centering
-    \begin{subfigure}[t]{#2}
+    \begin{subfigure}[t]{0.48\textwidth}
       \centering
-      \PaperImage[\linewidth]{#3}
-      \caption{#4}
-      \label{#5}
+      \PaperImage[\linewidth]{#2}
+      \caption{#3}
+      \label{#4}
     \end{subfigure}\hfill
-    \begin{subfigure}[t]{#2}
+    \begin{subfigure}[t]{0.48\textwidth}
       \centering
-      \PaperImage[\linewidth]{#6}
-      \caption{#7}
-      \label{#8}
+      \PaperImage[\linewidth]{#5}
+      \caption{#6}
+      \label{#7}
     \end{subfigure}
-    \caption{#9}
-    \label{#10}
+    \caption{#8}
+    \label{#9}
   \end{figure*}%
 }

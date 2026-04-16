@@ -1,8 +1,19 @@
 \section{Simulation Setup}
 
-The current paper scaffold is instantiated with the Rabot outdoor scenario defined in \texttt{scenarios/rabot.yaml}. The scene is derived from an \gls{osm} boundary around the KU Leuven Gent Campus Rabot environment. Candidate movable-\gls{ap} positions are generated along building walls at low height, while user mobility is simulated over the walkable outdoor space with pedestrian- and bicycle-like speed profiles.
+The current manuscript scaffold is instantiated with the Rabot outdoor scenario defined in \texttt{scenarios/rabot.yaml}. The scene is derived from an \gls{osm} boundary around the KU Leuven Gent Campus Rabot environment. Candidate distributed-\gls{ap} positions are generated along building walls at low height, one rooftop proxy is reserved for the central reference strategy, and user mobility is simulated over the outdoor walkable area with mixed pedestrian and bicycle profiles.
 
-The simulation pipeline used throughout the manuscript follows the same sequence as the repository workflow: scene construction, candidate generation, user-trajectory generation, path-based \gls{csi} extraction, strategy comparison, and postprocessing into publication-oriented figures. This section should remain descriptive and reproducible; interpretation belongs in the results and discussion sections.
+The simulation workflow used by the paper matches the repository workflow:
+\begin{enumerate}
+    \item build the outdoor scene and walk graph from \gls{osm},
+    \item generate wall-mounted candidate \glspl{ap} and the single rooftop proxy site,
+    \item simulate user trajectories over the walkable outdoor area,
+    \item compute path-based \gls{csi} and explicit \gls{sinr} terms,
+    \item compare the central, fixed-distributed, and movable-distributed strategies,
+    \item export reusable result files,
+    \item generate manuscript figures in a separate postprocessing step.
+\end{enumerate}
+
+This section should stay descriptive and reproducible. It should document how the figures are produced, not what the figures mean.
 
 \begin{table}[t]
     \centering
@@ -18,19 +29,35 @@ The simulation pipeline used throughout the manuscript follows the same sequence
         Number of users & 10 \\
         Simulation horizon & \SI{600}{\second} \\
         Time step & \SI{10}{\second} \\
-        Movable \glspl{ap} & 6 \\
-        Fixed \glspl{ap} & 0 \\
+        Distributed \glspl{ap} per strategy & 6 \\
+        Fixed distributed \glspl{ap} & 0 \\
         Candidate wall height & \SI{1.5}{\meter} \\
         Candidate wall spacing & \SI{18}{\meter} \\
         Minimum candidate spacing & \SI{12}{\meter} \\
+        Candidate wall offset & \SI{0.25}{\meter} \\
         Relocation window & \SI{60}{\second} \\
-        Compared strategies & baseline, local heuristic \\
-        Exact search & disabled in current Rabot config \\
+        Historical \gls{csi} decay rate & \num{0.01155}~\si{\per\second} \\
+        Compared strategies & central proxy, fixed distributed, movable distributed \\
         Coverage maps & disabled in current Rabot config \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-The manuscript should also state the current output contract because the figures in \cref{sec:results_geometry,sec:results_sinr,sec:results_relocation} are directly linked to committed simulation artifacts. In the present workflow, the paper expects scene-layout figures in \texttt{outputs/rabot/} and postprocessed \gls{sinr}/schedule figures in \texttt{outputs/rabot/postprocessing/}.
+\begin{table}[t]
+    \centering
+    \caption{Placement-strategy description used throughout the article. Fill the final implementation notes after rerunning the outputs, but keep the definitions themselves stable.}
+    \label{tab:placement_algorithms}
+    \begin{tabular}{p{0.20\linewidth}p{0.72\linewidth}}
+        \toprule
+        Strategy & Description \\
+        \midrule
+        \texttt{central\_massive\_mimo} & Single rooftop proxy on the building nearest the area center, oriented toward the center. Use as central reference only. \\
+        \texttt{distributed\_fixed} & One distributed subset is selected from wall candidates and kept unchanged for the full run. \\
+        \texttt{distributed\_movable} & The distributed subset is reselected every relocation window using local \gls{csi} with exponential decay over historical samples. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
-\gilles{Optional later addition: add one compact pipeline schematic if the venue benefits from a visual overview.}
+The manuscript should also state the output contract because the figures in \cref{sec:results_geometry,sec:results_sinr,sec:results_relocation} are linked directly to generated artifacts. In the present workflow, scene-layout figures live in \texttt{outputs/rabot/}, while \gls{sinr}, \gls{esr}, and schedule figures live in \texttt{outputs/rabot/postprocessing/}. The article should treat these files as placeholders until the simulation is rerun.
+
+\gilles{Optional later addition: add one compact pipeline schematic once the figure inventory is frozen.}
