@@ -316,6 +316,7 @@ def test_animate_scene_writes_schedule_overlay_with_fixed_sites(tmp_path, monkey
         CandidateSite("cand_b", 9.0, 0.0, 1.5, 0.0, -10.0, "wall"),
     ]
     fixed_sites = [CandidateSite("fixed_ap_01", 5.0, 5.0, 1.5, 0.0, -10.0, "wall")]
+    reference_sites = [CandidateSite("central_ap_01", 5.0, -3.0, 13.5, 0.0, -90.0, "rooftop")]
     schedule_rows = [
         {
             "window_index": 0,
@@ -355,6 +356,8 @@ def test_animate_scene_writes_schedule_overlay_with_fixed_sites(tmp_path, monkey
         tmp_path / "scene_animation.mp4",
         schedule_rows=schedule_rows,
         fixed_sites=fixed_sites,
+        reference_sites=reference_sites,
+        reference_label="Central massive-MIMO BS",
     )
 
     assert animation_path == tmp_path / "scene_animation.gif"

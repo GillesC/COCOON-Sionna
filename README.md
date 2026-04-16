@@ -342,6 +342,7 @@ Each scenario writes to its configured output directory and produces:
 - `scene_camera.mp4`
 - `scene_layout.png`
 - `scene_animation.mp4` or `scene_animation.gif`
+- `scene_animation_with_central_massive_mimo.mp4` or `.gif`
 - `trajectory_colormap.png`
 - `user_sinr_cdf.png`
 - `user_sinr_summary.csv`
@@ -393,6 +394,9 @@ with the AP placements. If `ffmpeg` is unavailable, the pipeline writes
 `scene_animation.gif` instead. Playback speed is controlled via
 `outputs.scene_animation_speedup` in the scenario YAML, so you can export the
 animation faster than real time, e.g. `10.0` for `10x`.
+`scene_animation_with_central_massive_mimo.mp4` renders the same top-down
+animation, but also overlays the fixed central massive-MIMO BS location as a
+reference marker.
 `trajectory_colormap.png` shows the full UE trajectories in a single PNG, with a
 colormap over time so the motion direction can be followed visually. Initial UE
 seeding is spread across the walk graph, and route selection biases toward

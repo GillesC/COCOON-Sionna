@@ -559,13 +559,15 @@ def _animate_scene(
     speedup: float = 1.0,
     schedule_rows: list[dict[str, Any]] | None = None,
     fixed_sites: list[CandidateSite] | None = None,
+    reference_sites: list[CandidateSite] | None = None,
+    reference_label: str = "Reference APs",
 ) -> Path | None:
     positions = np.asarray(trajectory.positions_m[..., :2], dtype=float)
     if positions.ndim != 3 or positions.shape[0] == 0 or positions.shape[1] == 0:
         return None
     schedule_windows = _group_schedule_rows(schedule_rows or [])
     schedule_has_movement = _schedule_has_movement(schedule_rows or [])
-    display_sites = [*base_sites, *(fixed_sites or [])]
+    display_sites = [*base_sites, *(fixed_sites or []), *(reference_sites or [])]
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(9, 7))
@@ -591,6 +593,17 @@ def _animate_scene(
             edgecolors="black",
             linewidths=0.4,
             zorder=5,
+        )
+    if reference_sites:
+        ax.scatter(
+            [site.x_m for site in reference_sites],
+            [site.y_m for site in reference_sites],
+            c="#d4a017",
+            s=140,
+            marker="*",
+            edgecolors="black",
+            linewidths=0.5,
+            zorder=6,
         )
     if schedule_windows:
         initial_window = schedule_windows[0]
@@ -656,6 +669,19 @@ def _animate_scene(
     if fixed_sites:
         legend_handles.append(
             Line2D([0], [0], marker="P", linestyle="", color="#4c566a", markeredgecolor="black", markersize=8, label="Fixed APs")
+        )
+    if reference_sites:
+        legend_handles.append(
+            Line2D(
+                [0],
+                [0],
+                marker="*",
+                linestyle="",
+                color="#d4a017",
+                markeredgecolor="black",
+                markersize=12,
+                label=reference_label,
+            )
         )
     legend_handles.extend(
         [
@@ -2045,9 +2071,23 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 speedup=config.outputs.scene_animation_speedup,
                 schedule_rows=animation_strategy.schedule_rows,
             )
+            comparison_animation_path = _animate_scene(
+                metadata,
+                graph,
+                [*movable_candidate_sites, *rooftop_candidates],
+                visualized_sites,
+                trajectory,
+                output_dir / "scene_animation_with_central_massive_mimo.mp4",
+                speedup=config.outputs.scene_animation_speedup,
+                schedule_rows=animation_strategy.schedule_rows,
+                reference_sites=strategy_results["central_massive_mimo"].selected_sites,
+                reference_label="Central massive-MIMO BS",
+            )
             _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")
             if animation_path is not None:
                 logger.info("Wrote scene animation to %s", animation_path)
+            if comparison_animation_path is not None:
+                logger.info("Wrote comparison scene animation to %s", comparison_animation_path)
             _write_strategy_comparison_csv(output_dir / "strategy_comparison.csv", strategy_results)
             logger.info("Wrote non-ray-traced trajectory and placement artifacts to %s", output_dir)
             scenario_progress.update(7)
@@ -2061,6 +2101,9 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 "baseline_strategy": "distributed_fixed",
                 "best_strategy": best_strategy_name,
                 "scene_animation_strategy": animation_strategy_name,
+                "scene_animation_with_central_massive_mimo": (
+                    str(comparison_animation_path) if comparison_animation_path is not None else ""
+                ),
                 "compute_device": "SKIPPED",
                 "mitsuba_variant": "",
                 "window_interval_s": config.placement.window_interval_s,
@@ -2354,6 +2397,18 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             speedup=config.outputs.scene_animation_speedup,
             schedule_rows=animation_strategy.schedule_rows,
         )
+        comparison_animation_path = _animate_scene(
+            metadata,
+            graph,
+            [*movable_candidate_sites, *rooftop_candidates],
+            animation_strategy.selected_sites,
+            trajectory,
+            output_dir / "scene_animation_with_central_massive_mimo.mp4",
+            speedup=config.outputs.scene_animation_speedup,
+            schedule_rows=animation_strategy.schedule_rows,
+            reference_sites=strategy_results["central_massive_mimo"].selected_sites,
+            reference_label="Central massive-MIMO BS",
+        )
         _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")
         distributed_selected_union = set().union(
             strategy_results["distributed_fixed"].selected_candidate_union,
@@ -2380,6 +2435,8 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             logger.info("Wrote scene camera video to %s", scene_camera_video_path)
         if animation_path is not None:
             logger.info("Wrote scene animation to %s", animation_path)
+        if comparison_animation_path is not None:
+            logger.info("Wrote comparison scene animation to %s", comparison_animation_path)
         logger.info("Wrote scene and strategy-comparison artifacts to %s", output_dir)
         scenario_progress.update(1)
 
@@ -2401,6 +2458,9 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             "baseline_strategy": "distributed_fixed",
             "best_strategy": best_strategy_name,
             "scene_animation_strategy": animation_strategy_name,
+            "scene_animation_with_central_massive_mimo": (
+                str(comparison_animation_path) if comparison_animation_path is not None else ""
+            ),
             "window_interval_s": config.placement.window_interval_s,
             "candidate_site_ids": movable_candidate_ids,
             "central_rooftop_candidate_ids": [site.site_id for site in rooftop_candidates],
