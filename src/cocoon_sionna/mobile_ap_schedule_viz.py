@@ -133,6 +133,8 @@ def animate_mobile_ap_schedule(
     output_path: Path,
     trajectory: Trajectory | None = None,
     fixed_sites: list[CandidateSite] | None = None,
+    reference_sites: list[CandidateSite] | None = None,
+    reference_label: str = "Reference APs",
     speedup: float = 1.0,
 ) -> Path | None:
     if not windows:
@@ -151,6 +153,17 @@ def animate_mobile_ap_schedule(
             marker="s",
             alpha=0.45,
             zorder=3,
+        )
+    if reference_sites:
+        ax.scatter(
+            [site.x_m for site in reference_sites],
+            [site.y_m for site in reference_sites],
+            c="#d4a017",
+            s=140,
+            marker="*",
+            edgecolors="black",
+            linewidths=0.5,
+            zorder=5,
         )
 
     if trajectory is not None and trajectory.positions_m.size:
@@ -192,6 +205,19 @@ def animate_mobile_ap_schedule(
     legend_handles = []
     if fixed_sites:
         legend_handles.append(Line2D([0], [0], marker="s", linestyle="", color="#2f5d8a", markersize=7, label="Fixed APs"))
+    if reference_sites:
+        legend_handles.append(
+            Line2D(
+                [0],
+                [0],
+                marker="*",
+                linestyle="",
+                color="#d4a017",
+                markeredgecolor="black",
+                markersize=12,
+                label=reference_label,
+            )
+        )
     legend_handles.append(
         Line2D([0], [0], marker="^", linestyle="", color="#cb3a2a", markeredgecolor="black", markersize=9, label="Mobile APs")
     )
@@ -206,7 +232,7 @@ def animate_mobile_ap_schedule(
     ax.legend(handles=legend_handles, loc="best")
 
     bounds_positions = positions if positions is not None else _schedule_positions_array(windows).reshape(-1, 1, 2)
-    _set_scene_axes(ax, metadata, graph, positions=bounds_positions, sites=fixed_sites or [])
+    _set_scene_axes(ax, metadata, graph, positions=bounds_positions, sites=[*(fixed_sites or []), *(reference_sites or [])])
     ax.set_title("Mobile AP schedule animation")
 
     def _update(frame_index: int):
@@ -296,6 +322,7 @@ def run_mobile_ap_schedule_visualization(
     trajectory_csv: Path | None = None,
     output_path: Path | None = None,
     fixed_sites_csv: Path | None = None,
+    reference_sites_csv: Path | None = None,
     speedup: float | None = None,
 ) -> Path | None:
     config = load_scenario_config(scenario_path)
@@ -310,11 +337,13 @@ def run_mobile_ap_schedule_visualization(
     schedule_path = schedule_csv or output_dir / "distributed_movable_schedule.csv"
     trajectory_path = trajectory_csv or output_dir / "trajectory.csv"
     fixed_path = fixed_sites_csv or output_dir / "distributed_fixed_aps.csv"
+    reference_path = reference_sites_csv or output_dir / "central_massive_mimo_ap.csv"
     animation_path = output_path or output_dir / "mobile_ap_schedule_animation.mp4"
 
     windows = load_mobile_ap_schedule(schedule_path)
     trajectory = _load_trajectory_csv(trajectory_path) if trajectory_path.exists() else None
     fixed_sites = load_candidate_sites(fixed_path) if fixed_path.exists() else None
+    reference_sites = load_candidate_sites(reference_path) if reference_path.exists() else None
     return animate_mobile_ap_schedule(
         metadata=metadata,
         graph=graph,
@@ -322,6 +351,8 @@ def run_mobile_ap_schedule_visualization(
         output_path=animation_path,
         trajectory=trajectory,
         fixed_sites=fixed_sites,
+        reference_sites=reference_sites,
+        reference_label="Central massive-MIMO BS",
         speedup=float(config.outputs.scene_animation_speedup if speedup is None else speedup),
     )
 
@@ -342,6 +373,12 @@ def main() -> None:
         default=None,
         help="Optional distributed_fixed_aps.csv for reference markers",
     )
+    parser.add_argument(
+        "--reference-sites-csv",
+        type=Path,
+        default=None,
+        help="Optional central_massive_mimo_ap.csv for the fixed massive-MIMO BS marker",
+    )
     parser.add_argument("--output", type=Path, default=None, help="Output MP4 or GIF path")
     parser.add_argument("--speedup", type=float, default=None, help="Playback speed multiplier")
     args = parser.parse_args()
@@ -352,6 +389,7 @@ def main() -> None:
         trajectory_csv=args.trajectory_csv,
         output_path=args.output,
         fixed_sites_csv=args.fixed_sites_csv,
+        reference_sites_csv=args.reference_sites_csv,
         speedup=args.speedup,
     )
     if result is not None:

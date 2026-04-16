@@ -76,8 +76,8 @@ def test_run_scenario_without_ray_tracing_writes_trajectory_outputs(monkeypatch,
     assert summary["ray_tracing_enabled"] is False
     assert summary["status"] == "trajectory_only"
     assert (config.outputs.output_dir / "trajectory.csv").exists()
-    assert (config.outputs.output_dir / "scene_layout.png").exists()
-    assert (config.outputs.output_dir / "trajectory_colormap.png").exists()
+    assert (config.outputs.output_dir / "scene_metadata.json").exists()
+    assert (config.outputs.output_dir / "walk_graph.json").exists()
     assert (config.outputs.output_dir / "candidate_ap_positions.csv").exists()
     assert (config.outputs.output_dir / "central_ap_rooftop_candidates.csv").exists()
     assert (config.outputs.output_dir / "central_massive_mimo_ap.csv").exists()
@@ -88,6 +88,8 @@ def test_run_scenario_without_ray_tracing_writes_trajectory_outputs(monkeypatch,
     assert (config.outputs.output_dir / "distributed_movable_schedule.csv").exists()
     assert (config.outputs.output_dir / "strategy_comparison.csv").exists()
     assert not (config.outputs.output_dir / "coverage_map.npz").exists()
+    assert not (config.outputs.output_dir / "scene_layout.png").exists()
+    assert not (config.outputs.output_dir / "trajectory_colormap.png").exists()
     assert not (config.outputs.output_dir / "infra_csi_snapshots.npz").exists()
     assert not (config.outputs.output_dir / "peer_csi_snapshots.npz").exists()
 

@@ -49,6 +49,20 @@ ALL_STRATEGY_NAMES = ("central_massive_mimo", "distributed_fixed", "distributed_
 LEGACY_STRATEGY_NAMES = ("random_baseline", "local_csi_p10", "capped_exact_search")
 CENTRAL_AP_SITE_ID = "central_ap_01"
 CENTRAL_AP_ROOF_OFFSET_M = 1.5
+CENTRAL_AP_DOWNTILT_DEG = -10.0
+VISUALIZATION_ARTIFACT_NAMES = (
+    "coverage_map.png",
+    "fixed_coverage_map.png",
+    "scene_render.png",
+    "scene_camera.mp4",
+    "scene_layout.png",
+    "scene_animation.mp4",
+    "scene_animation.gif",
+    "scene_animation_with_central_massive_mimo.mp4",
+    "scene_animation_with_central_massive_mimo.gif",
+    "trajectory_colormap.png",
+    "user_sinr_cdf.png",
+)
 
 
 @dataclass(slots=True)
@@ -106,6 +120,8 @@ def _factor_central_ap_array(total_elements: int) -> tuple[int, int]:
 def _central_ap_radio(base_radio, distributed_ap_count: int):
     if distributed_ap_count <= 0:
         raise ValueError("distributed_ap_count must be positive for the central AP radio budget")
+    # This normalizes the rooftop proxy against the distributed AP budget; it does
+    # not model a full placement optimization over a true co-located massive-MIMO array.
     total_elements = distributed_ap_count * int(base_radio.ap_num_rows) * int(base_radio.ap_num_cols)
     rows, cols = _factor_central_ap_array(total_elements)
     total_power_dbm = float(base_radio.tx_power_dbm_ap + 10.0 * np.log10(float(distributed_ap_count)))
@@ -126,6 +142,29 @@ def _make_central_ap_site(candidate: CandidateSite) -> CandidateSite:
     )
 
 
+def _area_center_xy(metadata: dict[str, Any] | None) -> np.ndarray | None:
+    if metadata is None:
+        return None
+    if "boundary_local" in metadata:
+        boundary = np.asarray(metadata["boundary_local"], dtype=float)
+        if boundary.ndim == 2 and boundary.shape[1] >= 2 and boundary.shape[0] > 0:
+            polygon = Polygon(boundary[:, :2])
+            if not polygon.is_empty:
+                centroid = polygon.centroid
+                return np.asarray([float(centroid.x), float(centroid.y)], dtype=float)
+    buildings = metadata.get("buildings", [])
+    if not isinstance(buildings, list) or not buildings:
+        return None
+    points: list[list[float]] = []
+    for building in buildings:
+        polygon_coords = np.asarray(building.get("polygon_local", []), dtype=float)
+        if polygon_coords.ndim == 2 and polygon_coords.shape[1] == 2 and polygon_coords.shape[0] > 0:
+            points.extend(polygon_coords[:, :2].tolist())
+    if not points:
+        return None
+    return np.mean(np.asarray(points, dtype=float), axis=0)
+
+
 def _generate_rooftop_candidates(metadata: dict[str, Any] | None) -> list[CandidateSite]:
     if metadata is None:
         return []
@@ -133,7 +172,8 @@ def _generate_rooftop_candidates(metadata: dict[str, Any] | None) -> list[Candid
     if not isinstance(buildings, list):
         return []
 
-    candidates: list[CandidateSite] = []
+    centroid_xy = _area_center_xy(metadata)
+    indexed_candidates: list[tuple[float, CandidateSite]] = []
     for index, building in enumerate(buildings):
         polygon_coords = np.asarray(building.get("polygon_local", []), dtype=float)
         if polygon_coords.ndim != 2 or polygon_coords.shape[0] < 4 or polygon_coords.shape[1] != 2:
@@ -143,21 +183,27 @@ def _generate_rooftop_candidates(metadata: dict[str, Any] | None) -> list[Candid
             continue
         representative = polygon.representative_point()
         building_name = str(building.get("name", f"building_{index:03d}"))
-        height_m = float(building.get("height_m", 0.0)) + CENTRAL_AP_ROOF_OFFSET_M
-        candidates.append(
-            CandidateSite(
-                site_id=f"roof_{building_name}",
-                x_m=float(representative.x),
-                y_m=float(representative.y),
-                z_m=height_m,
-                yaw_deg=0.0,
-                pitch_deg=-90.0,
-                mount_type="rooftop",
-                enabled=True,
-                source="roof_metadata",
-            )
+        target_xy = centroid_xy if centroid_xy is not None else np.asarray([representative.x, representative.y], dtype=float)
+        delta = target_xy - np.asarray([representative.x, representative.y], dtype=float)
+        yaw_deg = float(np.degrees(np.arctan2(delta[1], delta[0]))) if np.linalg.norm(delta) > 1e-9 else 0.0
+        candidate = CandidateSite(
+            site_id=f"roof_{building_name}",
+            x_m=float(representative.x),
+            y_m=float(representative.y),
+            z_m=float(building.get("height_m", 0.0)) + CENTRAL_AP_ROOF_OFFSET_M,
+            yaw_deg=yaw_deg,
+            pitch_deg=CENTRAL_AP_DOWNTILT_DEG,
+            mount_type="rooftop",
+            enabled=True,
+            source="roof_metadata:center_building",
         )
-    return candidates
+        distance = float(np.hypot(candidate.x_m - target_xy[0], candidate.y_m - target_xy[1]))
+        indexed_candidates.append((distance, candidate))
+
+    if not indexed_candidates:
+        return []
+    indexed_candidates.sort(key=lambda item: item[0])
+    return [indexed_candidates[0][1]]
 
 
 def _select_centroid_rooftop_candidate(
@@ -166,20 +212,10 @@ def _select_centroid_rooftop_candidate(
 ) -> CandidateSite:
     if not rooftop_candidates:
         raise ValueError("At least one rooftop candidate is required for the central AP comparison")
-
-    if metadata is not None and "boundary_local" in metadata:
-        boundary = np.asarray(metadata["boundary_local"], dtype=float)
-        centroid_xy = np.mean(boundary[:, :2], axis=0)
-    else:
-        centroid_xy = np.mean(
-            np.asarray([[site.x_m, site.y_m] for site in rooftop_candidates], dtype=float),
-            axis=0,
-        )
-
-    return min(
-        rooftop_candidates,
-        key=lambda site: float(np.hypot(site.x_m - centroid_xy[0], site.y_m - centroid_xy[1])),
-    )
+    centroid_xy = _area_center_xy(metadata)
+    if centroid_xy is None:
+        return rooftop_candidates[0]
+    return min(rooftop_candidates, key=lambda site: float(np.hypot(site.x_m - centroid_xy[0], site.y_m - centroid_xy[1])))
 
 
 def _resolve_scene_inputs(config: ScenarioConfig) -> SceneArtifacts:
@@ -191,21 +227,48 @@ def _resolve_scene_inputs(config: ScenarioConfig) -> SceneArtifacts:
     if config.scene.kind == "xml":
         if config.scene.scene_xml_path is None:
             raise ValueError("scene.scene_xml_path is required for xml scenes")
+        if not config.scene.scene_xml_path.exists():
+            raise FileNotFoundError(f"Scene XML is missing: {config.scene.scene_xml_path}")
         logger.info("Using existing scene XML at %s", config.scene.scene_xml_path)
         metadata = config.scene.scene_output_dir / "scene_metadata.json" if config.scene.scene_output_dir else None
         walk_graph = config.mobility.graph_path
         return SceneArtifacts(scene_xml_path=config.scene.scene_xml_path, metadata_path=metadata, walk_graph_path=walk_graph)
 
     output_dir = config.scene.scene_output_dir
-    assert output_dir is not None
+    if output_dir is None:
+        raise ValueError("scene.scene_output_dir is required for OSM scenes")
     scene_xml = output_dir / "scene.xml"
     metadata = output_dir / "scene_metadata.json"
     walk_graph = output_dir / "walk_graph.json"
-    if config.scene.rebuild or not scene_xml.exists():
-        logger.info("Building OSM-derived scene assets in %s", output_dir)
-        return OSMSceneBuilder(config.scene).build()
+    if not scene_xml.exists():
+        raise FileNotFoundError(
+            f"Scene assets are missing in {output_dir}. Run `cocoon-sionna build-scene {config.scenario_path}` first."
+        )
     logger.info("Reusing existing OSM scene assets from %s", output_dir)
     return SceneArtifacts(scene_xml_path=scene_xml, metadata_path=metadata, walk_graph_path=walk_graph)
+
+
+def _visualization_artifact_paths(output_dir: Path) -> list[Path]:
+    return [output_dir / name for name in VISUALIZATION_ARTIFACT_NAMES]
+
+
+def _copy_optional_artifact(source: Path | None, destination: Path) -> Path | None:
+    if source is None or not source.exists():
+        return None
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if source.resolve() != destination.resolve():
+        shutil.copy2(source, destination)
+    return destination
+
+
+def _store_scene_context(output_dir: Path, scene_artifacts: SceneArtifacts) -> dict[str, str]:
+    metadata_copy = _copy_optional_artifact(scene_artifacts.metadata_path, output_dir / "scene_metadata.json")
+    graph_copy = _copy_optional_artifact(scene_artifacts.walk_graph_path, output_dir / "walk_graph.json")
+    return {
+        "scene_xml_path": str(scene_artifacts.scene_xml_path) if scene_artifacts.scene_xml_path != Path("builtin") else "",
+        "scene_metadata_path": str(metadata_copy) if metadata_copy is not None else "",
+        "walk_graph_path": str(graph_copy) if graph_copy is not None else "",
+    }
 
 
 def _mask_best_sinr(best_sinr_db: np.ndarray, cell_centers: np.ndarray, metadata: dict[str, Any] | None) -> np.ndarray:
@@ -559,13 +622,15 @@ def _animate_scene(
     speedup: float = 1.0,
     schedule_rows: list[dict[str, Any]] | None = None,
     fixed_sites: list[CandidateSite] | None = None,
+    reference_sites: list[CandidateSite] | None = None,
+    reference_label: str = "Reference APs",
 ) -> Path | None:
     positions = np.asarray(trajectory.positions_m[..., :2], dtype=float)
     if positions.ndim != 3 or positions.shape[0] == 0 or positions.shape[1] == 0:
         return None
     schedule_windows = _group_schedule_rows(schedule_rows or [])
     schedule_has_movement = _schedule_has_movement(schedule_rows or [])
-    display_sites = [*base_sites, *(fixed_sites or [])]
+    display_sites = [*base_sites, *(fixed_sites or []), *(reference_sites or [])]
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(9, 7))
@@ -591,6 +656,17 @@ def _animate_scene(
             edgecolors="black",
             linewidths=0.4,
             zorder=5,
+        )
+    if reference_sites:
+        ax.scatter(
+            [site.x_m for site in reference_sites],
+            [site.y_m for site in reference_sites],
+            c="#d4a017",
+            s=140,
+            marker="*",
+            edgecolors="black",
+            linewidths=0.5,
+            zorder=6,
         )
     if schedule_windows:
         initial_window = schedule_windows[0]
@@ -656,6 +732,19 @@ def _animate_scene(
     if fixed_sites:
         legend_handles.append(
             Line2D([0], [0], marker="P", linestyle="", color="#4c566a", markeredgecolor="black", markersize=8, label="Fixed APs")
+        )
+    if reference_sites:
+        legend_handles.append(
+            Line2D(
+                [0],
+                [0],
+                marker="*",
+                linestyle="",
+                color="#d4a017",
+                markeredgecolor="black",
+                markersize=12,
+                label=reference_label,
+            )
         )
     legend_handles.extend(
         [
@@ -1071,7 +1160,11 @@ def _concat_ap_ue_segments(segments: list[dict[str, Any]]) -> dict[str, Any]:
         "tx_site_ids": list(segments[0]["tx_site_ids"]),
         "rx_ue_ids": list(segments[0]["rx_ue_ids"]),
         "times_s": np.concatenate([np.asarray(segment["times_s"], dtype=float) for segment in segments], axis=0),
+        "sinr_linear": np.concatenate([np.asarray(segment["sinr_linear"], dtype=float) for segment in segments], axis=0),
         "best_sinr_db": np.concatenate([np.asarray(segment["best_sinr_db"], dtype=float) for segment in segments], axis=0),
+        "desired_power_w": np.concatenate([np.asarray(segment["desired_power_w"], dtype=float) for segment in segments], axis=0),
+        "interference_power_w": np.concatenate([np.asarray(segment["interference_power_w"], dtype=float) for segment in segments], axis=0),
+        "noise_power_w": np.concatenate([np.asarray(segment["noise_power_w"], dtype=float) for segment in segments], axis=0),
         "link_power_w": np.concatenate([np.asarray(segment["link_power_w"]) for segment in segments], axis=0),
     }
     if all("cfr" in segment for segment in segments):
@@ -1272,12 +1365,32 @@ def _try_load_csi_cache(output_dir: Path, cache_key: str) -> dict[str, Any] | No
         "fixed_ap_ue": _split_prefixed_export(
             infra,
             "fixed_ap_ue",
-            ("tx_site_ids", "rx_ue_ids", "times_s", "best_sinr_db", "link_power_w"),
+            (
+                "tx_site_ids",
+                "rx_ue_ids",
+                "times_s",
+                "sinr_linear",
+                "best_sinr_db",
+                "desired_power_w",
+                "interference_power_w",
+                "noise_power_w",
+                "link_power_w",
+            ),
         ),
         "final_ap_ue": _split_prefixed_export(
             infra,
             "mobile_ap_ue",
-            ("tx_site_ids", "rx_ue_ids", "times_s", "best_sinr_db", "link_power_w"),
+            (
+                "tx_site_ids",
+                "rx_ue_ids",
+                "times_s",
+                "sinr_linear",
+                "best_sinr_db",
+                "desired_power_w",
+                "interference_power_w",
+                "noise_power_w",
+                "link_power_w",
+            ),
         ),
         "fixed_ap_ap": _split_prefixed_export(
             infra,
@@ -1352,12 +1465,20 @@ def _write_csi_cache(
         "fixed_ap_ue_tx_site_ids": np.asarray(fixed_ap_ue["tx_site_ids"], dtype=object),
         "fixed_ap_ue_rx_ue_ids": np.asarray(fixed_ap_ue["rx_ue_ids"], dtype=object),
         "fixed_ap_ue_times_s": fixed_ap_ue["times_s"],
+        "fixed_ap_ue_sinr_linear": fixed_ap_ue["sinr_linear"],
         "fixed_ap_ue_best_sinr_db": fixed_ap_ue["best_sinr_db"],
+        "fixed_ap_ue_desired_power_w": fixed_ap_ue["desired_power_w"],
+        "fixed_ap_ue_interference_power_w": fixed_ap_ue["interference_power_w"],
+        "fixed_ap_ue_noise_power_w": fixed_ap_ue["noise_power_w"],
         "fixed_ap_ue_link_power_w": fixed_ap_ue["link_power_w"],
         "mobile_ap_ue_tx_site_ids": np.asarray(final_ap_ue["tx_site_ids"], dtype=object),
         "mobile_ap_ue_rx_ue_ids": np.asarray(final_ap_ue["rx_ue_ids"], dtype=object),
         "mobile_ap_ue_times_s": final_ap_ue["times_s"],
+        "mobile_ap_ue_sinr_linear": final_ap_ue["sinr_linear"],
         "mobile_ap_ue_best_sinr_db": final_ap_ue["best_sinr_db"],
+        "mobile_ap_ue_desired_power_w": final_ap_ue["desired_power_w"],
+        "mobile_ap_ue_interference_power_w": final_ap_ue["interference_power_w"],
+        "mobile_ap_ue_noise_power_w": final_ap_ue["noise_power_w"],
         "mobile_ap_ue_link_power_w": final_ap_ue["link_power_w"],
         "fixed_ap_ap_tx_site_ids": np.asarray(fixed_ap_ap["tx_site_ids"], dtype=object),
         "fixed_ap_ap_rx_site_ids": np.asarray(fixed_ap_ap["rx_site_ids"], dtype=object),
@@ -1509,6 +1630,67 @@ def _local_percentile_10(best_sinr_db: np.ndarray, snapshot_mask: np.ndarray) ->
         return -120.0
     return float(np.percentile(local_values, 10))
 
+
+def _weighted_percentile(values: np.ndarray, weights: np.ndarray, percentile: float) -> float:
+    finite_values = np.asarray(values, dtype=float).reshape(-1)
+    finite_weights = np.asarray(weights, dtype=float).reshape(-1)
+    if finite_values.size == 0 or finite_weights.size != finite_values.size:
+        return -120.0
+    mask = np.isfinite(finite_values) & np.isfinite(finite_weights) & (finite_weights > 0.0)
+    if not np.any(mask):
+        return -120.0
+    finite_values = finite_values[mask]
+    finite_weights = finite_weights[mask]
+    order = np.argsort(finite_values, kind="mergesort")
+    sorted_values = finite_values[order]
+    sorted_weights = finite_weights[order]
+    cumulative = np.cumsum(sorted_weights)
+    target = 0.01 * float(percentile) * cumulative[-1]
+    return float(sorted_values[np.searchsorted(cumulative, target, side="left")])
+
+
+def _historical_local_percentile_10(
+    history_segments: list[dict[str, Any]],
+    selected_candidate_ids: tuple[str, ...],
+    candidate_index: dict[str, CandidateSite],
+    k_nearest: int,
+    decay_rate_per_s: float,
+) -> float:
+    if not history_segments:
+        return -120.0
+
+    now_s = max(float(segment["trajectory"].times_s[-1]) for segment in history_segments)
+    weighted_values: list[np.ndarray] = []
+    weighted_samples: list[np.ndarray] = []
+    for segment in history_segments:
+        window_trajectory = segment["trajectory"]
+        snapshot_mask = np.zeros(len(window_trajectory.times_s) * len(window_trajectory.ue_ids), dtype=bool)
+        for site_id in selected_candidate_ids:
+            snapshot_mask |= _nearest_snapshot_mask(
+                window_trajectory,
+                candidate_index[site_id],
+                k_nearest,
+            )
+        if not np.any(snapshot_mask):
+            continue
+
+        values = np.asarray(segment["ap_ue"]["best_sinr_db"], dtype=float).reshape(-1)
+        sample_weights = np.repeat(
+            np.exp(-max(float(decay_rate_per_s), 0.0) * (now_s - np.asarray(window_trajectory.times_s, dtype=float))),
+            len(window_trajectory.ue_ids),
+        )
+        weighted_values.append(values[snapshot_mask])
+        weighted_samples.append(sample_weights[snapshot_mask])
+
+    if not weighted_values:
+        return -120.0
+    return _weighted_percentile(
+        np.concatenate(weighted_values, axis=0),
+        np.concatenate(weighted_samples, axis=0),
+        10.0,
+    )
+
+
 def _per_user_mean_best_sinr(best_sinr_db: np.ndarray) -> np.ndarray:
     values = np.asarray(best_sinr_db, dtype=float)
     if values.ndim == 1:
@@ -1587,6 +1769,8 @@ def _write_user_sinr_artifacts(
     output_dir: Path,
     trajectory: Trajectory,
     strategy_ap_ue: dict[str, dict[str, Any]],
+    *,
+    include_plots: bool = True,
 ) -> None:
     strategy_names = [name for name in ALL_STRATEGY_NAMES if name in strategy_ap_ue]
     _write_user_sinr_csv(
@@ -1616,9 +1800,18 @@ def _write_user_sinr_artifacts(
     for name in strategy_names:
         payload = strategy_ap_ue.get(name)
         if payload is not None:
+            if "sinr_linear" in payload:
+                npz_payload[f"{name}_sinr_linear"] = np.asarray(payload["sinr_linear"], dtype=float)
             npz_payload[f"{name}_sinr_db"] = np.asarray(payload["best_sinr_db"], dtype=float)
+            if "desired_power_w" in payload:
+                npz_payload[f"{name}_desired_power_w"] = np.asarray(payload["desired_power_w"], dtype=float)
+            if "interference_power_w" in payload:
+                npz_payload[f"{name}_interference_power_w"] = np.asarray(payload["interference_power_w"], dtype=float)
+            if "noise_power_w" in payload:
+                npz_payload[f"{name}_noise_power_w"] = np.asarray(payload["noise_power_w"], dtype=float)
     np.savez_compressed(output_dir / "user_sinr_snapshots.npz", **npz_payload)
-    _plot_user_sinr_cdf(strategy_ap_ue, output_dir / "user_sinr_cdf.png")
+    if include_plots:
+        _plot_user_sinr_cdf(strategy_ap_ue, output_dir / "user_sinr_cdf.png")
 
 
 def _write_strategy_comparison_csv(output_path: Path, strategies: dict[str, StrategyArtifacts]) -> None:
@@ -1710,6 +1903,7 @@ def _evaluate_strategy_windows(
         window_trajectory = _slice_trajectory(trajectory, indices)
         window_need_weights = np.asarray(peer_need_weights[indices], dtype=float)
         selected_candidate_ids, capped, evaluations = candidate_selector(
+            window_index,
             window_trajectory,
             window_need_weights,
             movable_sites,
@@ -1797,28 +1991,15 @@ def _evaluate_central_massive_mimo(
 ) -> StrategyArtifacts:
     if not rooftop_candidates:
         raise ValueError("At least one rooftop candidate is required for central_massive_mimo")
-
-    best_candidate: CandidateSite | None = None
-    best_site: CandidateSite | None = None
-    best_ap_ue: dict[str, Any] | None = None
-    best_score: PlacementScore | None = None
-
-    for candidate in rooftop_candidates:
-        central_site = _make_central_ap_site(candidate)
-        ap_ue = runner.compute_ap_ue_csi([central_site], trajectory, export_full=export_full)
-        score = summarize_candidate_set(
-            grid_best_sinr_db=np.asarray([], dtype=float),
-            trajectory_best_sinr_db=ap_ue["best_sinr_db"],
-            peer_need_weights=peer_need_weights,
-            cfg=config.placement,
-        )
-        if best_score is None or score.score > best_score.score:
-            best_candidate = candidate
-            best_site = central_site
-            best_ap_ue = ap_ue
-            best_score = score
-
-    assert best_candidate is not None and best_site is not None and best_ap_ue is not None and best_score is not None
+    best_candidate = rooftop_candidates[0]
+    best_site = _make_central_ap_site(best_candidate)
+    best_ap_ue = runner.compute_ap_ue_csi([best_site], trajectory, export_full=export_full)
+    best_score = summarize_candidate_set(
+        grid_best_sinr_db=np.asarray([], dtype=float),
+        trajectory_best_sinr_db=best_ap_ue["best_sinr_db"],
+        peer_need_weights=peer_need_weights,
+        cfg=config.placement,
+    )
     ap_ap = runner.compute_ap_ap_csi([best_site], export_full=export_full)
     return StrategyArtifacts(
         name="central_massive_mimo",
@@ -1835,7 +2016,7 @@ def _evaluate_central_massive_mimo(
         final_candidate_ids=[best_candidate.site_id],
         selected_candidate_union={best_candidate.site_id},
         details={
-            "selection_mode": "best_scored_rooftop",
+            "selection_mode": "fixed_center_rooftop",
             "rooftop_candidate_id": best_candidate.site_id,
         },
     )
@@ -1865,6 +2046,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
     logger.info("Starting scenario '%s'", config.name)
     logger.info("Writing outputs to %s", output_dir)
     _remove_artifacts(_legacy_output_paths(output_dir))
+    _remove_artifacts(_visualization_artifact_paths(output_dir))
     if csi_cache_enabled:
         logger.warning("CSI cache reuse is not yet implemented for the multi-strategy placement pipeline; skipping cache")
         csi_cache_enabled = False
@@ -1872,6 +2054,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
     with progress_bar(total=10, desc=f"Scenario {config.name}", unit="stage", leave=True) as scenario_progress:
         scene_artifacts = _resolve_scene_inputs(config)
         metadata = load_scene_metadata(scene_artifacts.metadata_path)
+        scene_context = _store_scene_context(output_dir, scene_artifacts)
         rooftop_candidates = _generate_rooftop_candidates(metadata)
         if not rooftop_candidates:
             raise ValueError(
@@ -1939,15 +2122,12 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             _remove_artifacts(
                 [
                     output_dir / "coverage_map.npz",
-                    output_dir / "coverage_map.png",
                     output_dir / "fixed_coverage_map.npz",
-                    output_dir / "fixed_coverage_map.png",
                     output_dir / "peer_csi_snapshots.npz",
                     output_dir / "infra_csi_snapshots.npz",
                     output_dir / "user_sinr_summary.csv",
                     output_dir / "user_sinr_timeseries.csv",
                     output_dir / "user_sinr_snapshots.npz",
-                    output_dir / "user_sinr_cdf.png",
                 ]
             )
             static_schedule = _build_static_movable_schedule(
@@ -2027,29 +2207,8 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             for artifact in strategy_results.values():
                 _write_strategy_site_csv(output_dir, artifact)
                 _write_mobile_ap_schedule_csv(output_dir / f"{artifact.name}_schedule.csv", artifact.schedule_rows)
-            _plot_scene_layout(
-                metadata,
-                graph,
-                [*movable_candidate_sites, *rooftop_candidates],
-                visualized_sites,
-                trajectory,
-                output_dir / "scene_layout.png",
-            )
-            animation_path = _animate_scene(
-                metadata,
-                graph,
-                [*movable_candidate_sites, *rooftop_candidates],
-                visualized_sites,
-                trajectory,
-                output_dir / "scene_animation.mp4",
-                speedup=config.outputs.scene_animation_speedup,
-                schedule_rows=animation_strategy.schedule_rows,
-            )
-            _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")
-            if animation_path is not None:
-                logger.info("Wrote scene animation to %s", animation_path)
             _write_strategy_comparison_csv(output_dir / "strategy_comparison.csv", strategy_results)
-            logger.info("Wrote non-ray-traced trajectory and placement artifacts to %s", output_dir)
+            logger.info("Wrote non-ray-traced trajectory and placement data to %s", output_dir)
             scenario_progress.update(7)
 
             summary = {
@@ -2061,6 +2220,9 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 "baseline_strategy": "distributed_fixed",
                 "best_strategy": best_strategy_name,
                 "scene_animation_strategy": animation_strategy_name,
+                "scene_animation_with_central_massive_mimo": "",
+                "scene_animation_speedup": float(config.outputs.scene_animation_speedup),
+                "scene_context": scene_context,
                 "compute_device": "SKIPPED",
                 "mitsuba_variant": "",
                 "window_interval_s": config.placement.window_interval_s,
@@ -2081,9 +2243,6 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             }
             (output_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
             return summary
-
-        early_scene_render_path = None
-        early_scene_camera_video_path = None
         distributed_runner = SionnaRtRunner(
             scene_cfg=config.scene,
             radio=config.radio,
@@ -2109,59 +2268,43 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             runtime_info["variant"],
         )
         scenario_progress.update(1)
-        if _should_render_sionna_scene_artifacts(runtime_info):
-            early_scene_render_path = _render_scene_view(
-                distributed_runner,
-                metadata,
-                graph,
-                baseline_sites,
-                trajectory,
-                output_dir / "scene_render.png",
-            )
-            early_scene_camera_video_path = _render_scene_video(
-                distributed_runner,
-                metadata,
-                graph,
-                baseline_sites,
-                trajectory,
-                output_dir / "scene_camera.mp4",
-            )
-        else:
-            logger.info("Skipping early Sionna scene render/video on CPU LLVM backend to avoid Dr.Jit instability")
 
         logger.info("Computing UE-UE CSI snapshots")
         peer_csi = distributed_runner.compute_ue_ue_csi(trajectory, export_full=csi_exports_enabled)
         scenario_progress.update(1)
 
         initial_movable_sites = list(baseline_sites)
+        historical_decay_rate = float(config.placement.historical_csi_decay_rate_per_s)
+        subset_history: dict[tuple[str, ...], list[dict[str, Any]]] = {}
 
-        def local_selector(window_trajectory: Trajectory, window_need_weights: np.ndarray, _current_movable_sites):
-            evaluation_cache: dict[tuple[str, ...], dict[str, Any]] = {}
+        def local_selector(window_index: int, window_trajectory: Trajectory, window_need_weights: np.ndarray, _current_movable_sites):
+            del window_need_weights
+            evaluated_subsets: set[tuple[str, ...]] = set()
 
-            def evaluate_subset(subset: tuple[str, ...]) -> dict[str, Any]:
-                if subset not in evaluation_cache:
+            def history_for_subset(subset: tuple[str, ...]) -> list[dict[str, Any]]:
+                history = subset_history.setdefault(subset, [])
+                if len(history) <= window_index:
                     active_sites = [candidate_index[site_id] for site_id in subset]
                     ap_ue = distributed_runner.compute_ap_ue_csi(active_sites, window_trajectory, export_full=False)
-                    evaluation_cache[subset] = {"ap_ue": ap_ue}
-                return evaluation_cache[subset]
+                    history.append({"trajectory": window_trajectory, "ap_ue": ap_ue})
+                    evaluated_subsets.add(subset)
+                return history
 
             def local_evaluator(subset: tuple[str, ...]) -> float:
-                payload = evaluate_subset(subset)
-                snapshot_mask = np.zeros(len(window_trajectory.times_s) * len(window_trajectory.ue_ids), dtype=bool)
-                for site_id in subset:
-                    snapshot_mask |= _nearest_snapshot_mask(
-                        window_trajectory,
-                        candidate_index[site_id],
-                        config.placement.heuristic_k_nearest,
-                    )
-                return _local_percentile_10(payload["ap_ue"]["best_sinr_db"], snapshot_mask)
+                return _historical_local_percentile_10(
+                    history_for_subset(subset),
+                    subset,
+                    candidate_index,
+                    config.placement.heuristic_k_nearest,
+                    historical_decay_rate,
+                )
 
             selected_ids = select_local_csi_candidates(
                 movable_candidate_ids,
                 len(initial_movable_sites),
                 local_evaluator,
             )
-            return selected_ids, False, len(evaluation_cache)
+            return selected_ids, False, len(evaluated_subsets)
 
         peer_need_weights = np.asarray(peer_csi["need_weights"], dtype=float)
         strategy_results: dict[str, StrategyArtifacts] = {
@@ -2197,7 +2340,10 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 csi_exports_enabled,
             ),
         }
-        strategy_results["distributed_movable"].details = {"selection_mode": "windowed_local_csi"}
+        strategy_results["distributed_movable"].details = {
+            "selection_mode": "windowed_local_csi_history",
+            "historical_csi_decay_rate_per_s": historical_decay_rate,
+        }
         strategy_results["central_massive_mimo"].details.update(
             {
                 "central_ap_num_rows": int(central_radio.ap_num_rows),
@@ -2222,7 +2368,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         }
         if animation_strategy_name != best_strategy_name:
             logger.info(
-                "Animating scene with %s because best strategy %s keeps movable APs static",
+                "Using %s schedule as postprocess animation reference because best strategy %s keeps movable APs static",
                 animation_strategy_name,
                 best_strategy_name,
             )
@@ -2243,7 +2389,11 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             infra_export[f"{prefix_ap_ue}_tx_site_ids"] = np.asarray(ap_ue["tx_site_ids"], dtype=object)
             infra_export[f"{prefix_ap_ue}_rx_ue_ids"] = np.asarray(ap_ue["rx_ue_ids"], dtype=object)
             infra_export[f"{prefix_ap_ue}_times_s"] = ap_ue["times_s"]
+            infra_export[f"{prefix_ap_ue}_sinr_linear"] = ap_ue["sinr_linear"]
             infra_export[f"{prefix_ap_ue}_best_sinr_db"] = ap_ue["best_sinr_db"]
+            infra_export[f"{prefix_ap_ue}_desired_power_w"] = ap_ue["desired_power_w"]
+            infra_export[f"{prefix_ap_ue}_interference_power_w"] = ap_ue["interference_power_w"]
+            infra_export[f"{prefix_ap_ue}_noise_power_w"] = ap_ue["noise_power_w"]
             infra_export[f"{prefix_ap_ue}_link_power_w"] = ap_ue["link_power_w"]
             infra_export[f"{prefix_ap_ap}_tx_site_ids"] = np.asarray(ap_ap["tx_site_ids"], dtype=object)
             infra_export[f"{prefix_ap_ap}_rx_site_ids"] = np.asarray(ap_ap["rx_site_ids"], dtype=object)
@@ -2284,77 +2434,16 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 best_sinr_db=best_radio_map["best_sinr_db"],
                 cell_centers=best_radio_map["cell_centers"],
             )
-            _plot_coverage(
-                baseline_radio_map["best_sinr_db"],
-                baseline_radio_map["cell_centers"],
-                baseline_strategy.selected_sites,
-                trajectory,
-                output_dir / "fixed_coverage_map.png",
-            )
-            _plot_coverage(
-                best_radio_map["best_sinr_db"],
-                best_radio_map["cell_centers"],
-                best_strategy.selected_sites,
-                trajectory,
-                output_dir / "coverage_map.png",
-            )
         else:
             _remove_artifacts(
                 [
                     output_dir / "coverage_map.npz",
-                    output_dir / "coverage_map.png",
                     output_dir / "fixed_coverage_map.npz",
-                    output_dir / "fixed_coverage_map.png",
                 ]
             )
             logger.info("Coverage-map computation disabled; skipping coverage-map exports")
         scenario_progress.update(1)
 
-        scene_render_path = early_scene_render_path
-        scene_camera_video_path = early_scene_camera_video_path
-        if _should_render_sionna_scene_artifacts(runtime_info):
-            final_runner = runner_by_strategy[best_strategy_name]
-            final_scene_render_path = _render_scene_view(
-                final_runner,
-                metadata,
-                graph,
-                best_strategy.selected_sites,
-                trajectory,
-                output_dir / "scene_render.png",
-            )
-            final_scene_camera_video_path = _render_scene_video(
-                final_runner,
-                metadata,
-                graph,
-                best_strategy.selected_sites,
-                trajectory,
-                output_dir / "scene_camera.mp4",
-            )
-            if final_scene_render_path is not None:
-                scene_render_path = final_scene_render_path
-            if final_scene_camera_video_path is not None:
-                scene_camera_video_path = final_scene_camera_video_path
-        else:
-            logger.info("Skipping final Sionna scene render/video on CPU LLVM backend to avoid Dr.Jit instability")
-        _plot_scene_layout(
-            metadata,
-            graph,
-            [*movable_candidate_sites, *rooftop_candidates],
-            best_strategy.selected_sites,
-            trajectory,
-            output_dir / "scene_layout.png",
-        )
-        animation_path = _animate_scene(
-            metadata,
-            graph,
-            [*movable_candidate_sites, *rooftop_candidates],
-            animation_strategy.selected_sites,
-            trajectory,
-            output_dir / "scene_animation.mp4",
-            speedup=config.outputs.scene_animation_speedup,
-            schedule_rows=animation_strategy.schedule_rows,
-        )
-        _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")
         distributed_selected_union = set().union(
             strategy_results["distributed_fixed"].selected_candidate_union,
             strategy_results["distributed_movable"].selected_candidate_union,
@@ -2374,21 +2463,16 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             _write_mobile_ap_schedule_csv(output_dir / f"{artifact.name}_schedule.csv", artifact.schedule_rows)
         _remove_artifacts(_legacy_output_paths(output_dir))
         _write_strategy_comparison_csv(output_dir / "strategy_comparison.csv", strategy_results)
-        if scene_render_path is not None:
-            logger.info("Wrote scene render to %s", scene_render_path)
-        if scene_camera_video_path is not None:
-            logger.info("Wrote scene camera video to %s", scene_camera_video_path)
-        if animation_path is not None:
-            logger.info("Wrote scene animation to %s", animation_path)
-        logger.info("Wrote scene and strategy-comparison artifacts to %s", output_dir)
+        logger.info("Wrote placement and comparison data to %s", output_dir)
         scenario_progress.update(1)
 
         _write_user_sinr_artifacts(
             output_dir,
             trajectory,
             {name: strategy_results[name].ap_ue for name in strategy_names},
+            include_plots=False,
         )
-        logger.info("Wrote user SINR comparison artifacts to %s", output_dir)
+        logger.info("Wrote user SINR data artifacts to %s", output_dir)
         scenario_progress.update(1)
 
         summary = {
@@ -2401,6 +2485,9 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             "baseline_strategy": "distributed_fixed",
             "best_strategy": best_strategy_name,
             "scene_animation_strategy": animation_strategy_name,
+            "scene_animation_with_central_massive_mimo": "",
+            "scene_animation_speedup": float(config.outputs.scene_animation_speedup),
+            "scene_context": scene_context,
             "window_interval_s": config.placement.window_interval_s,
             "candidate_site_ids": movable_candidate_ids,
             "central_rooftop_candidate_ids": [site.site_id for site in rooftop_candidates],

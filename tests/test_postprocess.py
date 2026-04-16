@@ -8,9 +8,11 @@ import numpy as np
 from cocoon_sionna.postprocess import (
     resolve_output_dir_argument,
     run_manuscript_report,
+    run_scene_visualization_postprocess,
     run_schedule_analysis,
     run_sinr_snapshot_analysis,
     run_strategy_summary_analysis,
+    run_visualization_postprocess,
 )
 
 
@@ -33,6 +35,12 @@ def _build_fake_output_dir(tmp_path: Path) -> Path:
         "baseline_strategy": "distributed_fixed",
         "best_strategy": "distributed_movable",
         "scene_animation_strategy": "distributed_movable",
+        "scene_animation_speedup": 10.0,
+        "scene_context": {
+            "scene_xml_path": "",
+            "scene_metadata_path": str(output_dir / "scene_metadata.json"),
+            "walk_graph_path": str(output_dir / "walk_graph.json"),
+        },
         "strategies": {
             "central_massive_mimo": {
                 "selected_site_ids": ["central_ap_01"],
@@ -123,9 +131,112 @@ def _build_fake_output_dir(tmp_path: Path) -> Path:
         times_s=np.array([0.0, 10.0, 20.0], dtype=float),
         ue_ids=np.array(["ue_000", "ue_001"], dtype=object),
         strategy_names=np.array(["central_massive_mimo", "distributed_fixed", "distributed_movable"], dtype=object),
+        central_massive_mimo_sinr_linear=np.power(10.0, np.array([[-2.0, 0.0], [-1.0, 1.0], [0.0, 2.0]], dtype=float) / 10.0),
         central_massive_mimo_sinr_db=np.array([[-2.0, 0.0], [-1.0, 1.0], [0.0, 2.0]], dtype=float),
+        distributed_fixed_sinr_linear=np.power(10.0, np.array([[0.0, 2.0], [1.0, 3.0], [2.0, 4.0]], dtype=float) / 10.0),
         distributed_fixed_sinr_db=np.array([[0.0, 2.0], [1.0, 3.0], [2.0, 4.0]], dtype=float),
+        distributed_movable_sinr_linear=np.power(10.0, np.array([[3.0, 5.0], [4.0, 6.0], [5.0, 7.0]], dtype=float) / 10.0),
         distributed_movable_sinr_db=np.array([[3.0, 5.0], [4.0, 6.0], [5.0, 7.0]], dtype=float),
+    )
+
+    (output_dir / "scene_metadata.json").write_text(
+        json.dumps(
+            {
+                "boundary_local": [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0], [0.0, 0.0]],
+                "buildings": [
+                    {
+                        "name": "blok_a",
+                        "height_m": 12.0,
+                        "polygon_local": [[2.0, 2.0], [4.0, 2.0], [4.0, 4.0], [2.0, 4.0], [2.0, 2.0]],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (output_dir / "walk_graph.json").write_text(
+        json.dumps(
+            {
+                "nodes": [
+                    {"id": 1, "x": 0.0, "y": 0.0, "entry_candidate": True},
+                    {"id": 2, "x": 10.0, "y": 0.0, "entry_candidate": True},
+                    {"id": 3, "x": 10.0, "y": 10.0, "entry_candidate": True},
+                    {"id": 4, "x": 0.0, "y": 10.0, "entry_candidate": True},
+                ],
+                "edges": [
+                    {"u": 1, "v": 2, "length": 10.0},
+                    {"u": 2, "v": 3, "length": 10.0},
+                    {"u": 3, "v": 4, "length": 10.0},
+                    {"u": 4, "v": 1, "length": 10.0},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_csv(
+        output_dir / "trajectory.csv",
+        ["time_s", "ue_id", "x_m", "y_m", "z_m", "vx_mps", "vy_mps", "vz_mps"],
+        [
+            {"time_s": 0.0, "ue_id": "ue_000", "x_m": 1.0, "y_m": 1.0, "z_m": 1.5, "vx_mps": 0.0, "vy_mps": 0.0, "vz_mps": 0.0},
+            {"time_s": 0.0, "ue_id": "ue_001", "x_m": 9.0, "y_m": 1.0, "z_m": 1.5, "vx_mps": 0.0, "vy_mps": 0.0, "vz_mps": 0.0},
+            {"time_s": 10.0, "ue_id": "ue_000", "x_m": 1.0, "y_m": 9.0, "z_m": 1.5, "vx_mps": 0.0, "vy_mps": 0.0, "vz_mps": 0.0},
+            {"time_s": 10.0, "ue_id": "ue_001", "x_m": 9.0, "y_m": 9.0, "z_m": 1.5, "vx_mps": 0.0, "vy_mps": 0.0, "vz_mps": 0.0},
+            {"time_s": 20.0, "ue_id": "ue_000", "x_m": 1.0, "y_m": 5.0, "z_m": 1.5, "vx_mps": 0.0, "vy_mps": 0.0, "vz_mps": 0.0},
+            {"time_s": 20.0, "ue_id": "ue_001", "x_m": 9.0, "y_m": 5.0, "z_m": 1.5, "vx_mps": 0.0, "vy_mps": 0.0, "vz_mps": 0.0},
+        ],
+    )
+    site_fields = ["site_id", "x_m", "y_m", "z_m", "yaw_deg", "pitch_deg", "mount_type", "enabled", "source", "selected"]
+    _write_csv(
+        output_dir / "candidate_ap_positions.csv",
+        site_fields,
+        [
+            {"site_id": "cand_a", "x_m": 0.0, "y_m": 0.0, "z_m": 1.5, "yaw_deg": 0.0, "pitch_deg": -10.0, "mount_type": "facade", "enabled": True, "source": "wall", "selected": True},
+            {"site_id": "cand_b", "x_m": 10.0, "y_m": 0.0, "z_m": 1.5, "yaw_deg": 180.0, "pitch_deg": -10.0, "mount_type": "facade", "enabled": True, "source": "wall", "selected": True},
+        ],
+    )
+    _write_csv(
+        output_dir / "central_ap_rooftop_candidates.csv",
+        site_fields,
+        [
+            {"site_id": "roof_a", "x_m": 5.0, "y_m": 5.0, "z_m": 13.5, "yaw_deg": 0.0, "pitch_deg": -10.0, "mount_type": "rooftop", "enabled": True, "source": "roof", "selected": True},
+        ],
+    )
+    _write_csv(
+        output_dir / "central_massive_mimo_ap.csv",
+        site_fields,
+        [
+            {"site_id": "central_ap_01", "x_m": 5.0, "y_m": 5.0, "z_m": 13.5, "yaw_deg": 0.0, "pitch_deg": -10.0, "mount_type": "rooftop", "enabled": True, "source": "selected:roof_a", "selected": True},
+        ],
+    )
+    _write_csv(
+        output_dir / "distributed_fixed_aps.csv",
+        site_fields,
+        [
+            {"site_id": "movable_ap_01", "x_m": 0.0, "y_m": 0.0, "z_m": 1.5, "yaw_deg": 0.0, "pitch_deg": -10.0, "mount_type": "facade", "enabled": True, "source": "seed:cand_a", "selected": True},
+        ],
+    )
+    _write_csv(
+        output_dir / "distributed_movable_aps.csv",
+        site_fields,
+        [
+            {"site_id": "movable_ap_01", "x_m": 10.0, "y_m": 0.0, "z_m": 1.5, "yaw_deg": 180.0, "pitch_deg": -10.0, "mount_type": "facade", "enabled": True, "source": "relocated:cand_b", "selected": True},
+        ],
+    )
+    np.savez_compressed(
+        output_dir / "fixed_coverage_map.npz",
+        path_gain=np.ones((1, 1), dtype=float),
+        rss=np.ones((1, 1), dtype=float),
+        sinr=np.ones((1, 1), dtype=float),
+        best_sinr_db=np.ones((1, 1), dtype=float),
+        cell_centers=np.zeros((1, 1, 3), dtype=float),
+    )
+    np.savez_compressed(
+        output_dir / "coverage_map.npz",
+        path_gain=2.0 * np.ones((1, 1), dtype=float),
+        rss=2.0 * np.ones((1, 1), dtype=float),
+        sinr=2.0 * np.ones((1, 1), dtype=float),
+        best_sinr_db=2.0 * np.ones((1, 1), dtype=float),
+        cell_centers=np.zeros((1, 1, 3), dtype=float),
     )
 
     _write_csv(
@@ -182,11 +293,35 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     assert artifacts["threshold_csv"].exists()
     assert artifacts["cdf_plot"].exists()
     assert artifacts["threshold_plot"].exists()
+    assert artifacts["esr_summary_csv"].exists()
+    assert artifacts["esr_timeseries_plot"].exists()
+    assert artifacts["esr_cdf_plot"].exists()
+    assert artifacts["esr_window_cdf_plot"].exists()
     rows = list(csv.DictReader(artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
     assert rows[0]["strategy"] == "central_massive_mimo"
     assert rows[1]["strategy"] == "distributed_fixed"
     assert rows[2]["strategy"] == "distributed_movable"
     assert "outage_at_3db" in rows[0]
+
+
+def test_run_scene_visualization_postprocess_rebuilds_visuals(tmp_path: Path, monkeypatch):
+    output_dir = _build_fake_output_dir(tmp_path)
+
+    def _fake_animate(*args, **kwargs):
+        target = Path(args[5]).with_suffix(".gif")
+        target.write_bytes(b"GIF89a")
+        return target
+
+    monkeypatch.setattr("cocoon_sionna.postprocess._animate_scene", _fake_animate)
+
+    artifacts = run_scene_visualization_postprocess(output_dir)
+
+    assert artifacts["scene_layout"].exists()
+    assert artifacts["trajectory_colormap"].exists()
+    assert artifacts["scene_animation"].exists()
+    assert artifacts["scene_animation_with_central"].exists()
+    assert artifacts["fixed_coverage_plot"].exists()
+    assert artifacts["coverage_plot"].exists()
 
 
 def test_run_schedule_analysis_and_manuscript_report(tmp_path: Path):
@@ -204,3 +339,20 @@ def test_run_schedule_analysis_and_manuscript_report(tmp_path: Path):
     assert report_artifacts["manifest"].exists()
     summary_text = report_artifacts["summary_markdown"].read_text(encoding="utf-8")
     assert "Best strategy: `distributed_movable`" in summary_text
+
+
+def test_run_visualization_postprocess_runs_bundle(tmp_path: Path, monkeypatch):
+    output_dir = _build_fake_output_dir(tmp_path)
+
+    def _fake_animate(*args, **kwargs):
+        target = Path(args[5]).with_suffix(".gif")
+        target.write_bytes(b"GIF89a")
+        return target
+
+    monkeypatch.setattr("cocoon_sionna.postprocess._animate_scene", _fake_animate)
+
+    artifacts = run_visualization_postprocess(output_dir)
+
+    assert artifacts["scene_scene_layout"].exists()
+    assert artifacts["analysis_summary_markdown"].exists()
+    assert artifacts["manifest"].exists()

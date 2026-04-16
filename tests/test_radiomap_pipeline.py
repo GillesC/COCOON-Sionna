@@ -74,7 +74,11 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
                 "tx_site_ids": [site.site_id for site in sites],
                 "rx_ue_ids": list(trajectory.ue_ids),
                 "times_s": trajectory.times_s,
+                "sinr_linear": np.full((len(trajectory.times_s), len(trajectory.ue_ids)), max(signal, 1.0), dtype=float),
                 "best_sinr_db": np.full((len(trajectory.times_s), len(trajectory.ue_ids)), signal, dtype=float),
+                "desired_power_w": np.full((len(trajectory.times_s), len(trajectory.ue_ids)), max(signal, 1.0), dtype=float),
+                "interference_power_w": np.zeros((len(trajectory.times_s), len(trajectory.ue_ids)), dtype=float),
+                "noise_power_w": 0.1 * np.ones((len(trajectory.times_s), len(trajectory.ue_ids)), dtype=float),
                 "link_power_w": np.full((len(trajectory.times_s), len(sites), len(trajectory.ue_ids)), max(signal, 1.0), dtype=float),
             }
 
@@ -176,7 +180,11 @@ def test_run_scenario_can_skip_csi_storage_and_full_exports(monkeypatch, tmp_pat
                 "tx_site_ids": [site.site_id for site in sites],
                 "rx_ue_ids": list(trajectory.ue_ids),
                 "times_s": trajectory.times_s,
+                "sinr_linear": np.ones((len(trajectory.times_s), len(trajectory.ue_ids)), dtype=float),
                 "best_sinr_db": np.full((len(trajectory.times_s), len(trajectory.ue_ids)), 1.0, dtype=float),
+                "desired_power_w": np.ones((len(trajectory.times_s), len(trajectory.ue_ids)), dtype=float),
+                "interference_power_w": np.zeros((len(trajectory.times_s), len(trajectory.ue_ids)), dtype=float),
+                "noise_power_w": 0.1 * np.ones((len(trajectory.times_s), len(trajectory.ue_ids)), dtype=float),
                 "link_power_w": np.ones((len(trajectory.times_s), len(sites), len(trajectory.ue_ids)), dtype=float),
             }
 
