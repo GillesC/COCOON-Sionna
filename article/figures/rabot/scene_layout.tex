@@ -1,0 +1,34 @@
+% Auto-generated PGFPlots figure for scene_layout
+% Requires: \usepackage{pgfplots,pgfplotstable,xcolor}
+% Optional: \usepgfplotslibrary{groupplots}
+\providecommand{\postprocessfigurewidth}{\linewidth}
+\pgfplotsset{compat=1.18}
+\definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
+\definecolor{DistributedFixedColor}{HTML}{2F5D8A}
+\definecolor{DistributedMovableColor}{HTML}{CB3A2A}
+\begin{tikzpicture}
+  \begin{axis}[
+    width=\postprocessfigurewidth,
+    height=0.78\postprocessfigurewidth,
+    title={Scene layout with AP placement and UE motion},
+    xlabel={x [m]},
+    ylabel={y [m]},
+    axis equal image,
+    grid=major,
+    legend pos=north east,
+    unbounded coords=jump,
+  ]
+    \addplot[black, line width=1.0pt] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_boundary.csv};
+    \addplot[gray!70, line width=0.8pt] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_buildings.csv};
+    \addplot[gray!50, line width=0.5pt] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_walk_edges.csv};
+    \addplot[orange!85!black, line width=0.9pt] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_trajectories.csv};
+    \addplot[only marks, mark=square*, mark size=2pt, color=DistributedFixedColor] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_candidate_sites.csv};
+    \addlegendentry{Candidate APs}
+    \addplot[only marks, mark=triangle*, mark size=3pt, color=DistributedMovableColor] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_selected_sites.csv};
+    \addlegendentry{Selected APs}
+    \addplot[only marks, mark=*, mark size=2.5pt, color=green!50!black] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_ue_start.csv};
+    \addlegendentry{UE start}
+    \addplot[only marks, mark=x, mark size=2.5pt, color=orange!85!black] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_ue_end.csv};
+    \addlegendentry{UE end}
+  \end{axis}
+\end{tikzpicture}

@@ -326,7 +326,10 @@ def test_run_scene_visualization_postprocess_rebuilds_visuals(tmp_path: Path, mo
 
     assert artifacts["scene_layout"].exists()
     assert artifacts["scene_layout_tikz"].exists()
-    assert "\\addplot" in artifacts["scene_layout_tikz"].read_text(encoding="utf-8")
+    scene_layout_tikz = artifacts["scene_layout_tikz"].read_text(encoding="utf-8")
+    assert "\\addplot" in scene_layout_tikz
+    assert "scene_layout_central_massive_mimo.csv" in scene_layout_tikz
+    assert "Central massive-MIMO BS" in scene_layout_tikz
     assert artifacts["trajectory_colormap"].exists()
     assert artifacts["trajectory_colormap_tikz"].exists()
     assert artifacts["scene_animation"].exists()

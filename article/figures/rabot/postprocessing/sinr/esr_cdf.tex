@@ -1,0 +1,26 @@
+% Auto-generated PGFPlots figure for esr_cdf
+% Requires: \usepackage{pgfplots,pgfplotstable,xcolor}
+% Optional: \usepgfplotslibrary{groupplots}
+\providecommand{\postprocessfigurewidth}{\linewidth}
+\pgfplotsset{compat=1.18}
+\definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
+\definecolor{DistributedFixedColor}{HTML}{2F5D8A}
+\definecolor{DistributedMovableColor}{HTML}{CB3A2A}
+\begin{tikzpicture}
+  \begin{axis}[
+    width=\postprocessfigurewidth,
+    height=0.62\postprocessfigurewidth,
+    title={ESR CDF},
+    xlabel={ESR [bit/s/Hz]},
+    ylabel={CDF},
+    grid=major,
+    legend pos=south east,
+  ]
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=CentralMassiveMimoColor,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_central_massive_mimo.csv};
+    \addlegendentry{Central massive MIMO}
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedFixedColor,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_fixed.csv};
+    \addlegendentry{Distributed fixed}
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable.csv};
+    \addlegendentry{Distributed movable}
+  \end{axis}
+\end{tikzpicture}

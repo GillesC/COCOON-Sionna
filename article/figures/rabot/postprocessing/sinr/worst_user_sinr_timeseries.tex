@@ -1,0 +1,34 @@
+% Auto-generated PGFPlots figure for worst_user_sinr_timeseries
+% Requires: \usepackage{pgfplots,pgfplotstable,xcolor}
+% Optional: \usepgfplotslibrary{groupplots}
+\providecommand{\postprocessfigurewidth}{\linewidth}
+\pgfplotsset{compat=1.18}
+\definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
+\definecolor{DistributedFixedColor}{HTML}{2F5D8A}
+\definecolor{DistributedMovableColor}{HTML}{CB3A2A}
+\begin{tikzpicture}
+  \begin{axis}[
+    width=\postprocessfigurewidth,
+    height=0.58\postprocessfigurewidth,
+    title={Worst-user SINR},
+    xlabel={Time [s]},
+    ylabel={Worst-user SINR [dB]},
+    grid=major,
+    legend pos=south east,
+    ymin=-129.28038839,
+    ymax=43.95352830,
+  ]
+    \addplot[gray, densely dotted, no markers] coordinates {(600.00000000,-129.28038839) (600.00000000,43.95352830)};
+    \addplot[gray, densely dotted, no markers] coordinates {(1200.00000000,-129.28038839) (1200.00000000,43.95352830)};
+    \addplot[gray, densely dotted, no markers] coordinates {(1800.00000000,-129.28038839) (1800.00000000,43.95352830)};
+    \addplot[gray, densely dotted, no markers] coordinates {(2400.00000000,-129.28038839) (2400.00000000,43.95352830)};
+    \addplot[gray, densely dotted, no markers] coordinates {(3000.00000000,-129.28038839) (3000.00000000,43.95352830)};
+    \addplot[gray, densely dotted, no markers] coordinates {(3600.00000000,-129.28038839) (3600.00000000,43.95352830)};
+    \addplot[no markers, line width=1.2pt, color=CentralMassiveMimoColor] table[x=time_s,y=worst_user_sinr_db,col sep=comma] {tikz_data/worst_user_sinr_central_massive_mimo.csv};
+    \addlegendentry{Central massive MIMO}
+    \addplot[no markers, line width=1.2pt, color=DistributedFixedColor] table[x=time_s,y=worst_user_sinr_db,col sep=comma] {tikz_data/worst_user_sinr_distributed_fixed.csv};
+    \addlegendentry{Distributed fixed}
+    \addplot[no markers, line width=1.2pt, color=DistributedMovableColor] table[x=time_s,y=worst_user_sinr_db,col sep=comma] {tikz_data/worst_user_sinr_distributed_movable.csv};
+    \addlegendentry{Distributed movable}
+  \end{axis}
+\end{tikzpicture}

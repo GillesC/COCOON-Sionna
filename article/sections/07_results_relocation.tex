@@ -9,7 +9,7 @@ The relocation figures complement the radio-performance results by quantifying t
         \centering
         \begingroup
         \def\postprocessfigurewidth{\linewidth}
-        \pgfplotsset{table/search path={../outputs/rabot/postprocessing/schedule}}
+        \pgfplotsset{table/search path={\ScheduleFigureRoot}}
         \input{\ScheduleOverviewFigurePath}
         \endgroup
         \caption{Strategy-level overview of total relocation distance and move fraction.}
@@ -19,7 +19,7 @@ The relocation figures complement the radio-performance results by quantifying t
         \centering
         \begingroup
         \def\postprocessfigurewidth{\linewidth}
-        \pgfplotsset{table/search path={../outputs/rabot/postprocessing/schedule}}
+        \pgfplotsset{table/search path={\ScheduleFigureRoot}}
         \input{\ScheduleHistogramFigurePath}
         \endgroup
         \caption{Distribution of relocation distances across observed \gls{ap} moves.}

@@ -1,0 +1,62 @@
+% Auto-generated PGFPlots figure for esr_time_conditioned_cdf
+% Requires: \usepackage{pgfplots,pgfplotstable,xcolor}
+% Optional: \usepgfplotslibrary{groupplots}
+\providecommand{\postprocessfigurewidth}{\linewidth}
+\pgfplotsset{compat=1.18}
+\definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
+\definecolor{DistributedFixedColor}{HTML}{2F5D8A}
+\definecolor{DistributedMovableColor}{HTML}{CB3A2A}
+\begin{tikzpicture}
+  \begin{axis}[
+    width=\postprocessfigurewidth,
+    height=0.66\postprocessfigurewidth,
+    title={Time-conditioned ESR CDF},
+    xlabel={ESR [bit/s/Hz]},
+    ylabel={CDF},
+    grid=major,
+    legend pos=south east,
+  ]
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w0.csv};
+    \addlegendentry{Central massive MIMO W0}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, dashed] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w1.csv};
+    \addlegendentry{Central massive MIMO W1}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, dotted] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w2.csv};
+    \addlegendentry{Central massive MIMO W2}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, dash dot] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w3.csv};
+    \addlegendentry{Central massive MIMO W3}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w4.csv};
+    \addlegendentry{Central massive MIMO W4}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, dashed] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w5.csv};
+    \addlegendentry{Central massive MIMO W5}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, dotted] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w6.csv};
+    \addlegendentry{Central massive MIMO W6}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w0.csv};
+    \addlegendentry{Distributed fixed W0}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, dashed] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w1.csv};
+    \addlegendentry{Distributed fixed W1}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, dotted] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w2.csv};
+    \addlegendentry{Distributed fixed W2}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, dash dot] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w3.csv};
+    \addlegendentry{Distributed fixed W3}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w4.csv};
+    \addlegendentry{Distributed fixed W4}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, dashed] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w5.csv};
+    \addlegendentry{Distributed fixed W5}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, dotted] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w6.csv};
+    \addlegendentry{Distributed fixed W6}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w0.csv};
+    \addlegendentry{Distributed movable W0}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, dashed] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w1.csv};
+    \addlegendentry{Distributed movable W1}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, dotted] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w2.csv};
+    \addlegendentry{Distributed movable W2}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, dash dot] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w3.csv};
+    \addlegendentry{Distributed movable W3}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w4.csv};
+    \addlegendentry{Distributed movable W4}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, dashed] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w5.csv};
+    \addlegendentry{Distributed movable W5}
+    \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, dotted] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w6.csv};
+    \addlegendentry{Distributed movable W6}
+  \end{axis}
+\end{tikzpicture}

@@ -275,9 +275,10 @@ def test_scene_layout_and_animation_are_written(tmp_path, monkeypatch):
         CandidateSite("site_b", 8.0, 8.0, 5.0, 0.0, -10.0, "pole"),
     ]
     selected_sites = [base_sites[1]]
+    reference_sites = [CandidateSite("central_ap_01", 5.0, 5.0, 13.5, 0.0, -90.0, "rooftop")]
 
     layout_path = tmp_path / "scene_layout.png"
-    _plot_scene_layout(metadata, graph, base_sites, selected_sites, trajectory, layout_path)
+    _plot_scene_layout(metadata, graph, base_sites, selected_sites, trajectory, layout_path, reference_sites=reference_sites)
 
     monkeypatch.setattr("cocoon_sionna.pipeline.shutil.which", lambda _name: None)
     animation_path = _animate_scene(metadata, graph, base_sites, selected_sites, trajectory, tmp_path / "scene_animation.mp4")

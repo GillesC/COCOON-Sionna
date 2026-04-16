@@ -730,7 +730,9 @@ def _write_scene_layout_tikz(
     end_csv: Path | None,
     candidate_csv: Path | None,
     selected_csv: Path | None,
+    reference_csv: Path | None,
     selected_strategy: str,
+    reference_label: str = "Central massive-MIMO BS",
 ) -> Path:
     body = [
         "\\begin{tikzpicture}",
@@ -770,6 +772,14 @@ def _write_scene_layout_tikz(
                 "    \\addplot[only marks, mark=triangle*, mark size=3pt, color=%s] table[x=x_m,y=y_m,col sep=comma] {%s};"
                 % (_tikz_color_name(selected_strategy), _relative_posix_path(selected_csv, path.parent)),
                 "    \\addlegendentry{Selected APs}",
+            ]
+        )
+    if reference_csv is not None:
+        body.extend(
+            [
+                "    \\addplot[only marks, mark=star, mark size=4pt, color=CentralMassiveMimoColor, mark options={solid, fill=CentralMassiveMimoColor, draw=black}] table[x=x_m,y=y_m,col sep=comma] {%s};"
+                % _relative_posix_path(reference_csv, path.parent),
+                f"    \\addlegendentry{{{reference_label}}}",
             ]
         )
     if start_csv is not None:
@@ -1836,6 +1846,11 @@ def run_scene_visualization_postprocess(
         ["x_m", "y_m"],
         [{"x_m": float(site.x_m), "y_m": float(site.y_m)} for site in best_sites],
     )
+    reference_csv = _write_csv_rows(
+        tikz_data_dir / "scene_layout_central_massive_mimo.csv",
+        ["x_m", "y_m"],
+        [{"x_m": float(site.x_m), "y_m": float(site.y_m)} for site in central_sites],
+    )
     trajectory_overlay_csv = _write_csv_rows(
         tikz_data_dir / "coverage_trajectory_points.csv",
         ["x_m", "y_m"],
@@ -1853,6 +1868,8 @@ def run_scene_visualization_postprocess(
         best_sites,
         trajectory,
         output_dir / "scene_layout.png",
+        reference_sites=central_sites,
+        reference_label="Central massive-MIMO BS",
     )
     _add_plot_artifact(
         artifacts,
@@ -1868,7 +1885,9 @@ def run_scene_visualization_postprocess(
             end_csv=ue_end_csv,
             candidate_csv=candidate_csv,
             selected_csv=selected_best_csv,
+            reference_csv=reference_csv,
             selected_strategy=best_strategy,
+            reference_label="Central massive-MIMO BS",
         ),
     )
     _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")

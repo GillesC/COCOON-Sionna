@@ -1,0 +1,26 @@
+% Auto-generated PGFPlots figure for per_user_mean_sinr_boxplot
+% Requires: \usepackage{pgfplots,pgfplotstable,xcolor}
+% Optional: \usepgfplotslibrary{groupplots}
+\providecommand{\postprocessfigurewidth}{\linewidth}
+\pgfplotsset{compat=1.18}
+\definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
+\definecolor{DistributedFixedColor}{HTML}{2F5D8A}
+\definecolor{DistributedMovableColor}{HTML}{CB3A2A}
+\begin{tikzpicture}
+  \begin{axis}[
+    width=\postprocessfigurewidth,
+    height=0.62\postprocessfigurewidth,
+    title={Per-user mean SINR},
+    ylabel={Deployment Strategy},
+    grid=major,
+    xmin=0,
+    % ytick={1,2,3},
+    % yticklabels={{Central massive MIMO},{Distributed\\ fixed},{Distributed\\ movable}},
+    % xticklabel style={rotate=15,anchor=east},
+    xlabel={Per-user mean SINR [dB]},
+  ]
+    \addplot[boxplot, boxplot/draw position=1, draw=CentralMassiveMimoColor, fill=CentralMassiveMimoColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_central_massive_mimo.csv};
+    \addplot[boxplot, boxplot/draw position=2, draw=DistributedFixedColor, fill=DistributedFixedColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_fixed.csv};
+    \addplot[boxplot, boxplot/draw position=3, draw=DistributedMovableColor, fill=DistributedMovableColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable.csv};
+  \end{axis}
+\end{tikzpicture}

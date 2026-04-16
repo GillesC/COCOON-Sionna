@@ -417,10 +417,13 @@ def _plot_scene_layout(
     selected_sites: list[CandidateSite],
     trajectory,
     output_path: Path,
+    reference_sites: list[CandidateSite] | None = None,
+    reference_label: str = "Central massive-MIMO BS",
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(9, 7))
     _draw_scene_background(ax, metadata, graph)
+    display_sites = [*base_sites, *(reference_sites or [])]
 
     if base_sites:
         ax.scatter(
@@ -444,6 +447,18 @@ def _plot_scene_layout(
             linewidths=0.5,
             label="Selected APs",
             zorder=5,
+        )
+    if reference_sites:
+        ax.scatter(
+            [site.x_m for site in reference_sites],
+            [site.y_m for site in reference_sites],
+            c="#d4a017",
+            s=140,
+            marker="*",
+            edgecolors="black",
+            linewidths=0.5,
+            label=reference_label,
+            zorder=6,
         )
 
     positions = np.asarray(trajectory.positions_m[..., :2], dtype=float)
@@ -474,7 +489,7 @@ def _plot_scene_layout(
             zorder=6,
         )
 
-    _set_scene_axes(ax, metadata, graph, positions=positions, sites=base_sites)
+    _set_scene_axes(ax, metadata, graph, positions=positions, sites=display_sites)
     ax.set_title("Scene layout with AP placement and UE motion")
     ax.legend(loc="best")
     fig.tight_layout()
