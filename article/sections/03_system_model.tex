@@ -43,6 +43,8 @@ Let $\mathcal{C}$ denote the wall-mounted candidate pool and let $\mathcal{S}_w 
 
 \subsection{Relocation Heuristic}
 
+At an intuitive level, the relocation mechanism repeats the following loop. The system first identifies which user snapshots are geographically close to each candidate wall-mounted site. It then uses the channel quality measured for those local user snapshots to decide which candidate sites are most promising, and finally reassigns the movable \glspl{ap} to a new subset of locations. Recent channel observations are given more importance than older ones, so the controller reacts to evolving user concentrations without discarding past information entirely. Hence, position information determines which samples are considered local, whereas the actual ranking is driven by the corresponding \gls{csi}-derived link quality.
+
 The movable distributed strategy is implemented as a windowed receding-horizon controller. Let $\{t_n\}_{n=0}^{N_t-1}$ denote the simulated snapshot times and let $T_{\mathrm{rel}}$ denote the relocation interval. The trajectory is partitioned into disjoint decision windows
 \begin{equation}
     \mathcal{W}_w = \left\{n \in \{0,\ldots,N_t-1\} :
@@ -62,15 +64,15 @@ where $\mathbf{r}_{u,n}$ denotes the horizontal position of \gls{ue} $u$ at time
 \begin{equation}
     \mathcal{N}_K(\mathcal{S},w) = \bigcup_{c \in \mathcal{S}} \mathcal{N}_K(c,w).
 \end{equation}
-This restriction makes the relocation rule sensitive to the CSI observed near the candidate sites rather than to globally averaged scene statistics.
+This restriction makes the relocation rule sensitive to the CSI observed near the candidate sites rather than to globally averaged scene statistics. In other words, user positions are used to construct the local sampling mask, but they do not enter the score directly.
 
-For every queried subset $\mathcal{S}$, the implementation computes the corresponding \gls{ap}-to-\gls{ue} \gls{csi}/\gls{sinr} segment over the current window and stores it in a per-subset cache. If $\gamma_{u,n}(\mathcal{S})$ denotes the best-link \gls{sinr} sample produced when subset $\mathcal{S}$ is active, the historical record available when deciding window $w$ is
+For every queried subset $\mathcal{S}$, the implementation computes the corresponding \gls{ap}-to-\gls{ue} \gls{csi}/\gls{sinr} segment over the current window and stores it in a per-subset cache. Thus, the relocation heuristic is driven by channel-response information associated with the candidate subset under evaluation, not by geometry alone. If $\gamma_{u,n}(\mathcal{S})$ denotes the best-link \gls{sinr} sample produced when subset $\mathcal{S}$ is active, the historical record available when deciding window $w$ is
 \begin{equation}
     \mathcal{H}_w(\mathcal{S}) =
     \left\{(t_n,\gamma_{u,n}(\mathcal{S})) :
     u \in \mathcal{U}, n \in \mathcal{W}_j, j = 0,\ldots,w\right\}.
 \end{equation}
-When the same subset is revisited later, previously computed window segments are reused and only the new current-window segment is appended. Thus, the historical objective remains consistent while avoiding repeated ray-tracing evaluations for past windows.
+When the same subset is revisited later, previously computed window segments are reused and only the new current-window segment is appended. Thus, the historical objective remains consistent while avoiding repeated ray-tracing evaluations for past windows. In the present implementation, the relocation score is formed from these \gls{ap}-to-\gls{ue} channel samples only; \gls{ue}-to-\gls{ue} \gls{csi} is reserved for the final trajectory-level comparison score, and \gls{ap}-to-\gls{ap} \gls{csi} is exported for analysis rather than for online relocation control.
 
 Historical CSI is discounted through exponential aging. If a sample was observed at time $t_n$ and the relocation decision for window $w$ is taken at $t_w^{\mathrm{end}}$, the associated weight is
 \begin{equation}
