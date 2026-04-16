@@ -230,8 +230,6 @@ _minted*
 *.tmp
 *.temp
 
-# generated PDFs (optional – remove if you want PDFs tracked)
-*.pdf
 
 # editor
 *~
