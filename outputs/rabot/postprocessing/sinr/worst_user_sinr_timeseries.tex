@@ -15,19 +15,15 @@
     ylabel={Worst-user SINR [dB]},
     grid=major,
     legend pos=south east,
-    ymin=-127.99338184,
-    ymax=21.21641243,
+    ymin=-129.28038839,
+    ymax=43.95352830,
   ]
-    \addplot[gray, densely dotted, no markers] coordinates {(60.00000000,-127.99338184) (60.00000000,21.21641243)};
-    \addplot[gray, densely dotted, no markers] coordinates {(120.00000000,-127.99338184) (120.00000000,21.21641243)};
-    \addplot[gray, densely dotted, no markers] coordinates {(180.00000000,-127.99338184) (180.00000000,21.21641243)};
-    \addplot[gray, densely dotted, no markers] coordinates {(240.00000000,-127.99338184) (240.00000000,21.21641243)};
-    \addplot[gray, densely dotted, no markers] coordinates {(300.00000000,-127.99338184) (300.00000000,21.21641243)};
-    \addplot[gray, densely dotted, no markers] coordinates {(360.00000000,-127.99338184) (360.00000000,21.21641243)};
-    \addplot[gray, densely dotted, no markers] coordinates {(420.00000000,-127.99338184) (420.00000000,21.21641243)};
-    \addplot[gray, densely dotted, no markers] coordinates {(480.00000000,-127.99338184) (480.00000000,21.21641243)};
-    \addplot[gray, densely dotted, no markers] coordinates {(540.00000000,-127.99338184) (540.00000000,21.21641243)};
-    \addplot[gray, densely dotted, no markers] coordinates {(600.00000000,-127.99338184) (600.00000000,21.21641243)};
+    \addplot[gray, densely dotted, no markers] coordinates {(600.00000000,-129.28038839) (600.00000000,43.95352830)};
+    \addplot[gray, densely dotted, no markers] coordinates {(1200.00000000,-129.28038839) (1200.00000000,43.95352830)};
+    \addplot[gray, densely dotted, no markers] coordinates {(1800.00000000,-129.28038839) (1800.00000000,43.95352830)};
+    \addplot[gray, densely dotted, no markers] coordinates {(2400.00000000,-129.28038839) (2400.00000000,43.95352830)};
+    \addplot[gray, densely dotted, no markers] coordinates {(3000.00000000,-129.28038839) (3000.00000000,43.95352830)};
+    \addplot[gray, densely dotted, no markers] coordinates {(3600.00000000,-129.28038839) (3600.00000000,43.95352830)};
     \addplot[no markers, line width=1.2pt, color=CentralMassiveMimoColor] table[x=time_s,y=worst_user_sinr_db,col sep=comma] {tikz_data/worst_user_sinr_central_massive_mimo.csv};
     \addlegendentry{Central massive MIMO}
     \addplot[no markers, line width=1.2pt, color=DistributedFixedColor] table[x=time_s,y=worst_user_sinr_db,col sep=comma] {tikz_data/worst_user_sinr_distributed_fixed.csv};

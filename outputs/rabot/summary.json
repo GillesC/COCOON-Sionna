@@ -6,7 +6,7 @@
   "csi_exports_enabled": false,
   "csi_cache_enabled": false,
   "baseline_strategy": "distributed_fixed",
-  "best_strategy": "distributed_fixed",
+  "best_strategy": "distributed_movable",
   "scene_animation_strategy": "distributed_movable",
   "scene_animation_with_central_massive_mimo": "",
   "scene_animation_speedup": 10.0,
@@ -15,7 +15,7 @@
     "scene_metadata_path": "/home/dramco_spark/COCOON-Sionna/outputs/rabot/scene_metadata.json",
     "walk_graph_path": "/home/dramco_spark/COCOON-Sionna/outputs/rabot/walk_graph.json"
   },
-  "window_interval_s": 60.0,
+  "window_interval_s": 600.0,
   "candidate_site_ids": [
     "wall_Blok_A_00_01",
     "wall_Blok_A_01_01",
@@ -141,10 +141,10 @@
         "wall_building_452650244_00_00",
         "wall_building_452653890_01_01"
       ],
-      "score": -0.9036380301809496,
-      "outage": 0.18032786885245902,
-      "percentile_10_db": -15.938483640186591,
-      "peer_tiebreak": 7.361402068083904,
+      "score": 0.43541245098625375,
+      "outage": 0.05228848821081831,
+      "percentile_10_db": 5.647331170174962,
+      "peer_tiebreak": 20.533438068832396,
       "capped": false,
       "evaluated_combinations": 0,
       "selection_mode": "seed_constellation"
@@ -167,19 +167,19 @@
         "movable_ap_06"
       ],
       "final_candidate_ids": [
-        "wall_Blok_A_02_01",
         "wall_Blok_D_02_00",
-        "wall_Blok_D_02_01",
         "wall_Blok_E_07_01",
         "wall_Blok_E_07_02",
+        "wall_Blok_G_02_01",
+        "wall_Blok_H_02_01",
         "wall_Blok_L_1_00_00"
       ],
-      "score": -5.933512648864123,
-      "outage": 0.12950819672131147,
-      "percentile_10_db": -120.0,
-      "peer_tiebreak": 19.599554785718897,
+      "score": 0.7169597959852907,
+      "outage": 0.04313453536754508,
+      "percentile_10_db": 9.101473910814983,
+      "peer_tiebreak": 30.502063581208656,
       "capped": false,
-      "evaluated_combinations": 5511,
+      "evaluated_combinations": 3507,
       "selection_mode": "windowed_local_csi_history",
       "historical_csi_decay_rate_per_s": 0.011552453009332421
     },
@@ -193,10 +193,10 @@
       "final_candidate_ids": [
         "roof_Blok_A"
       ],
-      "score": -7.191881188577857,
-      "outage": 0.6213114754098361,
-      "percentile_10_db": -120.0,
-      "peer_tiebreak": -57.05697131680205,
+      "score": -1.2701641232092291,
+      "outage": 0.20083217753120666,
+      "percentile_10_db": -23.208172102567527,
+      "peer_tiebreak": 9.107665945035412,
       "capped": false,
       "evaluated_combinations": 0,
       "selection_mode": "fixed_center_rooftop",

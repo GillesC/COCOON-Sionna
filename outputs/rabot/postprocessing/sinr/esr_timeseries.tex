@@ -15,19 +15,15 @@
     ylabel={ESR [bit/s/Hz]},
     grid=major,
     legend pos=south east,
-    ymin=-0.18520995,
-    ymax=159.17378701,
+    ymin=15.60696462,
+    ymax=171.67122062,
   ]
-    \addplot[gray, densely dotted, no markers] coordinates {(60.00000000,-0.18520995) (60.00000000,159.17378701)};
-    \addplot[gray, densely dotted, no markers] coordinates {(120.00000000,-0.18520995) (120.00000000,159.17378701)};
-    \addplot[gray, densely dotted, no markers] coordinates {(180.00000000,-0.18520995) (180.00000000,159.17378701)};
-    \addplot[gray, densely dotted, no markers] coordinates {(240.00000000,-0.18520995) (240.00000000,159.17378701)};
-    \addplot[gray, densely dotted, no markers] coordinates {(300.00000000,-0.18520995) (300.00000000,159.17378701)};
-    \addplot[gray, densely dotted, no markers] coordinates {(360.00000000,-0.18520995) (360.00000000,159.17378701)};
-    \addplot[gray, densely dotted, no markers] coordinates {(420.00000000,-0.18520995) (420.00000000,159.17378701)};
-    \addplot[gray, densely dotted, no markers] coordinates {(480.00000000,-0.18520995) (480.00000000,159.17378701)};
-    \addplot[gray, densely dotted, no markers] coordinates {(540.00000000,-0.18520995) (540.00000000,159.17378701)};
-    \addplot[gray, densely dotted, no markers] coordinates {(600.00000000,-0.18520995) (600.00000000,159.17378701)};
+    \addplot[gray, densely dotted, no markers] coordinates {(600.00000000,15.60696462) (600.00000000,171.67122062)};
+    \addplot[gray, densely dotted, no markers] coordinates {(1200.00000000,15.60696462) (1200.00000000,171.67122062)};
+    \addplot[gray, densely dotted, no markers] coordinates {(1800.00000000,15.60696462) (1800.00000000,171.67122062)};
+    \addplot[gray, densely dotted, no markers] coordinates {(2400.00000000,15.60696462) (2400.00000000,171.67122062)};
+    \addplot[gray, densely dotted, no markers] coordinates {(3000.00000000,15.60696462) (3000.00000000,171.67122062)};
+    \addplot[gray, densely dotted, no markers] coordinates {(3600.00000000,15.60696462) (3600.00000000,171.67122062)};
     \addplot[no markers, line width=0.5pt, opacity=0.35, color=CentralMassiveMimoColor] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_central_massive_mimo.csv};
     \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedFixedColor] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_fixed.csv};
     \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedMovableColor] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable.csv};
