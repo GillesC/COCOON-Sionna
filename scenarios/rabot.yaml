@@ -88,6 +88,7 @@ solver:
 
 placement:
   # This three-mode comparison assumes all distributed APs are part of the same budget.
+  # The placement model uses a rooftop proxy for the central mode, not a full single co-located massive-MIMO array placement model.
   num_fixed_aps: 0
   # Number of distributed APs used by both the fixed and movable distributed modes.
   num_movable_aps: 6
@@ -102,6 +103,8 @@ placement:
   candidate_wall_height_m: 1.5
   candidate_wall_offset_m: 0.25
   window_interval_s: 60.0
+  # Exponential decay for historical CSI weighting during movable-AP relocation.
+  historical_csi_decay_rate_per_s: 0.011552453009332421
   random_seed: 11
   heuristic_k_nearest: 10
   exact_max_iterations: 50000
@@ -111,7 +114,7 @@ candidate_sites_path: data/candidate_sites/rabot_seed_sites.csv
 
 outputs:
   output_dir: outputs/rabot
-  # Playback speed multiplier for the exported scene animation.
+  # Playback speed multiplier for postprocessed scene animations.
   scene_animation_speedup: 10.0
   # Set to false to skip CSI snapshot NPZ exports and the full CFR/CIR/tau export path.
   write_csi_exports: false

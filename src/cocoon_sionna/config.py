@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 from pathlib import Path
 from typing import Any
 
@@ -140,6 +141,7 @@ class PlacementConfig:
     candidate_wall_height_m: float = 1.5
     candidate_wall_offset_m: float = 0.25
     window_interval_s: float = 6.0
+    historical_csi_decay_rate_per_s: float = math.log(2.0) / 6.0
     random_seed: int = 7
     heuristic_k_nearest: int = 8
     exact_max_iterations: int = 50000
@@ -328,6 +330,7 @@ def _load_solver(data: dict[str, Any], access_point_spec: AccessPointSpec) -> So
 
 
 def _load_placement(data: dict[str, Any]) -> PlacementConfig:
+    window_interval_s = float(data.get("window_interval_s", 6.0))
     return PlacementConfig(
         num_fixed_aps=int(data.get("num_fixed_aps", 0)),
         num_movable_aps=int(data.get("num_movable_aps", 3)),
@@ -340,7 +343,10 @@ def _load_placement(data: dict[str, Any]) -> PlacementConfig:
         candidate_corner_clearance_m=float(data.get("candidate_corner_clearance_m", 2.0)),
         candidate_wall_height_m=float(data.get("candidate_wall_height_m", 1.5)),
         candidate_wall_offset_m=float(data.get("candidate_wall_offset_m", 0.25)),
-        window_interval_s=float(data.get("window_interval_s", 6.0)),
+        window_interval_s=window_interval_s,
+        historical_csi_decay_rate_per_s=float(
+            data.get("historical_csi_decay_rate_per_s", math.log(2.0) / max(window_interval_s, 1e-9))
+        ),
         random_seed=int(data.get("random_seed", 7)),
         heuristic_k_nearest=int(data.get("heuristic_k_nearest", 8)),
         exact_max_iterations=int(data.get("exact_max_iterations", 50000)),

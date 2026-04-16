@@ -121,11 +121,11 @@ def _query_nvidia_compute_capabilities() -> tuple[float, ...] | None:
     return capabilities or None
 
 
-def _zf_sinr_from_mimo_channel(
+def _zf_sinr_terms_from_mimo_channel(
     channel: np.ndarray,
     total_tx_power_w: float,
     noise_power_w: float,
-) -> np.ndarray:
+) -> dict[str, np.ndarray]:
     channel = np.asarray(channel, dtype=np.complex128)
     if channel.ndim != 4:
         raise ValueError(f"Unsupported MIMO channel rank: {channel.ndim}")
@@ -133,7 +133,13 @@ def _zf_sinr_from_mimo_channel(
     num_users, num_rx_ports, num_transmitters, num_tx_ports = channel.shape
     total_tx_ports = num_transmitters * num_tx_ports
     if num_users == 0 or total_tx_ports == 0:
-        return np.zeros(num_users, dtype=float)
+        empty = np.zeros(num_users, dtype=float)
+        return {
+            "desired_power_w": empty,
+            "interference_power_w": empty,
+            "noise_power_w": np.full(num_users, float(noise_power_w), dtype=float),
+            "sinr": empty,
+        }
 
     effective_channel = np.zeros((num_users, total_tx_ports), dtype=np.complex128)
     for user_idx in range(num_users):
@@ -146,7 +152,13 @@ def _zf_sinr_from_mimo_channel(
 
     active_users = np.linalg.norm(effective_channel, axis=1) > 0.0
     if not np.any(active_users):
-        return np.zeros(num_users, dtype=float)
+        empty = np.zeros(num_users, dtype=float)
+        return {
+            "desired_power_w": empty,
+            "interference_power_w": empty,
+            "noise_power_w": np.full(num_users, float(noise_power_w), dtype=float),
+            "sinr": empty,
+        }
 
     active_channel = effective_channel[active_users]
     precoder = np.linalg.pinv(active_channel, rcond=1e-9)
@@ -161,17 +173,43 @@ def _zf_sinr_from_mimo_channel(
     interference_power = np.clip(total_received_power - desired_power, 0.0, None)
     active_sinr = desired_power / (interference_power + noise_power_w)
 
+    desired = np.zeros(num_users, dtype=float)
+    interference = np.zeros(num_users, dtype=float)
+    noise = np.full(num_users, float(noise_power_w), dtype=float)
     sinr = np.zeros(num_users, dtype=float)
+    desired[active_users] = desired_power.real
+    interference[active_users] = interference_power.real
     sinr[active_users] = active_sinr.real
-    return sinr
+    return {
+        "desired_power_w": desired,
+        "interference_power_w": interference,
+        "noise_power_w": noise,
+        "sinr": sinr,
+    }
 
 
-def _zf_sinr_from_paths(paths, total_tx_power_w: float, noise_power_w: float) -> np.ndarray:
+def _zf_sinr_from_mimo_channel(
+    channel: np.ndarray,
+    total_tx_power_w: float,
+    noise_power_w: float,
+) -> np.ndarray:
+    return _zf_sinr_terms_from_mimo_channel(
+        channel,
+        total_tx_power_w=total_tx_power_w,
+        noise_power_w=noise_power_w,
+    )["sinr"]
+
+
+def _zf_sinr_terms_from_paths(paths, total_tx_power_w: float, noise_power_w: float) -> dict[str, np.ndarray]:
     coeff = _complex_from_tuple(paths.a)
     if coeff.ndim != 5:
         raise ValueError(f"Unsupported path coefficient rank: {coeff.ndim}")
     narrowband_channel = np.sum(coeff, axis=-1)
-    return _zf_sinr_from_mimo_channel(narrowband_channel, total_tx_power_w=total_tx_power_w, noise_power_w=noise_power_w)
+    return _zf_sinr_terms_from_mimo_channel(
+        narrowband_channel,
+        total_tx_power_w=total_tx_power_w,
+        noise_power_w=noise_power_w,
+    )
 
 
 def _probe_gpu_variant(variant: str) -> tuple[bool, str]:
@@ -554,6 +592,9 @@ class SionnaRtRunner:
             cir_snapshots = []
             tau_snapshots = []
             link_powers = []
+            desired_power_snapshots = []
+            interference_power_snapshots = []
+            noise_power_snapshots = []
             zf_sinr_snapshots = []
             total_tx_power_w = len(sites) * _tx_power_w(self.radio.tx_power_dbm_ap)
             noise_power_w = _noise_power_w(self.radio)
@@ -588,17 +629,30 @@ class SionnaRtRunner:
                         cir_snapshots.append(cir_complex)
                         tau_snapshots.append(np.asarray(tau))
                     link_powers.append(self._link_power_from_paths(paths))
-                    zf_sinr_snapshots.append(
-                        _zf_sinr_from_paths(paths, total_tx_power_w=total_tx_power_w, noise_power_w=noise_power_w)
+                    sinr_terms = _zf_sinr_terms_from_paths(
+                        paths,
+                        total_tx_power_w=total_tx_power_w,
+                        noise_power_w=noise_power_w,
                     )
+                    desired_power_snapshots.append(sinr_terms["desired_power_w"])
+                    interference_power_snapshots.append(sinr_terms["interference_power_w"])
+                    noise_power_snapshots.append(sinr_terms["noise_power_w"])
+                    zf_sinr_snapshots.append(sinr_terms["sinr"])
                     progress.update(1)
             power = np.stack(link_powers, axis=0) * _tx_power_w(self.radio.tx_power_dbm_ap)
+            desired_power = np.stack(desired_power_snapshots, axis=0)
+            interference_power = np.stack(interference_power_snapshots, axis=0)
+            noise_power = np.stack(noise_power_snapshots, axis=0)
             sinr = np.stack(zf_sinr_snapshots, axis=0)
             result = {
                 "tx_site_ids": [site.site_id for site in sites],
                 "rx_ue_ids": list(trajectory.ue_ids),
                 "times_s": trajectory.times_s,
+                "sinr_linear": sinr,
                 "best_sinr_db": 10.0 * np.log10(np.clip(sinr, 1e-12, None)),
+                "desired_power_w": desired_power,
+                "interference_power_w": interference_power,
+                "noise_power_w": noise_power,
                 "link_power_w": power,
             }
             if export_full:

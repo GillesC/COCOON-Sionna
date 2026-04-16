@@ -6,17 +6,19 @@ pipeline built on top of Sionna RT. The project:
 - building an OSM-derived outdoor scene for KU Leuven Gent Campus Rabot
 - simulating pedestrian mobility and pairwise CSI for `AP-AP`, `AP-UE`, and `UE-UE`
 - generating wall-mounted candidate AP positions at `1.5 m`
-- generating one rooftop central-AP candidate per building
+- generating one rooftop central-AP proxy from the building nearest the area center
 - comparing three deployment modes over the same CSI-derived objective
+- exporting reusable simulation data first and generating figures in postprocessing
 
 At a high level, each scenario does the following:
 
-1. Build or load an outdoor scene and its walk graph.
+1. Build or load a prebuilt outdoor scene and its walk graph.
 2. Generate wall-mounted candidate AP positions over building boundaries at `1.5 m`.
 3. Generate UE trajectories over the walkable space.
 4. Compute path-based wireless channels with Sionna RT.
 5. Compare `central_massive_mimo`, `distributed_fixed`, and `distributed_movable`.
-6. Export CSI, optional coverage maps, trajectories, per-mode summaries, and placement schedules.
+6. Export CSI, optional coverage-map data, trajectories, per-mode summaries, and placement schedules.
+7. Rebuild figures, animations, and ESR analyses from the stored outputs via postprocessing.
 
 ## System Model
 
@@ -125,25 +127,22 @@ The downlink SINR of UE `k` is therefore
 }.
 ```
 
-Under perfect CSI and ideal ZF, the multi-user interference terms vanish,
-` \mathbf{h}_k^{\mathsf{H}}\mathbf{f}_i = 0` for `i \neq k`, so
+The implementation keeps the interference term explicitly and exports
+`desired_power_w`, `interference_power_w`, `noise_power_w`, linear SINR, and
+SINR in dB for every evaluated UE snapshot. It does not rely on the
+interference-free simplification.
 
-```math
-\mathrm{SINR}^{\mathrm{DL}}_k
-=
-\frac{
-    p_k \left|\mathbf{h}_k^{\mathsf{H}}\mathbf{f}_k\right|^2
-}{
-    \sigma^2
-}.
-```
-
-In the current implementation, the total AP power budget is the sum of all AP
-transmit powers and is split equally across active user streams.
+The total AP power budget is the sum of all AP transmit powers and is split
+equally across active user streams.
 
 ## Placement Model
 
 Each run compares three placement strategies over the same deployment model.
+
+The Placement Model does **not** optimize a true massive-MIMO single
+co-located array. The `central_massive_mimo` mode is a rooftop proxy with the
+same total antenna-element and transmit-power budget as the distributed
+deployments.
 
 - `num_fixed_aps`: APs that remain active and stationary for the full scenario
 - `num_movable_aps`: APs selected from the candidate AP positions
@@ -177,6 +176,7 @@ placement:
   num_fixed_aps: 0
   num_movable_aps: 4
   window_interval_s: 10.0
+  historical_csi_decay_rate_per_s: 0.0693
   candidate_wall_height_m: 1.5
   candidate_wall_spacing_m: 8.0
   candidate_corner_clearance_m: 2.0
@@ -201,15 +201,14 @@ reference.
 
 Each scenario compares these three deployment modes:
 
-- `central_massive_mimo`: evaluate one rooftop central-AP candidate per
-  building, place the AP at the building representative rooftop point, mount it
-  `1.5 m` above the roof, and pick the best-scoring rooftop over the full UE
-  trajectory
+- `central_massive_mimo`: select the building whose rooftop representative
+  point is nearest the area center, place one rooftop proxy AP there, mount it
+  `1.5 m` above the roof, and orient it toward the area center
 - `distributed_fixed`: sample `N` distributed APs once from the wall-mounted
   candidate AP positions and keep that constellation fixed for the full run
 - `distributed_movable`: keep the same distributed AP budget, but relocate the
-  APs per window using the current local-CSI heuristic over the wall-mounted
-  candidate AP positions
+  APs per window using a local-CSI heuristic with exponentially decayed
+  historical CSI over the wall-mounted candidate AP positions
 
 ### Placement Scoring
 
@@ -222,32 +221,35 @@ Placement evaluation uses CSI only:
    depend on a full radio map.
 
 The `distributed_movable` heuristic uses the `K` nearest UE snapshots around
-each candidate AP position and ranks candidates by their local `P10` SINR. This
-targets a 90%-user SINR floor rather than peak local performance. The
-comparison summary still reports the full trajectory-level score for each mode.
+each candidate AP position, aggregates local CSI over time with exponential
+decay, and ranks candidates by their local weighted `P10` SINR. This targets a
+90%-user SINR floor while discounting stale CSI. The comparison summary still
+reports the full trajectory-level score for each mode.
 
 ### Evaluation Flow Per Scenario
 
 With ray tracing enabled, a full scenario run proceeds as follows:
 
-1. Build or load the scene and mobility graph.
+1. Build the scene once with `build-scene`, then load the prebuilt scene and mobility graph.
 2. Generate distributed candidate AP positions along the walls at `1.5 m`.
-3. Generate one rooftop central-AP candidate per building.
+3. Generate one rooftop central-AP proxy candidate from the building nearest the area center.
 4. Generate UE trajectories.
 5. Compute the CSI used for scoring:
    `UE-UE`, `AP-UE`, and exported `AP-AP`.
 6. Build the distributed baseline as the initial sampled AP constellation.
 7. Compare the three modes:
    `distributed_fixed` stays static, `distributed_movable` relocates APs per
-   window, and `central_massive_mimo` evaluates the rooftop central-AP
-   candidates over the full trajectory.
-8. Export per-mode placements, schedules, optional coverage maps, SINR
+   window with exponentially decayed historical CSI, and
+   `central_massive_mimo` evaluates the fixed rooftop proxy over the full
+   trajectory.
+8. Export per-mode placements, schedules, optional coverage-map data, SINR
    comparisons, and summary metrics.
+9. Generate figures and animations separately with `postprocess`.
 
 When `solver.enable_ray_tracing: false`, the pipeline skips CSI-driven
 placement scoring but still exports trajectories, AP layouts, schedules, and
-scene visualizations. When `coverage.enabled: false`, the pipeline still runs
-the placement comparison but skips coverage-map computation and exports.
+summary data. When `coverage.enabled: false`, the pipeline still runs the
+placement comparison but skips coverage-map computation and exports.
 
 ## Layout
 
@@ -313,6 +315,12 @@ Run the full Rabot placement-strategy comparison:
 .venv\Scripts\python.exe -m cocoon_sionna.cli run scenarios/rabot.yaml
 ```
 
+Rebuild all figures and analyses from the stored outputs:
+
+```powershell
+.venv\Scripts\python.exe -m cocoon_sionna.cli postprocess scenarios/rabot.yaml
+```
+
 For faster placement-comparison runs with less disk I/O, you can disable CSI
 artifact writes in the scenario YAML:
 
@@ -323,7 +331,7 @@ outputs:
 
 ## Outputs
 
-Each scenario writes to its configured output directory and produces:
+Each `run` writes to its configured output directory and produces reusable data:
 
 - `candidate_ap_positions.csv`
 - `central_ap_rooftop_candidates.csv`
@@ -338,13 +346,8 @@ Each scenario writes to its configured output directory and produces:
 - `infra_csi_snapshots.npz`
 - `peer_csi_snapshots.npz`
 - `trajectory.csv`
-- `scene_render.png`
-- `scene_camera.mp4`
-- `scene_layout.png`
-- `scene_animation.mp4` or `scene_animation.gif`
-- `scene_animation_with_central_massive_mimo.mp4` or `.gif`
-- `trajectory_colormap.png`
-- `user_sinr_cdf.png`
+- `scene_metadata.json`
+- `walk_graph.json`
 - `user_sinr_summary.csv`
 - `user_sinr_timeseries.csv`
 - `user_sinr_snapshots.npz`
@@ -358,9 +361,7 @@ When `solver.enable_ray_tracing: true` and `coverage.enabled: true`, the output
 directory also includes:
 
 - `coverage_map.npz`
-- `coverage_map.png`
 - `fixed_coverage_map.npz`
-- `fixed_coverage_map.png`
 
 `candidate_ap_positions.csv` stores the wall-generated distributed candidate AP
 positions.
@@ -375,39 +376,30 @@ schedule can change per relocation window.
 `strategy_comparison.csv` reports the per-mode score, outage, and percentile
 metrics.
 `summary.json` records the same comparison metrics together with the selected
-compute backend, Mitsuba variant, and the central-AP antenna/power budget.
+compute backend, Mitsuba variant, the central-AP antenna/power budget, copied
+scene-context paths, and the postprocess animation speed.
 `infra_csi_snapshots.npz` contains `AP-AP` and `AP-UE` CSI exports for the
-evaluated placements.
+evaluated placements, including explicit desired/interference/noise power terms
+and linear SINR for `AP-UE`.
 `peer_csi_snapshots.npz` contains `UE-UE` CSI exports and the peer-derived
 weighting used in the placement score.
-`scene_render.png` is a rendered view of the loaded Sionna scene using
-`scene.render(...)`, with the selected APs and the active UE snapshot shown as
-radio devices inside the 3D environment.
-`scene_camera.mp4` is a rendered 3D camera video of the loaded Sionna scene,
-using a fixed oblique camera while the UE devices move over time. This output
-requires `ffmpeg`.
-`scene_layout.png` shows a top-down view of the loaded scene, including the walk
-graph, building footprints when available, candidate AP positions,
-selected placements, and UE trajectories.
-`scene_animation.mp4` animates the moving UEs over the loaded scene together
-with the AP placements. If `ffmpeg` is unavailable, the pipeline writes
-`scene_animation.gif` instead. Playback speed is controlled via
-`outputs.scene_animation_speedup` in the scenario YAML, so you can export the
-animation faster than real time, e.g. `10.0` for `10x`.
-`scene_animation_with_central_massive_mimo.mp4` renders the same top-down
-animation, but also overlays the fixed central massive-MIMO BS location as a
-reference marker.
-`trajectory_colormap.png` shows the full UE trajectories in a single PNG, with a
-colormap over time so the motion direction can be followed visually. Initial UE
-seeding is spread across the walk graph, and route selection biases toward
-underexplored walkable edges to improve overall area coverage.
-`user_sinr_cdf.png` compares the CDF of instantaneous distributed-MIMO zero-forcing
-SINR samples across all user snapshots for the compared placement strategies.
 `user_sinr_timeseries.csv` stores per-snapshot per-user SINR rows for each
 strategy, including an explicit `snapshot_index` column for postprocessing.
 `user_sinr_snapshots.npz` stores the same SINR data in array form with
-`snapshot_index`, `times_s`, `ue_ids`, `strategy_names`, and one
-`<strategy>_sinr_db` matrix per strategy.
+`snapshot_index`, `times_s`, `ue_ids`, `strategy_names`, and per-strategy
+`sinr_linear`, `sinr_db`, `desired_power_w`, `interference_power_w`, and
+`noise_power_w` matrices.
+
+The `postprocess` command recreates visual outputs such as:
+
+- `scene_layout.png`
+- `scene_animation.mp4` or `scene_animation.gif`
+- `scene_animation_with_central_massive_mimo.mp4` or `.gif`
+- `trajectory_colormap.png`
+- `coverage_map.png`
+- `fixed_coverage_map.png`
+- `user_sinr_cdf.png`
+- ESR time-series/CDF figures and the full analysis bundle under `postprocessing/`
 
 ## Postprocessing
 
@@ -420,8 +412,10 @@ python scripts/run_all_postprocessing.py scenarios/rabot.yaml
 This resolves the scenario output directory automatically and runs the full
 postprocessing bundle in one pass:
 
+- scene-layout, animation, trajectory, and coverage visualizations
 - strategy summary tables
 - SINR snapshot analysis tables and figures
+- ESR time-series, ESR CDF, and time-conditioned ESR CDF figures
 - AP relocation schedule analysis
 - a combined manuscript summary and manifest
 
@@ -455,13 +449,15 @@ For OSM-built scenes, the generated Sionna assets are emitted as:
 - Candidate AP positions are wall-based by default and use
   `candidate_wall_height_m: 1.5`.
 - The central AP is rooftop-mounted `1.5 m` above the roof and is selected from
-  one rooftop candidate per building.
+  one fixed building: the rooftop representative point nearest the area center.
 - The distributed baseline is the initial sampled AP constellation and remains
   fixed for the full run.
 - `distributed_movable` reuses the same distributed AP budget but can relocate
-  the APs per optimization window.
+  the APs per optimization window using exponentially decayed historical CSI.
 - The central AP is normalized to the same total antenna-element budget and the
   same total transmit-power budget as the distributed deployments.
+- The Placement Model does not optimize a true single co-located massive-MIMO
+  array; `central_massive_mimo` is a normalized rooftop proxy.
 - v1 is outdoor-only and ignores vegetation, weather, traffic, and indoor areas.
 - The Rabot boundary and AP site files are seed inputs and can be tightened
   later without changing code.

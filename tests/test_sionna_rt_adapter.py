@@ -12,6 +12,7 @@ from cocoon_sionna.sionna_rt_adapter import (
     _resolve_builtin_scene_path,
     _stack_padded,
     _zf_sinr_from_mimo_channel,
+    _zf_sinr_terms_from_mimo_channel,
     SionnaRtRunner,
     SceneInputs,
 )
@@ -59,6 +60,21 @@ def test_zf_sinr_from_mimo_channel_supports_receive_combining():
     sinr = _zf_sinr_from_mimo_channel(channel, total_tx_power_w=1.0, noise_power_w=0.25)
 
     np.testing.assert_allclose(sinr, np.array([4.0]))
+
+
+def test_zf_sinr_terms_from_mimo_channel_retains_interference_term():
+    channel = np.zeros((3, 1, 1, 2), dtype=np.complex128)
+    channel[0, 0, 0, :] = np.array([1.0, 0.0])
+    channel[1, 0, 0, :] = np.array([0.0, 1.0])
+    channel[2, 0, 0, :] = np.array([1.0, 1.0])
+
+    terms = _zf_sinr_terms_from_mimo_channel(channel, total_tx_power_w=3.0, noise_power_w=0.5)
+
+    assert np.any(terms["interference_power_w"] > 0.0)
+    np.testing.assert_allclose(
+        terms["sinr"],
+        terms["desired_power_w"] / (terms["interference_power_w"] + terms["noise_power_w"]),
+    )
 
 
 def test_parse_nvidia_compute_capabilities_ignores_invalid_rows():

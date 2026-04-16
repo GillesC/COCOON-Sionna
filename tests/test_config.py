@@ -1,3 +1,5 @@
+import math
+
 from cocoon_sionna.config import load_scenario_config
 
 
@@ -22,6 +24,7 @@ def test_load_rabot_config():
     assert config.placement.heuristic_k_nearest == 10
     assert config.mobility.speed_variation_fraction == 0.15
     assert config.placement.window_interval_s == 60.0
+    assert math.isclose(config.placement.historical_csi_decay_rate_per_s, math.log(2.0) / 60.0)
     assert config.outputs.write_csi_exports is False
     assert config.outputs.enable_csi_cache is False
 

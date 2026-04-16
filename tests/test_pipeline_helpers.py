@@ -13,6 +13,7 @@ from cocoon_sionna.pipeline import (
     _animate_scene,
     _build_csi_cache_key,
     _cache_optional_artifact,
+    _historical_local_percentile_10,
     _factor_central_ap_array,
     _generate_rooftop_candidates,
     _instantaneous_user_sinr_samples,
@@ -97,12 +98,18 @@ def test_central_ap_radio_matches_total_antenna_and_power_budget():
 
 def test_generate_rooftop_candidates_uses_representative_point_and_roof_offset():
     metadata = {
+        "boundary_local": [[0.0, 0.0], [20.0, 0.0], [20.0, 10.0], [0.0, 10.0], [0.0, 0.0]],
         "buildings": [
             {
                 "name": "blok_a",
                 "height_m": 12.0,
-                "polygon_local": [[0.0, 0.0], [8.0, 0.0], [8.0, 4.0], [0.0, 4.0], [0.0, 0.0]],
-            }
+                "polygon_local": [[2.0, 1.0], [4.0, 1.0], [4.0, 3.0], [2.0, 3.0], [2.0, 1.0]],
+            },
+            {
+                "name": "blok_b",
+                "height_m": 9.0,
+                "polygon_local": [[6.0, 6.0], [8.0, 6.0], [8.0, 8.0], [6.0, 8.0], [6.0, 6.0]],
+            },
         ]
     }
 
@@ -110,14 +117,14 @@ def test_generate_rooftop_candidates_uses_representative_point_and_roof_offset()
 
     assert len(candidates) == 1
     candidate = candidates[0]
-    assert candidate.site_id == "roof_blok_a"
-    assert np.isclose(candidate.x_m, 4.0)
-    assert np.isclose(candidate.y_m, 2.0)
-    assert np.isclose(candidate.z_m, 13.5)
-    assert candidate.yaw_deg == 0.0
-    assert candidate.pitch_deg == -90.0
+    assert candidate.site_id == "roof_blok_b"
+    assert np.isclose(candidate.x_m, 7.0)
+    assert np.isclose(candidate.y_m, 7.0)
+    assert np.isclose(candidate.z_m, 10.5)
+    assert np.isclose(candidate.yaw_deg, np.degrees(np.arctan2(-2.0, 3.0)))
+    assert np.isclose(candidate.pitch_deg, -10.0)
     assert candidate.mount_type == "rooftop"
-    assert candidate.source == "roof_metadata"
+    assert candidate.source == "roof_metadata:center_building"
 
 
 def test_relocate_sites_preserves_ap_ids_and_matches_nearest_candidates():
@@ -163,6 +170,40 @@ def test_nearest_snapshot_mask_and_local_percentile():
 
     assert mask.tolist() == [True, False, True, False]
     assert np.isclose(_local_percentile_10(np.array([[1.0, 100.0], [3.0, 200.0]]), mask), 1.2)
+
+
+def test_historical_local_percentile_10_applies_exponential_decay():
+    site = CandidateSite("cand", 0.0, 0.0, 1.5, 0.0, -10.0, "wall")
+    history_segments = [
+        {
+            "trajectory": Trajectory(
+                times_s=np.array([0.0]),
+                ue_ids=["ue_0"],
+                positions_m=np.array([[[0.0, 0.0, 1.5]]]),
+                velocities_mps=np.zeros((1, 1, 3), dtype=float),
+            ),
+            "ap_ue": {"best_sinr_db": np.array([[-20.0]], dtype=float)},
+        },
+        {
+            "trajectory": Trajectory(
+                times_s=np.array([10.0]),
+                ue_ids=["ue_0"],
+                positions_m=np.array([[[0.0, 0.0, 1.5]]]),
+                velocities_mps=np.zeros((1, 1, 3), dtype=float),
+            ),
+            "ap_ue": {"best_sinr_db": np.array([[10.0]], dtype=float)},
+        },
+    ]
+
+    reduced = _historical_local_percentile_10(
+        history_segments,
+        ("cand",),
+        {"cand": site},
+        k_nearest=1,
+        decay_rate_per_s=0.5,
+    )
+
+    assert reduced == 10.0
 
 
 def test_should_render_sionna_scene_artifacts_skips_cpu_llvm_backend():
@@ -441,13 +482,25 @@ def test_write_user_sinr_artifacts_exports_snapshot_csv_and_npz(tmp_path):
     )
     strategy_ap_ue = {
         "central_massive_mimo": {
+            "sinr_linear": np.array([[10.0, 100.0], [1000.0, 10000.0]], dtype=float),
             "best_sinr_db": np.array([[1.0, 2.0], [3.0, 4.0]], dtype=float),
+            "desired_power_w": np.array([[1.0, 1.5], [2.0, 2.5]], dtype=float),
+            "interference_power_w": np.array([[0.1, 0.2], [0.3, 0.4]], dtype=float),
+            "noise_power_w": np.array([[0.01, 0.01], [0.01, 0.01]], dtype=float),
         },
         "distributed_fixed": {
+            "sinr_linear": np.array([[100000.0, 1000000.0], [10000000.0, 100000000.0]], dtype=float),
             "best_sinr_db": np.array([[5.0, 6.0], [7.0, 8.0]], dtype=float),
+            "desired_power_w": np.array([[3.0, 3.5], [4.0, 4.5]], dtype=float),
+            "interference_power_w": np.array([[0.5, 0.6], [0.7, 0.8]], dtype=float),
+            "noise_power_w": np.array([[0.02, 0.02], [0.02, 0.02]], dtype=float),
         },
         "distributed_movable": {
+            "sinr_linear": np.array([[1000000000.0, 10000000000.0], [100000000000.0, 1000000000000.0]], dtype=float),
             "best_sinr_db": np.array([[9.0, 10.0], [11.0, 12.0]], dtype=float),
+            "desired_power_w": np.array([[5.0, 5.5], [6.0, 6.5]], dtype=float),
+            "interference_power_w": np.array([[0.9, 1.0], [1.1, 1.2]], dtype=float),
+            "noise_power_w": np.array([[0.03, 0.03], [0.03, 0.03]], dtype=float),
         },
     }
 
@@ -470,6 +523,8 @@ def test_write_user_sinr_artifacts_exports_snapshot_csv_and_npz(tmp_path):
         np.array(["central_massive_mimo", "distributed_fixed", "distributed_movable"], dtype=object),
     )
     np.testing.assert_allclose(payload["central_massive_mimo_sinr_db"], np.array([[1.0, 2.0], [3.0, 4.0]], dtype=float))
+    np.testing.assert_allclose(payload["central_massive_mimo_sinr_linear"], np.array([[10.0, 100.0], [1000.0, 10000.0]], dtype=float))
+    np.testing.assert_allclose(payload["central_massive_mimo_interference_power_w"], np.array([[0.1, 0.2], [0.3, 0.4]], dtype=float))
     np.testing.assert_allclose(payload["distributed_fixed_sinr_db"], np.array([[5.0, 6.0], [7.0, 8.0]], dtype=float))
     np.testing.assert_allclose(payload["distributed_movable_sinr_db"], np.array([[9.0, 10.0], [11.0, 12.0]], dtype=float))
     assert (tmp_path / "user_sinr_summary.csv").exists()
@@ -530,7 +585,11 @@ def test_csi_cache_roundtrip(tmp_path):
         "tx_site_ids": ["site_a"],
         "rx_ue_ids": ["ue_000"],
         "times_s": trajectory.times_s,
+        "sinr_linear": np.ones((2, 1), dtype=float),
         "best_sinr_db": np.ones((2, 1), dtype=float),
+        "desired_power_w": np.ones((2, 1), dtype=float),
+        "interference_power_w": np.zeros((2, 1), dtype=float),
+        "noise_power_w": 0.1 * np.ones((2, 1), dtype=float),
         "link_power_w": np.ones((2, 1, 1), dtype=float),
     }
     fixed_ap_ap = {
@@ -608,7 +667,11 @@ def test_csi_cache_roundtrip_without_radiomap(tmp_path):
         "tx_site_ids": ["site_a"],
         "rx_ue_ids": ["ue_000"],
         "times_s": trajectory.times_s,
+        "sinr_linear": np.ones((2, 1), dtype=float),
         "best_sinr_db": np.ones((2, 1), dtype=float),
+        "desired_power_w": np.ones((2, 1), dtype=float),
+        "interference_power_w": np.zeros((2, 1), dtype=float),
+        "noise_power_w": 0.1 * np.ones((2, 1), dtype=float),
         "link_power_w": np.ones((2, 1, 1), dtype=float),
     }
     fixed_ap_ap = {

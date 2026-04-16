@@ -11,7 +11,7 @@ from cocoon_sionna.config import (
     SceneConfig,
     SolverConfig,
 )
-from cocoon_sionna.pipeline import build_scene_only
+from cocoon_sionna.pipeline import build_scene_only, run_scenario
 from cocoon_sionna.scene_builder import OSMSceneBuilder, SceneArtifacts
 
 
@@ -89,3 +89,31 @@ def test_osm_scene_builder_preserves_existing_meshes_when_fetch_fails(monkeypatc
 
     assert old_mesh.exists()
     assert old_mesh.read_text(encoding="utf-8") == "old"
+
+
+def test_run_scenario_requires_prebuilt_osm_scene_assets(tmp_path: Path):
+    config = ScenarioConfig(
+        name="test_osm_missing",
+        scene=SceneConfig(
+            kind="osm",
+            boundary_bbox=(3.706070, 51.058969, 3.712513, 51.060592),
+            scene_output_dir=tmp_path / "generated",
+            rebuild=False,
+        ),
+        access_point_spec=AccessPointSpec(),
+        radio=RadioConfig(),
+        coverage=CoverageConfig(enabled=False),
+        mobility=MobilityConfig(source="graph"),
+        solver=SolverConfig(enable_ray_tracing=False),
+        placement=PlacementConfig(),
+        candidate_sites_path=tmp_path / "sites.csv",
+        outputs=OutputConfig(output_dir=tmp_path / "outputs"),
+        scenario_path=tmp_path / "scenario.yaml",
+    )
+
+    try:
+        run_scenario(config)
+    except FileNotFoundError as exc:
+        assert "build-scene" in str(exc)
+    else:
+        raise AssertionError("Expected run_scenario() to require prebuilt OSM assets")
