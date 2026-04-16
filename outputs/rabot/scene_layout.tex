@@ -26,6 +26,8 @@
     \addlegendentry{Candidate APs}
     \addplot[only marks, mark=triangle*, mark size=3pt, color=DistributedMovableColor] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_selected_sites.csv};
     \addlegendentry{Selected APs}
+    \addplot[only marks, mark=star, mark size=4pt, color=CentralMassiveMimoColor, mark options={solid, fill=CentralMassiveMimoColor, draw=black}] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_central_massive_mimo.csv};
+    \addlegendentry{Central massive-MIMO BS}
     \addplot[only marks, mark=*, mark size=2.5pt, color=green!50!black] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_ue_start.csv};
     \addlegendentry{UE start}
     \addplot[only marks, mark=x, mark size=2.5pt, color=orange!85!black] table[x=x_m,y=y_m,col sep=comma] {tikz_data/scene_layout_ue_end.csv};

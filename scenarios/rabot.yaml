@@ -115,7 +115,7 @@ candidate_sites_path: data/candidate_sites/rabot_seed_sites.csv
 outputs:
   output_dir: outputs/rabot
   # Playback speed multiplier for postprocessed scene animations.
-  scene_animation_speedup: 10.0
+  scene_animation_speedup: 200.0
   # Set to false to skip CSI snapshot NPZ exports and the full CFR/CIR/tau export path.
   write_csi_exports: false
   # Set to false to skip reading/writing the `.csi_cache` directory.
