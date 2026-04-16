@@ -3,10 +3,31 @@
 
 Because Cocoon is motivated by repositionable low-height infrastructure, the manuscript should not stop at radio-quality figures. The scheduling outputs quantify how often the movable \glspl{ap} change position and how much displacement each strategy induces. This is the current paper's first bridge between radio performance and physical practicality.
 
-\PaperSubfigurePair[t]
-  {\ScheduleOverviewFigurePath}{Strategy-level overview of total relocation distance and move fraction.}{fig:schedule_overview}
-  {\ScheduleHistogramFigurePath}{Distribution of relocation distances across observed \gls{ap} moves.}{fig:schedule_histogram}
-  {Relocation-cost figures used to interpret how much physical infrastructure movement is required by the compared placement strategies.}{fig:schedule_pair}
+\begin{figure*}[t]
+    \centering
+    \begin{subfigure}[t]{0.47\textwidth}
+        \centering
+        \begingroup
+        \def\postprocessfigurewidth{\linewidth}
+        \pgfplotsset{table/search path={../outputs/rabot/postprocessing/schedule}}
+        \input{\ScheduleOverviewFigurePath}
+        \endgroup
+        \caption{Strategy-level overview of total relocation distance and move fraction.}
+        \label{fig:schedule_overview}
+    \end{subfigure}\hfill
+    \begin{subfigure}[t]{0.47\textwidth}
+        \centering
+        \begingroup
+        \def\postprocessfigurewidth{\linewidth}
+        \pgfplotsset{table/search path={../outputs/rabot/postprocessing/schedule}}
+        \input{\ScheduleHistogramFigurePath}
+        \endgroup
+        \caption{Distribution of relocation distances across observed \gls{ap} moves.}
+        \label{fig:schedule_histogram}
+    \end{subfigure}
+    \caption{Relocation-cost figures used to interpret how much physical infrastructure movement is required by the compared placement strategies.}
+    \label{fig:schedule_pair}
+\end{figure*}
 
 The final prose here should connect \cref{fig:schedule_pair} to the Cocoon motivation without overselling what the current simulations can prove. At this stage, the section only needs to establish that the repository already provides reproducible schedule summaries and that these figures belong in the manuscript alongside the \gls{sinr} results.
 

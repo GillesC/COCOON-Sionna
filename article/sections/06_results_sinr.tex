@@ -3,17 +3,71 @@
 
 This section should collect the radio-performance figures produced by postprocessing, but it should not interpret them until the Rabot scenario is rerun. The role of the present draft is to anchor each figure to a precise artifact path and to explain what each placeholder represents.
 
-\PaperSubfigurePair[t]
-  {\SINRCdfFigurePath}{Empirical \gls{sinr} distribution across all user snapshots and compared placement strategies. Use the postprocessed \texttt{sinr\_cdf\_publication} asset here.}{fig:sinr_cdf}
-  {\PerUserMeanBoxplotFigurePath}{Per-user mean \gls{sinr} boxplot across strategies. Use this figure to summarize the distribution of user-level averages without adding interpretation yet.}{fig:sinr_boxplot}
-  {First pair of radio-performance placeholders. The left panel is the global \gls{sinr} distribution, and the right panel is the per-user mean boxplot.}{fig:sinr_primary_pair}
+\begin{figure*}[t]
+    \centering
+    \begin{subfigure}[t]{0.47\textwidth}
+        \centering
+        \begingroup
+        \def\postprocessfigurewidth{\linewidth}
+        \pgfplotsset{table/search path={../outputs/rabot/postprocessing/sinr}}
+        \input{\SINRCdfFigurePath}
+        \endgroup
+        \caption{Empirical \gls{sinr} distribution across all user snapshots and compared placement strategies. Use the postprocessed \texttt{sinr\_cdf\_publication} asset here.}
+        \label{fig:sinr_cdf}
+    \end{subfigure}\hfill
+    \begin{subfigure}[t]{0.47\textwidth}
+        \centering
+        \begingroup
+        \def\postprocessfigurewidth{\linewidth}
+        \pgfplotsset{table/search path={../outputs/rabot/postprocessing/sinr}}
+        \input{\PerUserMeanBoxplotFigurePath}
+        \endgroup
+        \caption{Per-user mean \gls{sinr} boxplot across strategies. Use this figure to summarize the distribution of user-level averages without adding interpretation yet.}
+        \label{fig:sinr_boxplot}
+    \end{subfigure}
+    \caption{First pair of radio-performance placeholders. The left panel is the global \gls{sinr} distribution, and the right panel is the per-user mean boxplot.}
+    \label{fig:sinr_primary_pair}
+\end{figure*}
 
-\PaperSubfigurePair[t]
-  {\ESRTimeseriesFigurePath}{\gls{esr} over time. Keep the relocation markers and step-like window averages visible, but defer any claim about increase or decrease until the outputs are rerun.}{fig:esr_timeseries}
-  {\ESRCdfFigurePath}{\gls{esr} \gls{cdf} across all evaluated snapshots. Use the \texttt{esr\_cdf} artifact directly.}{fig:esr_cdf}
-  {Second pair of radio-performance placeholders. These panels report the \gls{esr} time evolution and the global \gls{esr} distribution.}{fig:esr_primary_pair}
+\begin{figure*}[t]
+    \centering
+    \begin{subfigure}[t]{0.47\textwidth}
+        \centering
+        \begingroup
+        \def\postprocessfigurewidth{\linewidth}
+        \pgfplotsset{table/search path={../outputs/rabot/postprocessing/sinr}}
+        \input{\ESRTimeseriesFigurePath}
+        \endgroup
+        \caption{\gls{esr} over time. Keep the relocation markers and step-like window averages visible, but defer any claim about increase or decrease until the outputs are rerun.}
+        \label{fig:esr_timeseries}
+    \end{subfigure}\hfill
+    \begin{subfigure}[t]{0.47\textwidth}
+        \centering
+        \begingroup
+        \def\postprocessfigurewidth{\linewidth}
+        \pgfplotsset{table/search path={../outputs/rabot/postprocessing/sinr}}
+        \input{\ESRCdfFigurePath}
+        \endgroup
+        \caption{\gls{esr} \gls{cdf} across all evaluated snapshots. Use the \texttt{esr\_cdf} artifact directly.}
+        \label{fig:esr_cdf}
+    \end{subfigure}
+    \caption{Second pair of radio-performance placeholders. These panels report the \gls{esr} time evolution and the global \gls{esr} distribution.}
+    \label{fig:esr_primary_pair}
+\end{figure*}
 
-\PaperFigure[t][0.90\linewidth]{\SINRWorstUserFigurePath}{Optional supporting placeholder for worst-user \gls{sinr} over time. Keep this panel if temporal robustness of the weakest user becomes part of the final narrative.}{fig:sinr_worst_user}
+\begin{figure}[t]
+    \centering
+    \begin{minipage}{0.90\linewidth}
+        \centering
+        \begingroup
+        \def\postprocessfigurewidth{\linewidth}
+        \pgfplotsset{table/search path={../outputs/rabot/postprocessing/sinr}}
+        \input{\SINRWorstUserFigurePath}
+        \endgroup
+    \end{minipage}
+    \caption{Optional supporting placeholder for worst-user \gls{sinr} over time. Keep this panel if temporal robustness of the weakest user becomes part of the final narrative.}
+    \label{fig:sinr_worst_user}
+\end{figure}
 
 \begin{table}[t]
     \centering
@@ -23,11 +77,11 @@ This section should collect the radio-performance figures produced by postproces
         \toprule
         Manuscript placeholder & Expected postprocessed artifact \\
         \midrule
-        Global \gls{sinr} distribution & \texttt{postprocessing/sinr/sinr\_cdf\_publication.png} \\
-        Per-user mean boxplot & \texttt{postprocessing/sinr/per\_user\_mean\_sinr\_boxplot.png} \\
-        \gls{esr} time series & \texttt{postprocessing/sinr/esr\_timeseries.png} \\
-        \gls{esr} \gls{cdf} & \texttt{postprocessing/sinr/esr\_cdf.png} \\
-        Optional worst-user view & \texttt{postprocessing/sinr/worst\_user\_sinr\_timeseries.png} \\
+        Global \gls{sinr} distribution & \texttt{postprocessing/sinr/sinr\_cdf\_publication.tex} \\
+        Per-user mean boxplot & \texttt{postprocessing/sinr/per\_user\_mean\_sinr\_boxplot.tex} \\
+        \gls{esr} time series & \texttt{postprocessing/sinr/esr\_timeseries.tex} \\
+        \gls{esr} \gls{cdf} & \texttt{postprocessing/sinr/esr\_cdf.tex} \\
+        Optional worst-user view & \texttt{postprocessing/sinr/worst\_user\_sinr\_timeseries.tex} \\
         \bottomrule
     \end{tabular}
 \end{table}
