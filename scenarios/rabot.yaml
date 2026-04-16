@@ -45,7 +45,7 @@ mobility:
   num_users: 10
   # Simulation horizon and temporal resolution in seconds.
   duration_s: 600.0
-  step_s: 10.0
+  step_s: 5.0
   # Allow users to move through open outdoor space, not only along OSM paths.
   allow_open_area: true
   # Spacing and connectivity of the free-space mobility roadmap, in meters.
@@ -71,7 +71,7 @@ solver:
   # Require the CUDA backend and fail fast instead of falling back to CPU LLVM.
   require_gpu: true
   # Sionna path/coverage tracing depth and Monte Carlo sample budgets.
-  path_max_depth: 2
+  path_max_depth: 5
   radio_map_max_depth: 2
   samples_per_src: 4000
   samples_per_tx: 6000
@@ -79,10 +79,10 @@ solver:
   synthetic_array: true
   los: true
   specular_reflection: true
-  diffuse_reflection: false
+  diffuse_reflection: true
   refraction: true
-  diffraction: false
-  edge_diffraction: false
+  diffraction: true
+  edge_diffraction: true
   diffraction_lit_region: true
   seed: 23
 
