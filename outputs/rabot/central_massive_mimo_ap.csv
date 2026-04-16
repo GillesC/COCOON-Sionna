@@ -1,0 +1,2 @@
+site_id,x_m,y_m,z_m,yaw_deg,pitch_deg,mount_type,enabled,source,selected
+central_ap_01,-10.69973556713559,-14.315614351537079,13.5,53.226232889431735,-10.0,rooftop,True,selected:roof_Blok_A,True

@@ -1,0 +1,4 @@
+strategy,strategy_label,num_windows,num_movable_aps,num_transitions,num_moves,move_fraction,total_distance_m,mean_move_distance_m,median_move_distance_m,max_move_distance_m,unique_positions_used
+central_massive_mimo,Central massive MIMO,11,1,10,0,0.0,0.0,0.0,0.0,0.0,1
+distributed_fixed,Distributed fixed,11,6,60,0,0.0,0.0,0.0,0.0,0.0,6
+distributed_movable,Distributed movable,11,6,60,52,0.8666666666666667,4050.5957252294947,77.89607163902875,73.10613716629942,204.31643391935827,52

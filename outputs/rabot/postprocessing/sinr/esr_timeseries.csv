@@ -1,0 +1,184 @@
+strategy,strategy_label,snapshot_index,time_s,window_index,esr_bps_hz,window_mean_esr_bps_hz
+central_massive_mimo,Central massive MIMO,0,0.0,0,22.9227013581886,22.772554474228272
+central_massive_mimo,Central massive MIMO,1,10.0,0,26.12148844815063,22.772554474228272
+central_massive_mimo,Central massive MIMO,2,20.0,0,16.950685193499343,22.772554474228272
+central_massive_mimo,Central massive MIMO,3,30.0,0,13.574780928649652,22.772554474228272
+central_massive_mimo,Central massive MIMO,4,40.0,0,24.06920028744897,22.772554474228272
+central_massive_mimo,Central massive MIMO,5,50.0,0,32.996470629432416,22.772554474228272
+central_massive_mimo,Central massive MIMO,6,60.0,1,43.30989813010027,33.89903185853424
+central_massive_mimo,Central massive MIMO,7,70.0,1,25.381348516867476,33.89903185853424
+central_massive_mimo,Central massive MIMO,8,80.0,1,21.932999691838535,33.89903185853424
+central_massive_mimo,Central massive MIMO,9,90.0,1,22.05317024481107,33.89903185853424
+central_massive_mimo,Central massive MIMO,10,100.0,1,46.658591364961765,33.89903185853424
+central_massive_mimo,Central massive MIMO,11,110.0,1,44.058183202626296,33.89903185853424
+central_massive_mimo,Central massive MIMO,12,120.0,2,29.388060520844718,32.56526183164122
+central_massive_mimo,Central massive MIMO,13,130.0,2,50.3842334617642,32.56526183164122
+central_massive_mimo,Central massive MIMO,14,140.0,2,33.75111027652394,32.56526183164122
+central_massive_mimo,Central massive MIMO,15,150.0,2,9.75504536100278,32.56526183164122
+central_massive_mimo,Central massive MIMO,16,160.0,2,36.79361082781885,32.56526183164122
+central_massive_mimo,Central massive MIMO,17,170.0,2,35.319510541892846,32.56526183164122
+central_massive_mimo,Central massive MIMO,18,180.0,3,35.26931168783166,36.4694396620177
+central_massive_mimo,Central massive MIMO,19,190.0,3,42.9485844793552,36.4694396620177
+central_massive_mimo,Central massive MIMO,20,200.0,3,33.256951888380364,36.4694396620177
+central_massive_mimo,Central massive MIMO,21,210.0,3,28.923710150917564,36.4694396620177
+central_massive_mimo,Central massive MIMO,22,220.0,3,37.35816924867525,36.4694396620177
+central_massive_mimo,Central massive MIMO,23,230.0,3,41.059910516946125,36.4694396620177
+central_massive_mimo,Central massive MIMO,24,240.0,4,55.58303201827515,52.78972724683555
+central_massive_mimo,Central massive MIMO,25,250.0,4,56.94902864057673,52.78972724683555
+central_massive_mimo,Central massive MIMO,26,260.0,4,43.48847761845601,52.78972724683555
+central_massive_mimo,Central massive MIMO,27,270.0,4,57.7490260899271,52.78972724683555
+central_massive_mimo,Central massive MIMO,28,280.0,4,43.555685464592756,52.78972724683555
+central_massive_mimo,Central massive MIMO,29,290.0,4,59.41311364918553,52.78972724683555
+central_massive_mimo,Central massive MIMO,30,300.0,5,34.1282258191259,31.527954650897396
+central_massive_mimo,Central massive MIMO,31,310.0,5,33.139803293173436,31.527954650897396
+central_massive_mimo,Central massive MIMO,32,320.0,5,44.120464713077034,31.527954650897396
+central_massive_mimo,Central massive MIMO,33,330.0,5,50.835591079532804,31.527954650897396
+central_massive_mimo,Central massive MIMO,34,340.0,5,14.996557770759159,31.527954650897396
+central_massive_mimo,Central massive MIMO,35,350.0,5,11.947085229716036,31.527954650897396
+central_massive_mimo,Central massive MIMO,36,360.0,6,12.657449701416029,19.234608268397025
+central_massive_mimo,Central massive MIMO,37,370.0,6,13.172738305396095,19.234608268397025
+central_massive_mimo,Central massive MIMO,38,380.0,6,22.636335022323138,19.234608268397025
+central_massive_mimo,Central massive MIMO,39,390.0,6,23.273437238085194,19.234608268397025
+central_massive_mimo,Central massive MIMO,40,400.0,6,23.18211787396111,19.234608268397025
+central_massive_mimo,Central massive MIMO,41,410.0,6,20.485571469200575,19.234608268397025
+central_massive_mimo,Central massive MIMO,42,420.0,7,13.464629984001158,22.414829170927288
+central_massive_mimo,Central massive MIMO,43,430.0,7,28.8606184879134,22.414829170927288
+central_massive_mimo,Central massive MIMO,44,440.0,7,22.423102439563984,22.414829170927288
+central_massive_mimo,Central massive MIMO,45,450.0,7,20.687478010568203,22.414829170927288
+central_massive_mimo,Central massive MIMO,46,460.0,7,22.989922085319293,22.414829170927288
+central_massive_mimo,Central massive MIMO,47,470.0,7,26.063224018197687,22.414829170927288
+central_massive_mimo,Central massive MIMO,48,480.0,8,8.351879175237302,31.923253914322554
+central_massive_mimo,Central massive MIMO,49,490.0,8,33.245008997568796,31.923253914322554
+central_massive_mimo,Central massive MIMO,50,500.0,8,38.49193287421459,31.923253914322554
+central_massive_mimo,Central massive MIMO,51,510.0,8,35.37603422883476,31.923253914322554
+central_massive_mimo,Central massive MIMO,52,520.0,8,33.17890363167259,31.923253914322554
+central_massive_mimo,Central massive MIMO,53,530.0,8,42.89576457840726,31.923253914322554
+central_massive_mimo,Central massive MIMO,54,540.0,9,28.186955648376273,28.824232184623355
+central_massive_mimo,Central massive MIMO,55,550.0,9,27.67227430946393,28.824232184623355
+central_massive_mimo,Central massive MIMO,56,560.0,9,27.55748880294007,28.824232184623355
+central_massive_mimo,Central massive MIMO,57,570.0,9,31.521451200384593,28.824232184623355
+central_massive_mimo,Central massive MIMO,58,580.0,9,20.964159705846097,28.824232184623355
+central_massive_mimo,Central massive MIMO,59,590.0,9,37.04306344072918,28.824232184623355
+central_massive_mimo,Central massive MIMO,60,600.0,10,19.582123733129837,19.582123733129837
+distributed_fixed,Distributed fixed,0,0.0,0,96.5037111538936,80.61510123722476
+distributed_fixed,Distributed fixed,1,10.0,0,86.81459713488812,80.61510123722476
+distributed_fixed,Distributed fixed,2,20.0,0,82.97178438130635,80.61510123722476
+distributed_fixed,Distributed fixed,3,30.0,0,87.10407994530098,80.61510123722476
+distributed_fixed,Distributed fixed,4,40.0,0,68.33109441845342,80.61510123722476
+distributed_fixed,Distributed fixed,5,50.0,0,61.965340389506125,80.61510123722476
+distributed_fixed,Distributed fixed,6,60.0,1,79.28050233601424,71.01014439240481
+distributed_fixed,Distributed fixed,7,70.0,1,61.12898887202532,71.01014439240481
+distributed_fixed,Distributed fixed,8,80.0,1,72.24984029711668,71.01014439240481
+distributed_fixed,Distributed fixed,9,90.0,1,84.24005685810444,71.01014439240481
+distributed_fixed,Distributed fixed,10,100.0,1,77.4939874996047,71.01014439240481
+distributed_fixed,Distributed fixed,11,110.0,1,51.667490491563534,71.01014439240481
+distributed_fixed,Distributed fixed,12,120.0,2,55.567150311457816,60.02898240221714
+distributed_fixed,Distributed fixed,13,130.0,2,63.02806733307999,60.02898240221714
+distributed_fixed,Distributed fixed,14,140.0,2,52.94598010977054,60.02898240221714
+distributed_fixed,Distributed fixed,15,150.0,2,42.0731339491845,60.02898240221714
+distributed_fixed,Distributed fixed,16,160.0,2,68.32318622865493,60.02898240221714
+distributed_fixed,Distributed fixed,17,170.0,2,78.23637648115505,60.02898240221714
+distributed_fixed,Distributed fixed,18,180.0,3,60.859185591015745,56.113019989031784
+distributed_fixed,Distributed fixed,19,190.0,3,44.3788214730754,56.113019989031784
+distributed_fixed,Distributed fixed,20,200.0,3,59.41129546900062,56.113019989031784
+distributed_fixed,Distributed fixed,21,210.0,3,48.122319372208516,56.113019989031784
+distributed_fixed,Distributed fixed,22,220.0,3,63.63070396005103,56.113019989031784
+distributed_fixed,Distributed fixed,23,230.0,3,60.27579406883936,56.113019989031784
+distributed_fixed,Distributed fixed,24,240.0,4,62.090040803228916,69.42615460315946
+distributed_fixed,Distributed fixed,25,250.0,4,68.04185866716051,69.42615460315946
+distributed_fixed,Distributed fixed,26,260.0,4,69.44725492690404,69.42615460315946
+distributed_fixed,Distributed fixed,27,270.0,4,77.01081211929257,69.42615460315946
+distributed_fixed,Distributed fixed,28,280.0,4,62.68960057561013,69.42615460315946
+distributed_fixed,Distributed fixed,29,290.0,4,77.27736052676056,69.42615460315946
+distributed_fixed,Distributed fixed,30,300.0,5,82.36838942035403,71.74683259480678
+distributed_fixed,Distributed fixed,31,310.0,5,74.75224083950305,71.74683259480678
+distributed_fixed,Distributed fixed,32,320.0,5,73.30164416186312,71.74683259480678
+distributed_fixed,Distributed fixed,33,330.0,5,72.34202521374696,71.74683259480678
+distributed_fixed,Distributed fixed,34,340.0,5,64.43348444712306,71.74683259480678
+distributed_fixed,Distributed fixed,35,350.0,5,63.28321148625037,71.74683259480678
+distributed_fixed,Distributed fixed,36,360.0,6,75.05713178333059,70.82073346637465
+distributed_fixed,Distributed fixed,37,370.0,6,69.76838722417524,70.82073346637465
+distributed_fixed,Distributed fixed,38,380.0,6,68.74617202612025,70.82073346637465
+distributed_fixed,Distributed fixed,39,390.0,6,62.18794585460151,70.82073346637465
+distributed_fixed,Distributed fixed,40,400.0,6,63.71025374096061,70.82073346637465
+distributed_fixed,Distributed fixed,41,410.0,6,85.45451016905977,70.82073346637465
+distributed_fixed,Distributed fixed,42,420.0,7,65.84346653197018,62.51342193098092
+distributed_fixed,Distributed fixed,43,430.0,7,62.23076682313673,62.51342193098092
+distributed_fixed,Distributed fixed,44,440.0,7,59.62604398749558,62.51342193098092
+distributed_fixed,Distributed fixed,45,450.0,7,66.33395471666321,62.51342193098092
+distributed_fixed,Distributed fixed,46,460.0,7,68.28054085353344,62.51342193098092
+distributed_fixed,Distributed fixed,47,470.0,7,52.765758673086395,62.51342193098092
+distributed_fixed,Distributed fixed,48,480.0,8,68.93652530115298,67.74661418210543
+distributed_fixed,Distributed fixed,49,490.0,8,79.73653919902797,67.74661418210543
+distributed_fixed,Distributed fixed,50,500.0,8,80.41622051454054,67.74661418210543
+distributed_fixed,Distributed fixed,51,510.0,8,70.8176204844407,67.74661418210543
+distributed_fixed,Distributed fixed,52,520.0,8,52.49941077161445,67.74661418210543
+distributed_fixed,Distributed fixed,53,530.0,8,54.073368821855944,67.74661418210543
+distributed_fixed,Distributed fixed,54,540.0,9,57.87708699914048,57.284915199034884
+distributed_fixed,Distributed fixed,55,550.0,9,58.96576205317548,57.284915199034884
+distributed_fixed,Distributed fixed,56,560.0,9,57.22281034460686,57.284915199034884
+distributed_fixed,Distributed fixed,57,570.0,9,60.34069581395016,57.284915199034884
+distributed_fixed,Distributed fixed,58,580.0,9,53.7726244574447,57.284915199034884
+distributed_fixed,Distributed fixed,59,590.0,9,55.53051152589161,57.284915199034884
+distributed_fixed,Distributed fixed,60,600.0,10,44.254721151248866,44.254721151248866
+distributed_movable,Distributed movable,0,0.0,0,74.97637387650875,77.37477135564559
+distributed_movable,Distributed movable,1,10.0,0,86.88956394711326,77.37477135564559
+distributed_movable,Distributed movable,2,20.0,0,87.4587255046802,77.37477135564559
+distributed_movable,Distributed movable,3,30.0,0,80.96976312269533,77.37477135564559
+distributed_movable,Distributed movable,4,40.0,0,68.4699006240589,77.37477135564559
+distributed_movable,Distributed movable,5,50.0,0,65.48430105881717,77.37477135564559
+distributed_movable,Distributed movable,6,60.0,1,109.10619573188211,100.33815492261586
+distributed_movable,Distributed movable,7,70.0,1,100.23972247472494,100.33815492261586
+distributed_movable,Distributed movable,8,80.0,1,101.02328069444894,100.33815492261586
+distributed_movable,Distributed movable,9,90.0,1,108.52344010915849,100.33815492261586
+distributed_movable,Distributed movable,10,100.0,1,96.42926969629909,100.33815492261586
+distributed_movable,Distributed movable,11,110.0,1,86.70702082918164,100.33815492261586
+distributed_movable,Distributed movable,12,120.0,2,110.17224427135669,118.39057358457687
+distributed_movable,Distributed movable,13,130.0,2,121.57266473273336,118.39057358457687
+distributed_movable,Distributed movable,14,140.0,2,124.84555896872322,118.39057358457687
+distributed_movable,Distributed movable,15,150.0,2,116.72022261049385,118.39057358457687
+distributed_movable,Distributed movable,16,160.0,2,113.7315560847313,118.39057358457687
+distributed_movable,Distributed movable,17,170.0,2,123.30119483942278,118.39057358457687
+distributed_movable,Distributed movable,18,180.0,3,102.1438326743868,99.05494267940935
+distributed_movable,Distributed movable,19,190.0,3,118.60144998881391,99.05494267940935
+distributed_movable,Distributed movable,20,200.0,3,116.81813567927182,99.05494267940935
+distributed_movable,Distributed movable,21,210.0,3,95.90126400816052,99.05494267940935
+distributed_movable,Distributed movable,22,220.0,3,80.82164348808885,99.05494267940935
+distributed_movable,Distributed movable,23,230.0,3,80.04333023773418,99.05494267940935
+distributed_movable,Distributed movable,24,240.0,4,99.26224267472331,102.8129274158328
+distributed_movable,Distributed movable,25,250.0,4,97.50216387487862,102.8129274158328
+distributed_movable,Distributed movable,26,260.0,4,111.143925444748,102.8129274158328
+distributed_movable,Distributed movable,27,270.0,4,101.56833239069206,102.8129274158328
+distributed_movable,Distributed movable,28,280.0,4,110.04572942979067,102.8129274158328
+distributed_movable,Distributed movable,29,290.0,4,97.3551706801642,102.8129274158328
+distributed_movable,Distributed movable,30,300.0,5,129.05259030704602,123.97379397137
+distributed_movable,Distributed movable,31,310.0,5,129.11742351979854,123.97379397137
+distributed_movable,Distributed movable,32,320.0,5,128.3552613225339,123.97379397137
+distributed_movable,Distributed movable,33,330.0,5,125.44758725995646,123.97379397137
+distributed_movable,Distributed movable,34,340.0,5,118.32134201671492,123.97379397137
+distributed_movable,Distributed movable,35,350.0,5,113.54855940217021,123.97379397137
+distributed_movable,Distributed movable,36,360.0,6,112.70216942968483,104.708644941896
+distributed_movable,Distributed movable,37,370.0,6,81.21064755149817,104.708644941896
+distributed_movable,Distributed movable,38,380.0,6,105.64092220537637,104.708644941896
+distributed_movable,Distributed movable,39,390.0,6,106.61866775398434,104.708644941896
+distributed_movable,Distributed movable,40,400.0,6,105.67754237807847,104.708644941896
+distributed_movable,Distributed movable,41,410.0,6,116.4019203327538,104.708644941896
+distributed_movable,Distributed movable,42,420.0,7,140.7408858504837,138.13344739251812
+distributed_movable,Distributed movable,43,430.0,7,149.82691882747656,138.13344739251812
+distributed_movable,Distributed movable,44,440.0,7,150.63669788463133,138.13344739251812
+distributed_movable,Distributed movable,45,450.0,7,131.96653175329206,138.13344739251812
+distributed_movable,Distributed movable,46,460.0,7,129.94592785622535,138.13344739251812
+distributed_movable,Distributed movable,47,470.0,7,125.68372218299972,138.13344739251812
+distributed_movable,Distributed movable,48,480.0,8,99.01934096560002,115.11240919064785
+distributed_movable,Distributed movable,49,490.0,8,108.435543203315,115.11240919064785
+distributed_movable,Distributed movable,50,500.0,8,123.56191649201193,115.11240919064785
+distributed_movable,Distributed movable,51,510.0,8,131.17942701553852,115.11240919064785
+distributed_movable,Distributed movable,52,520.0,8,111.72011995941205,115.11240919064785
+distributed_movable,Distributed movable,53,530.0,8,116.75810750800964,115.11240919064785
+distributed_movable,Distributed movable,54,540.0,9,114.43731340494082,109.4240846061608
+distributed_movable,Distributed movable,55,550.0,9,106.64795631291393,109.4240846061608
+distributed_movable,Distributed movable,56,560.0,9,112.01838610088039,109.4240846061608
+distributed_movable,Distributed movable,57,570.0,9,113.63965671298546,109.4240846061608
+distributed_movable,Distributed movable,58,580.0,9,102.9636945463969,109.4240846061608
+distributed_movable,Distributed movable,59,590.0,9,106.83750055884728,109.4240846061608
+distributed_movable,Distributed movable,60,600.0,10,110.92147103305555,110.92147103305555

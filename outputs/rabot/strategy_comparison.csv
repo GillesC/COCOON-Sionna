@@ -1,0 +1,4 @@
+strategy,score,outage,percentile_10_db,peer_tiebreak,capped,evaluated_combinations,final_candidate_ids
+central_massive_mimo,-7.191881188577857,0.6213114754098361,-120.0,-57.05697131680205,False,0,roof_Blok_A
+distributed_fixed,-0.9036380301809496,0.18032786885245902,-15.938483640186591,7.361402068083904,False,0,wall_Blok_B_04_02 wall_Blok_L_00_00 wall_Blok_P_00_00 wall_Blok_P_00_01 wall_building_452650244_00_00 wall_building_452653890_01_01
+distributed_movable,-5.933512648864123,0.12950819672131147,-120.0,19.599554785718897,False,5511,wall_Blok_A_02_01 wall_Blok_D_02_00 wall_Blok_D_02_01 wall_Blok_E_07_01 wall_Blok_E_07_02 wall_Blok_L_1_00_00
