@@ -1,9 +1,38 @@
-% Auto-generated TikZ wrapper for worst_user_sinr_timeseries.png
-% Requires: \usepackage{graphicx,xcolor,tikz}
+% Auto-generated PGFPlots figure for worst_user_sinr_timeseries
+% Requires: \usepackage{pgfplots,pgfplotstable,xcolor}
+% Optional: \usepgfplotslibrary{groupplots}
 \providecommand{\postprocessfigurewidth}{\linewidth}
+\pgfplotsset{compat=1.18}
 \definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
 \definecolor{DistributedFixedColor}{HTML}{2F5D8A}
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
 \begin{tikzpicture}
-  \node[anchor=south west, inner sep=0] at (0,0) {\includegraphics[width=\postprocessfigurewidth]{worst_user_sinr_timeseries.png}};
+  \begin{axis}[
+    width=\postprocessfigurewidth,
+    height=0.58\postprocessfigurewidth,
+    title={Worst-user SINR},
+    xlabel={Time [s]},
+    ylabel={Worst-user SINR [dB]},
+    grid=major,
+    legend pos=south east,
+    ymin=-127.99338184,
+    ymax=21.21641243,
+  ]
+    \addplot[gray, densely dotted, no markers] coordinates {(60.00000000,-127.99338184) (60.00000000,21.21641243)};
+    \addplot[gray, densely dotted, no markers] coordinates {(120.00000000,-127.99338184) (120.00000000,21.21641243)};
+    \addplot[gray, densely dotted, no markers] coordinates {(180.00000000,-127.99338184) (180.00000000,21.21641243)};
+    \addplot[gray, densely dotted, no markers] coordinates {(240.00000000,-127.99338184) (240.00000000,21.21641243)};
+    \addplot[gray, densely dotted, no markers] coordinates {(300.00000000,-127.99338184) (300.00000000,21.21641243)};
+    \addplot[gray, densely dotted, no markers] coordinates {(360.00000000,-127.99338184) (360.00000000,21.21641243)};
+    \addplot[gray, densely dotted, no markers] coordinates {(420.00000000,-127.99338184) (420.00000000,21.21641243)};
+    \addplot[gray, densely dotted, no markers] coordinates {(480.00000000,-127.99338184) (480.00000000,21.21641243)};
+    \addplot[gray, densely dotted, no markers] coordinates {(540.00000000,-127.99338184) (540.00000000,21.21641243)};
+    \addplot[gray, densely dotted, no markers] coordinates {(600.00000000,-127.99338184) (600.00000000,21.21641243)};
+    \addplot[no markers, line width=1.2pt, color=CentralMassiveMimoColor] table[x=time_s,y=worst_user_sinr_db,col sep=comma] {tikz_data/worst_user_sinr_central_massive_mimo.csv};
+    \addlegendentry{Central massive MIMO}
+    \addplot[no markers, line width=1.2pt, color=DistributedFixedColor] table[x=time_s,y=worst_user_sinr_db,col sep=comma] {tikz_data/worst_user_sinr_distributed_fixed.csv};
+    \addlegendentry{Distributed fixed}
+    \addplot[no markers, line width=1.2pt, color=DistributedMovableColor] table[x=time_s,y=worst_user_sinr_db,col sep=comma] {tikz_data/worst_user_sinr_distributed_movable.csv};
+    \addlegendentry{Distributed movable}
+  \end{axis}
 \end{tikzpicture}

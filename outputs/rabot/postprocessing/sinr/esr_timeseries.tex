@@ -1,9 +1,41 @@
-% Auto-generated TikZ wrapper for esr_timeseries.png
-% Requires: \usepackage{graphicx,xcolor,tikz}
+% Auto-generated PGFPlots figure for esr_timeseries
+% Requires: \usepackage{pgfplots,pgfplotstable,xcolor}
+% Optional: \usepgfplotslibrary{groupplots}
 \providecommand{\postprocessfigurewidth}{\linewidth}
+\pgfplotsset{compat=1.18}
 \definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
 \definecolor{DistributedFixedColor}{HTML}{2F5D8A}
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
 \begin{tikzpicture}
-  \node[anchor=south west, inner sep=0] at (0,0) {\includegraphics[width=\postprocessfigurewidth]{esr_timeseries.png}};
+  \begin{axis}[
+    width=\postprocessfigurewidth,
+    height=0.58\postprocessfigurewidth,
+    title={ESR evolution},
+    xlabel={Time [s]},
+    ylabel={ESR [bit/s/Hz]},
+    grid=major,
+    legend pos=south east,
+    ymin=-0.18520995,
+    ymax=159.17378701,
+  ]
+    \addplot[gray, densely dotted, no markers] coordinates {(60.00000000,-0.18520995) (60.00000000,159.17378701)};
+    \addplot[gray, densely dotted, no markers] coordinates {(120.00000000,-0.18520995) (120.00000000,159.17378701)};
+    \addplot[gray, densely dotted, no markers] coordinates {(180.00000000,-0.18520995) (180.00000000,159.17378701)};
+    \addplot[gray, densely dotted, no markers] coordinates {(240.00000000,-0.18520995) (240.00000000,159.17378701)};
+    \addplot[gray, densely dotted, no markers] coordinates {(300.00000000,-0.18520995) (300.00000000,159.17378701)};
+    \addplot[gray, densely dotted, no markers] coordinates {(360.00000000,-0.18520995) (360.00000000,159.17378701)};
+    \addplot[gray, densely dotted, no markers] coordinates {(420.00000000,-0.18520995) (420.00000000,159.17378701)};
+    \addplot[gray, densely dotted, no markers] coordinates {(480.00000000,-0.18520995) (480.00000000,159.17378701)};
+    \addplot[gray, densely dotted, no markers] coordinates {(540.00000000,-0.18520995) (540.00000000,159.17378701)};
+    \addplot[gray, densely dotted, no markers] coordinates {(600.00000000,-0.18520995) (600.00000000,159.17378701)};
+    \addplot[no markers, line width=0.5pt, opacity=0.35, color=CentralMassiveMimoColor] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_central_massive_mimo.csv};
+    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedFixedColor] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_fixed.csv};
+    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedMovableColor] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable.csv};
+    \addplot[const plot mark right, line width=1.2pt, color=CentralMassiveMimoColor] table[x=time_s,y=window_mean_esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_central_massive_mimo.csv};
+    \addlegendentry{Central massive MIMO}
+    \addplot[const plot mark right, line width=1.2pt, color=DistributedFixedColor] table[x=time_s,y=window_mean_esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_fixed.csv};
+    \addlegendentry{Distributed fixed}
+    \addplot[const plot mark right, line width=1.2pt, color=DistributedMovableColor] table[x=time_s,y=window_mean_esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable.csv};
+    \addlegendentry{Distributed movable}
+  \end{axis}
 \end{tikzpicture}

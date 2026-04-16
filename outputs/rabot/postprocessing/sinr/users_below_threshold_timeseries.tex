@@ -1,9 +1,38 @@
-% Auto-generated TikZ wrapper for users_below_threshold_timeseries.png
-% Requires: \usepackage{graphicx,xcolor,tikz}
+% Auto-generated PGFPlots figure for users_below_threshold_timeseries
+% Requires: \usepackage{pgfplots,pgfplotstable,xcolor}
+% Optional: \usepgfplotslibrary{groupplots}
 \providecommand{\postprocessfigurewidth}{\linewidth}
+\pgfplotsset{compat=1.18}
 \definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
 \definecolor{DistributedFixedColor}{HTML}{2F5D8A}
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
 \begin{tikzpicture}
-  \node[anchor=south west, inner sep=0] at (0,0) {\includegraphics[width=\postprocessfigurewidth]{users_below_threshold_timeseries.png}};
+  \begin{axis}[
+    width=\postprocessfigurewidth,
+    height=0.58\postprocessfigurewidth,
+    title={Users below threshold},
+    xlabel={Time [s]},
+    ylabel={Users below 0 dB},
+    grid=major,
+    legend pos=south east,
+    ymin=-0.54000000,
+    ymax=9.54000000,
+  ]
+    \addplot[gray, densely dotted, no markers] coordinates {(60.00000000,-0.54000000) (60.00000000,9.54000000)};
+    \addplot[gray, densely dotted, no markers] coordinates {(120.00000000,-0.54000000) (120.00000000,9.54000000)};
+    \addplot[gray, densely dotted, no markers] coordinates {(180.00000000,-0.54000000) (180.00000000,9.54000000)};
+    \addplot[gray, densely dotted, no markers] coordinates {(240.00000000,-0.54000000) (240.00000000,9.54000000)};
+    \addplot[gray, densely dotted, no markers] coordinates {(300.00000000,-0.54000000) (300.00000000,9.54000000)};
+    \addplot[gray, densely dotted, no markers] coordinates {(360.00000000,-0.54000000) (360.00000000,9.54000000)};
+    \addplot[gray, densely dotted, no markers] coordinates {(420.00000000,-0.54000000) (420.00000000,9.54000000)};
+    \addplot[gray, densely dotted, no markers] coordinates {(480.00000000,-0.54000000) (480.00000000,9.54000000)};
+    \addplot[gray, densely dotted, no markers] coordinates {(540.00000000,-0.54000000) (540.00000000,9.54000000)};
+    \addplot[gray, densely dotted, no markers] coordinates {(600.00000000,-0.54000000) (600.00000000,9.54000000)};
+    \addplot[no markers, line width=1.2pt, color=CentralMassiveMimoColor] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_central_massive_mimo.csv};
+    \addlegendentry{Central massive MIMO}
+    \addplot[no markers, line width=1.2pt, color=DistributedFixedColor] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_fixed.csv};
+    \addlegendentry{Distributed fixed}
+    \addplot[no markers, line width=1.2pt, color=DistributedMovableColor] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_movable.csv};
+    \addlegendentry{Distributed movable}
+  \end{axis}
 \end{tikzpicture}
