@@ -1,17 +1,14 @@
 \section{Discussion and Current Limits}
 
-This draft deliberately stops short of a full interpretation layer. Still, the manuscript should state the boundaries of the current evidence clearly so that later quantitative claims remain anchored to what the simulation pipeline actually models.
+The present study has several modeling and evaluation limits that define the scope of the reported results.
 
-The main limitations that should remain visible in the first paper version are the following:
+The main limitations are the following:
 \begin{itemize}
-    \item Only a single outdoor scenario is wired into the current manuscript scaffold.
+    \item Only a single outdoor scenario is considered.
     \item The \texttt{central\_massive\_mimo} comparison point is a rooftop proxy, not a full placement model for one true co-located massive-\gls{mimo} array.
     \item The current Rabot configuration disables coverage-map exports, so the paper centers on trajectory-level \gls{sinr} and schedule metrics.
-    \item The present draft is figure-structured but interpretation-light by design; the reported placeholders must be refreshed after rerunning the pipeline.
     \item Citizen participation is abstracted as movable candidate positions and scheduler actions rather than being validated experimentally.
-    \item The present text does not yet discuss sensitivity to seeds, scenario perturbations, or broader deployment costs.
+    \item Sensitivity to random seeds, scenario perturbations, and broader deployment-cost models is not yet characterized.
 \end{itemize}
 
-The next analysis pass should therefore answer at least three questions: how stable the reported gains are across seeds and scenarios, how strongly the conclusions depend on the chosen \gls{sinr} objective, and how the relocation metrics should be interpreted in a real co-created deployment process.
-
-\gilles{Later pass: split this section into limitations and future work if the venue expects a more formal discussion structure.}
+These limitations motivate extensions toward multi-scenario studies, sensitivity analyses, coverage-map reporting, and eventual experimental validation in co-created deployments.

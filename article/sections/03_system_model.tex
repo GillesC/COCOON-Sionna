@@ -1,4 +1,5 @@
 \section{System Model}
+\label{sec:system_model}
 
 We consider a downlink \gls{dmimo} system with active \glspl{ap} $\mathcal{A}=\{1,\ldots,M\}$ and scheduled \glspl{ue} $\mathcal{U}=\{1,\ldots,K\}$. Let $N_m$ denote the number of transmit ports at \gls{ap} $m$ and $N_{r,k}$ the number of receive ports at \gls{ue} $k$. The per-\gls{ap} channel block is
 \begin{equation}
@@ -27,7 +28,7 @@ The \gls{esr} used later in the results section is derived from the same per-sna
 \begin{equation}
     \mathrm{ESR}_n = \sum_{k \in \mathcal{U}_n}\log_2\!\left(1+\mathrm{SINR}^{\mathrm{DL}}_{k,n}\right).
 \end{equation}
-This manuscript uses the \gls{sinr}- and \gls{esr}-based figures as reporting views only. The text below does not interpret any numeric outcome.
+These per-snapshot \gls{sinr} values form the basis of the trajectory-level \gls{sinr} and \gls{esr} statistics reported later in the article.
 
 \subsection{Placement Strategies}
 
@@ -38,22 +39,78 @@ The placement layer compares three strategies under a common \gls{ap} budget:
     \item \texttt{distributed\_movable}: the same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool.
 \end{itemize}
 
-Let $\mathcal{C}$ denote the wall-mounted candidate pool and let $\mathcal{S}_w \subseteq \mathcal{C}$ denote the selected movable-\gls{ap} subset in relocation window $w$. The current Rabot manuscript focuses on the case $\lvert \mathcal{S}_w \rvert = N$ with no always-on distributed \glspl{ap}, so the distributed comparison isolates the effect of changing the movable subset over time.
+Let $\mathcal{C}$ denote the wall-mounted candidate pool and let $\mathcal{S}_w \subseteq \mathcal{C}$ denote the selected movable-\gls{ap} subset in relocation window $w$. In the Rabot scenario studied here, $\lvert \mathcal{S}_w \rvert = N$ and no always-on distributed \glspl{ap} are used, so the distributed comparison isolates the effect of changing the movable subset over time.
 
 \subsection{Relocation Heuristic}
 
-For each relocation window, the movable strategy scores candidate subsets from local \gls{csi}. Historical measurements are retained through exponential decay. If a local \gls{csi} sample was observed at time $t_k$ and the relocation decision is taken at time $t_{\mathrm{now}}$, then the weighting term is
+The movable distributed strategy is implemented as a windowed receding-horizon controller. Let $\{t_n\}_{n=0}^{N_t-1}$ denote the simulated snapshot times and let $T_{\mathrm{rel}}$ denote the relocation interval. The trajectory is partitioned into disjoint decision windows
 \begin{equation}
-    w_k = \exp\!\left[-\lambda\left(t_{\mathrm{now}}-t_k\right)\right],
+    \mathcal{W}_w = \left\{n \in \{0,\ldots,N_t-1\} :
+    \left\lfloor \frac{t_n-t_0}{T_{\mathrm{rel}}}\right\rfloor = w\right\}.
 \end{equation}
-with $\lambda$ the configured decay rate.
+At the beginning of each window $w$, the controller selects a subset $\mathcal{S}_w \subseteq \mathcal{C}$ with cardinality $\lvert \mathcal{S}_w \rvert = N_{\mathrm{mov}}$, where $N_{\mathrm{mov}}$ is the movable-\gls{ap} budget. The fixed distributed mode uses one time-invariant subset, whereas the movable mode recomputes $\mathcal{S}_w$ at every relocation instant.
 
-The current relocation heuristic can be described in four steps:
-\begin{enumerate}
-    \item Generate low-height wall-mounted candidate positions from building geometry.
-    \item Collect per-snapshot \gls{ap}-to-\gls{ue} \gls{csi} over the simulated trajectories.
-    \item Aggregate local candidate scores with exponentially decayed historical weighting so recent \gls{csi} contributes more strongly than stale measurements.
-    \item Select the subset whose local weighted percentile objective is best within the configured heuristic search budget.
-\end{enumerate}
+The online decision rule is intentionally local and does not optimize a full radio map. For a candidate site $c \in \mathcal{C}$ with horizontal position $\mathbf{x}_c \in \mathbb{R}^2$, define the local neighborhood $\mathcal{N}_K(c,w)$ as the set of the $K$ nearest \gls{ue}-snapshot pairs in the horizontal plane within window $w$,
+\begin{equation}
+    \mathcal{N}_K(c,w) =
+    \operatorname{KNN}_K\!\left(
+        \mathbf{x}_c;
+        \{\mathbf{r}_{u,n} : u \in \mathcal{U}, n \in \mathcal{W}_w\}
+    \right),
+\end{equation}
+where $\mathbf{r}_{u,n}$ denotes the horizontal position of \gls{ue} $u$ at time index $n$. For a subset $\mathcal{S} \subseteq \mathcal{C}$, the support region used by the controller is the union
+\begin{equation}
+    \mathcal{N}_K(\mathcal{S},w) = \bigcup_{c \in \mathcal{S}} \mathcal{N}_K(c,w).
+\end{equation}
+This restriction makes the relocation rule sensitive to the CSI observed near the candidate sites rather than to globally averaged scene statistics.
 
-The manuscript should describe these mechanics, not the realized numeric ranking. Any claim about which strategy wins belongs only after the figures are regenerated and frozen.
+For every queried subset $\mathcal{S}$, the implementation computes the corresponding \gls{ap}-to-\gls{ue} \gls{csi}/\gls{sinr} segment over the current window and stores it in a per-subset cache. If $\gamma_{u,n}(\mathcal{S})$ denotes the best-link \gls{sinr} sample produced when subset $\mathcal{S}$ is active, the historical record available when deciding window $w$ is
+\begin{equation}
+    \mathcal{H}_w(\mathcal{S}) =
+    \left\{(t_n,\gamma_{u,n}(\mathcal{S})) :
+    u \in \mathcal{U}, n \in \mathcal{W}_j, j = 0,\ldots,w\right\}.
+\end{equation}
+When the same subset is revisited later, previously computed window segments are reused and only the new current-window segment is appended. Thus, the historical objective remains consistent while avoiding repeated ray-tracing evaluations for past windows.
+
+Historical CSI is discounted through exponential aging. If a sample was observed at time $t_n$ and the relocation decision for window $w$ is taken at $t_w^{\mathrm{end}}$, the associated weight is
+\begin{equation}
+    \omega_n^{(w)} = \exp\!\left[-\lambda\left(t_w^{\mathrm{end}}-t_n\right)\right],
+\end{equation}
+with $\lambda$ the configured decay rate. The local control objective is then the weighted empirical 10th percentile of the \gls{sinr} samples retained by the local neighborhoods across all observed windows,
+\begin{equation}
+    J_w(\mathcal{S}) =
+    Q_{0.1}^{\omega}\!\left(
+        \left\{\gamma_{u,n}(\mathcal{S}) :
+        (u,n) \in \bigcup_{j=0}^{w} \mathcal{N}_K(\mathcal{S},j)\right\}
+    \right),
+\end{equation}
+where $Q_{0.1}^{\omega}(\cdot)$ denotes the weighted 10th-percentile operator induced by $\omega_n^{(w)}$. The use of a lower-tail percentile, rather than a mean, makes the controller deliberately conservative with respect to persistently weak local links.
+
+The subset search itself is greedy. Starting from $\mathcal{S}_w^{(0)}=\varnothing$, the controller adds one candidate at a time according to
+\begin{equation}
+    c_r^\star =
+    \arg\max_{c \in \mathcal{C}\setminus \mathcal{S}_w^{(r-1)}}
+    J_w\!\left(\mathcal{S}_w^{(r-1)} \cup \{c\}\right),
+\end{equation}
+\begin{equation}
+    \mathcal{S}_w^{(r)} =
+    \mathcal{S}_w^{(r-1)} \cup \{c_r^\star\},
+    \qquad r=1,\ldots,N_{\mathrm{mov}},
+\end{equation}
+and finally sets $\mathcal{S}_w=\mathcal{S}_w^{(N_{\mathrm{mov}})}$. Consequently, the current implementation is a forward-selection heuristic rather than an exhaustive combinatorial optimizer.
+
+After the subset has been chosen, the selected geometric candidate sites are converted into physical relocations of labeled movable \glspl{ap}. Let $\mathbf{p}_m^{(w-1)}$ denote the previous-window position of movable \gls{ap} $m$ and let $\mathbf{q}_j^{(w)}$ denote the coordinates of the candidates in the newly selected subset. The controller solves the linear assignment problem
+\begin{equation}
+    \pi_w^\star =
+    \arg\min_{\pi \in \Pi_{N_{\mathrm{mov}}}}
+    \sum_{m=1}^{N_{\mathrm{mov}}}
+    \left\|\mathbf{p}_m^{(w-1)}-\mathbf{q}_{\pi(m)}^{(w)}\right\|_2^2,
+\end{equation}
+where $\Pi_{N_{\mathrm{mov}}}$ is the permutation set on $\{1,\ldots,N_{\mathrm{mov}}\}$. This minimum-displacement matching preserves \gls{ap} identities across windows and yields schedule traces that correspond to physically meaningful AP trajectories instead of arbitrary candidate relabelings.
+
+Once all windows have been simulated, the concatenated movable-strategy trajectory is evaluated using the same trajectory-level summary score as the static baselines,
+\begin{equation}
+    F = -\alpha P_{\mathrm{out}} + \beta P_{10} + \eta T_{\mathrm{peer}},
+\end{equation}
+where $P_{\mathrm{out}}$ is the fraction of user snapshots below the configured \gls{sinr} threshold, $P_{10}$ is the trajectory-wide 10th percentile, and $T_{\mathrm{peer}}$ is a peer-weighted mean \gls{sinr} term derived from \gls{ue}-to-\gls{ue} \gls{csi}. The coefficients $(\alpha,\beta,\eta)$ correspond to the configured outage, percentile, and peer tie-break weights. This final score is used for reporting and mode comparison; the online relocation controller itself is driven by $J_w(\mathcal{S})$, i.e., by local historical \gls{csi} only.
+The above formulation defines the relocation mechanism used throughout the Rabot simulations.

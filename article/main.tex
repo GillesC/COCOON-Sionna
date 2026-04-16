@@ -8,7 +8,6 @@
 \begin{document}
 
 \title{Towards Cocoon: A Simulation Scaffold for Citizen-Co-Created Low-Height Distributed MIMO Access Networks%
-\thanks{Working manuscript scaffold for the COCOON project. Update title, funding text, and author list before submission.}%
 \thanks{For the purpose of open access, the author has applied a CC BY public copyright license to any Author Accepted Manuscript version arising from this submission.}%
 }
 
@@ -23,7 +22,7 @@ KU Leuven, Belgium}
 \maketitle
 
 \begin{abstract}
-This manuscript is structured as a concept-plus-simulation paper for the Cocoon vision. The current draft focuses on the simulation scaffold built in \texttt{COCOON-Sionna}: an outdoor \gls{dmimo} pipeline that generates low-height candidate \glspl{ap}, simulates user mobility, computes path-based \gls{csi}, and compares movable-\gls{ap} placement strategies over a common urban scenario. The interpretation of the generated metrics is intentionally deferred. Instead, this draft provides the paper structure, figure hooks, and the core technical framing needed to start incorporating results from committed simulation outputs.\gilles{Replace this abstract with quantitative claims once the first stable result set is frozen.}
+This paper studies low-height distributed-\gls{mimo} access networks with repositionable access points in an outdoor urban setting. Using the \texttt{COCOON-Sionna} framework, the workflow generates wall-mounted candidate \glspl{ap}, simulates pedestrian and bicycle mobility, computes path-based \gls{csi}, and compares a central rooftop proxy, a fixed distributed deployment, and a relocation-capable distributed deployment over a common scenario. The article formalizes the \gls{sinr}- and \gls{esr}-based evaluation model, the history-aware relocation heuristic, and the postprocessing workflow that produces geometry, performance, and relocation-cost figures from reproducible simulation outputs.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -49,9 +48,6 @@ cell-free systems, distributed MIMO, low-height access points, access-point plac
 %   {\FixedCoverageFigurePath}{Baseline coverage map.}{fig:coverage_baseline}
 %   {\CoverageFigurePath}{Best-strategy coverage map.}{fig:coverage_best}
 %   {Optional coverage-map comparison. Enable this appendix once coverage exports are part of the paper narrative.}{fig:coverage_pair}
-
-\section*{Acknowledgment}
-\gilles{Add funding statement, collaborators, and infrastructure acknowledgments here.}
 
 \printbibliography
 

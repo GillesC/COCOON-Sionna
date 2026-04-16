@@ -1,7 +1,7 @@
 \section{Scenario Geometry and Mobility Results}
 \label{sec:results_geometry}
 
-The first result block should orient the reader in the simulated environment before any performance metric is discussed. The goal is to show where candidate mounting locations exist, how the selected constellation relates to the urban geometry, and how the user trajectories populate the scene over time.
+This result block summarizes the simulated environment before presenting radio-performance metrics. It reports the available candidate mounting locations, the selected deployment, and the spatial distribution of user trajectories over the Rabot area.
 
 \begin{figure*}[t]
     \centering
@@ -17,11 +17,9 @@ The first result block should orient the reader in the simulated environment bef
         \caption{Trajectory colormap used to visualize the temporal spread of user motion through the walkable space.}
         \label{fig:trajectory_colormap}
     \end{subfigure}
-    \caption{Geometry-facing result hooks for the Rabot scenario. These figures should remain the first visual anchor for the simulation setup before performance interpretation begins.}
+    \caption{Geometry results for the Rabot scenario. The panels show the selected deployment in the urban layout and the temporal distribution of user motion over the walkable area.}
     \label{fig:geometry_pair}
 \end{figure*}
 
-The text accompanying \cref{fig:geometry_pair} should stay factual in this draft. It can describe the modeled environment, the spread of the trajectories, and the low-height infrastructure assumption without yet claiming why one region or path is more favorable than another.
-
-\gilles{Later pass: add 2--3 sentences on how the candidate-wall generation and user-motion spread affect the interpretation of later SINR and schedule figures.}
+Figure~\ref{fig:geometry_pair} provides the geometric context for the subsequent \gls{sinr}, \gls{esr}, and relocation analyses. The scene-layout panel reports the candidate-site pool and the selected constellation, whereas the trajectory colormap reports the spatial spread of the simulated user population.
 \FloatBarrier
