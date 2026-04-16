@@ -1,0 +1,46 @@
+% Core mathematics and symbols
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{textcomp}
+
+% Graphics and tables
+\usepackage[dvipsnames,svgnames,table]{xcolor}
+\usepackage{graphicx}
+\usepackage{array}
+\newcolumntype{H}{>{\setbox0=\hbox\bgroup}c<{\egroup}@{}}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\DeclareSIUnit{\dBm}{dBm}
+\DeclareSIUnit{\dBi}{dBi}
+\DeclareSIUnit{\dBsm}{dBsm}
+\sisetup{detect-all}
+
+% Bibliography and cross references
+\usepackage[backend=biber,language=english,autolang=other,style=ieee]{biblatex}
+\addbibresource{bib.bib}
+\AtBeginBibliography{\footnotesize}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalize]{cleveref}
+
+% Plotting support
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots,dateplot}
+\usepackage{pgfplotstable}
+
+% Glossaries and author comments
+\usepackage[xindy,nonumberlist]{glossaries}
+\makenoidxglossaries
+\loadglsentries{abbr}
+\input{auto_names}
+\usepackage{orcidlink}
+\usepackage[font=small]{caption}
+\usepackage{subcaption}
+\usepackage{placeins}
+
+% IEEE specific
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\input{definitions/def-colors}
+\input{definitions/def-tikz}
+\input{definitions/def-figures}

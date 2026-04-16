@@ -1,0 +1,16 @@
+\section{Discussion and Current Limits}
+
+This draft deliberately stops short of a full interpretation layer. Still, the manuscript should state the boundaries of the current evidence clearly so that later quantitative claims remain anchored to what the simulation pipeline actually models.
+
+The main limitations that should remain visible in the first paper version are the following:
+\begin{itemize}
+    \item Only a single outdoor scenario is wired into the current manuscript scaffold.
+    \item The current Rabot configuration disables coverage-map exports, so the paper centers on trajectory-level \gls{sinr} and schedule metrics.
+    \item The current checked scenario also disables capped exact search, so the default draft compares the baseline and the local \gls{csi}-driven heuristic unless an updated output set is committed.
+    \item Citizen participation is abstracted as movable candidate positions and scheduler actions rather than being validated experimentally.
+    \item The present text does not yet discuss sensitivity to seeds, scenario perturbations, or broader deployment costs.
+\end{itemize}
+
+The next analysis pass should therefore answer at least three questions: how stable the reported gains are across seeds and scenarios, how strongly the conclusions depend on the chosen \gls{sinr} objective, and how the relocation metrics should be interpreted in a real co-created deployment process.
+
+\gilles{Later pass: split this section into limitations and future work if the venue expects a more formal discussion structure.}

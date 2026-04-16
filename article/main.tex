@@ -1,0 +1,61 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\input{preamble}
+
+\defineauthors[false]{gilles}
+
+\begin{document}
+
+\title{Towards Cocoon: A Simulation Scaffold for Citizen-Co-Created Low-Height Distributed MIMO Access Networks%
+\thanks{Working manuscript scaffold for the COCOON project. Update title, funding text, and author list before submission.}%
+\thanks{For the purpose of open access, the author has applied a CC BY public copyright license to any Author Accepted Manuscript version arising from this submission.}%
+}
+
+\author{
+\IEEEauthorblockN{%
+Gilles Callebaut\,\orcidlink{0000-0003-2413-986X}\IEEEauthorrefmark{1},
+Other Author\,\orcidlink{0000-0003-2413-986X}\IEEEauthorrefmark{2},
+}
+\IEEEauthorblockA{\IEEEauthorrefmark{1}
+KU Leuven, Belgium}
+\IEEEauthorblockA{\IEEEauthorrefmark{2}
+University, Country}
+}
+
+\maketitle
+
+\begin{abstract}
+This manuscript is structured as a concept-plus-simulation paper for the Cocoon vision. The current draft focuses on the simulation scaffold built in \texttt{COCOON-Sionna}: an outdoor \gls{dmimo} pipeline that generates low-height candidate \glspl{ap}, simulates user mobility, computes path-based \gls{csi}, and compares movable-\gls{ap} placement strategies over a common urban scenario. The interpretation of the generated metrics is intentionally deferred. Instead, this draft provides the paper structure, figure hooks, and the core technical framing needed to start incorporating results from committed simulation outputs.\gilles{Replace this abstract with quantitative claims once the first stable result set is frozen.}
+\end{abstract}
+
+\begin{IEEEkeywords}
+cell-free systems, distributed MIMO, low-height access points, access-point placement, urban mobility, Sionna RT
+\end{IEEEkeywords}
+
+\glsresetall
+
+\input{sections/01_introduction}
+\input{sections/02_cocoon_scope}
+\input{sections/03_system_model}
+\input{sections/04_simulation_setup}
+\input{sections/05_results_geometry}
+\input{sections/06_results_sinr}
+\input{sections/07_results_relocation}
+\input{sections/08_discussion_limits}
+\input{sections/09_conclusion}
+
+% Optional appendix hook for future coverage-map figures.
+% \appendices
+% \section{Optional Coverage Maps}
+% \PaperSubfigurePair[t][0.48\textwidth]
+%   {\FixedCoverageFigurePath}{Baseline coverage map.}{fig:coverage_baseline}
+%   {\CoverageFigurePath}{Best-strategy coverage map.}{fig:coverage_best}
+%   {Optional coverage-map comparison. Enable this appendix once coverage exports are part of the paper narrative.}{fig:coverage_pair}
+
+\section*{Acknowledgment}
+\gilles{Add funding statement, collaborators, and infrastructure acknowledgments here.}
+
+\printbibliography
+
+\end{document}

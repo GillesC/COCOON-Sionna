@@ -1,0 +1,31 @@
+\section{SINR-Oriented Results}
+\label{sec:results_sinr}
+
+The primary quantitative block in the current manuscript should compare the placement strategies in terms of per-snapshot user \gls{sinr}. The repository already exposes stable postprocessed assets for the distributional view, the time-varying worst-user view, and the number of users below a threshold. These figures are sufficient to populate a first paper draft even before the final interpretation is written.
+
+\PaperSubfigurePair[t][0.47\textwidth]
+  {\SINRCdfFigurePath}{Empirical \gls{sinr} distribution across all user snapshots and compared placement strategies.}{fig:sinr_cdf}
+  {\SINRWorstUserFigurePath}{Worst-user \gls{sinr} over time, highlighting temporal robustness across relocation windows.}{fig:sinr_worst_user}
+  {Primary \gls{sinr} figures for the Rabot strategy comparison. The left panel captures distributional behavior, while the right panel emphasizes the time evolution of the weakest served user.}{fig:sinr_primary_pair}
+
+\PaperFigure[t][0.90\linewidth]{\SINRUsersBelowFigurePath}{Supporting robustness view showing how many users fall below the chosen outage threshold over time. If the paper later prefers a threshold sweep instead, replace this panel with \texttt{\string\SINRThresholdSweepFigurePath}.}{fig:sinr_users_below}
+
+\begin{table}[t]
+    \centering
+    \caption{Placeholder summary table for strategy-level performance. Populate this from \texttt{strategy\_comparison.csv} or the postprocessed summary tables once the first stable result set is frozen.}
+    \label{tab:strategy_summary_placeholder}
+    \begin{tabular}{lllll}
+        \toprule
+        Strategy & Score & P10 \gls{sinr} [dB] & Outage & Note \\
+        \midrule
+        Baseline & \texttt{TBD} & \texttt{TBD} & \texttt{TBD} & static reference \\
+        Local heuristic & \texttt{TBD} & \texttt{TBD} & \texttt{TBD} & CSI-driven \\
+        Exact search & \texttt{TBD} & \texttt{TBD} & \texttt{TBD} & optional \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The prose in this section should remain intentionally restrained for now. It should explain what each figure measures, how it relates to the comparison objective, and which CSV/NPZ exports back the figure generation. The stronger claims about gains, tradeoffs, and statistical significance should be deferred to a later pass.
+
+\gilles{Later pass: add venue-specific result language, confidence statements, and exact numeric deltas once the selected figures and seeds are frozen.}
+\FloatBarrier

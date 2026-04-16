@@ -1,0 +1,33 @@
+\section{System Model}
+
+We consider a downlink \gls{dmimo} system with a set of active \glspl{ap} $\mathcal{A}=\{1,\ldots,M\}$ and scheduled \glspl{ue} $\mathcal{U}=\{1,\ldots,K\}$. Let $N_m$ denote the number of transmit ports at \gls{ap} $m$ and $N_{r,k}$ the number of receive ports at \gls{ue} $k$. The per-\gls{ap} channel block is written as
+\begin{equation}
+    \mathbf{H}_{k,m} \in \mathbb{C}^{N_{r,k} \times N_m},
+\end{equation}
+and the full distributed channel observed by \gls{ue} $k$ is the horizontal concatenation
+\begin{equation}
+    \mathbf{H}_k = \left[\mathbf{H}_{k,1}\;\mathbf{H}_{k,2}\;\cdots\;\mathbf{H}_{k,M}\right].
+\end{equation}
+
+Given a receive combiner $\mathbf{u}_k$, the effective channel becomes
+\begin{equation}
+    \mathbf{h}_k^{\mathsf{H}} = \mathbf{u}_k^{\mathsf{H}}\mathbf{H}_k.
+\end{equation}
+Stacking all users yields the effective distributed channel matrix $\mathbf{H}_{\mathrm{eff}}$. The current pipeline applies a least-squares pseudo-inverse \gls{zf} precoder on $\mathbf{H}_{\mathrm{eff}}$, followed by per-stream power allocation under a total \gls{ap} power budget.
+
+For \gls{ue} $k$, the instantaneous downlink \gls{sinr} is evaluated as
+\begin{equation}
+    \mathrm{SINR}^{\mathrm{DL}}_k =
+    \frac{p_k \left|\mathbf{h}_k^{\mathsf{H}}\mathbf{f}_k\right|^2}
+    {\sum_{i \in \mathcal{U},\, i \neq k} p_i \left|\mathbf{h}_k^{\mathsf{H}}\mathbf{f}_i\right|^2 + \sigma^2},
+\end{equation}
+where $\mathbf{f}_i$ is the precoding vector for stream $i$, $p_i$ its allocated power, and $\sigma^2$ the thermal-noise term.
+
+The placement layer separates always-on infrastructure from repositionable infrastructure. Let $\mathcal{F}$ denote the fixed \glspl{ap} and let $\mathcal{C}$ denote the candidate pool for the movable \glspl{ap}. For each relocation window, the scheduler selects a subset $\mathcal{S}_t \subseteq \mathcal{C}$ with cardinality equal to the number of movable \glspl{ap}. The compared strategies differ only in how $\mathcal{S}_t$ is selected:
+\begin{itemize}
+    \item \texttt{random\_baseline}: sample the movable \glspl{ap} once and keep them fixed,
+    \item \texttt{local\_csi\_p10}: rank candidates by a local \gls{csi}-derived percentile objective,
+    \item \texttt{capped\_exact\_search}: evaluate candidate combinations up to a configured search budget.
+\end{itemize}
+
+\gilles{Later pass: add the exact windowed optimization notation and the final manuscript equation for the strategy score once the paper settles on one objective definition.}

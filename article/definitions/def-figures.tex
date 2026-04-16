@@ -1,0 +1,60 @@
+\newcommand{\resultroot}{../outputs/rabot}
+\newcommand{\postroot}{\resultroot/postprocessing}
+
+\newcommand{\ConceptFigurePath}{figures/cocoon_concept.pdf}
+\newcommand{\SceneLayoutFigurePath}{\resultroot/scene_layout.png}
+\newcommand{\TrajectoryColormapFigurePath}{\resultroot/trajectory_colormap.png}
+\newcommand{\SINRCdfFigurePath}{\postroot/sinr/sinr_cdf_publication.png}
+\newcommand{\SINRWorstUserFigurePath}{\postroot/sinr/worst_user_sinr_timeseries.png}
+\newcommand{\SINRUsersBelowFigurePath}{\postroot/sinr/users_below_threshold_timeseries.png}
+\newcommand{\SINRThresholdSweepFigurePath}{\postroot/sinr/sinr_threshold_sweep.png}
+\newcommand{\ScheduleOverviewFigurePath}{\postroot/schedule/schedule_strategy_overview.png}
+\newcommand{\ScheduleHistogramFigurePath}{\postroot/schedule/schedule_transition_distance_histogram.png}
+\newcommand{\CoverageFigurePath}{\resultroot/coverage_map.png}
+\newcommand{\FixedCoverageFigurePath}{\resultroot/fixed_coverage_map.png}
+
+\NewDocumentCommand{\MissingFigureBox}{ O{0.95\linewidth} m }{%
+  \setlength{\fboxsep}{0.8em}%
+  \fbox{%
+    \parbox[c][0.22\textheight][c]{#1}{%
+      \centering
+      \footnotesize
+      Missing figure asset\\[0.4em]
+      \texttt{\detokenize{#2}}\\[0.4em]
+      Rebuild or copy the expected output before finalizing the manuscript.
+    }%
+  }%
+}
+
+\NewDocumentCommand{\PaperImage}{ O{\linewidth} m }{%
+  \IfFileExists{#2}{\includegraphics[width=#1]{#2}}{\MissingFigureBox[#1]{#2}}%
+}
+
+\NewDocumentCommand{\PaperFigure}{ O{tb} O{0.95\linewidth} m m m }{%
+  \begin{figure}[#1]
+    \centering
+    \PaperImage[#2]{#3}
+    \caption{#4}
+    \label{#5}
+  \end{figure}%
+}
+
+\NewDocumentCommand{\PaperSubfigurePair}{ O{tb} O{0.48\textwidth} m m m m m m m m }{%
+  \begin{figure*}[#1]
+    \centering
+    \begin{subfigure}[t]{#2}
+      \centering
+      \PaperImage[\linewidth]{#3}
+      \caption{#4}
+      \label{#5}
+    \end{subfigure}\hfill
+    \begin{subfigure}[t]{#2}
+      \centering
+      \PaperImage[\linewidth]{#6}
+      \caption{#7}
+      \label{#8}
+    \end{subfigure}
+    \caption{#9}
+    \label{#10}
+  \end{figure*}%
+}

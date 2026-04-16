@@ -1,0 +1,16 @@
+\section{Introduction}
+
+The Cocoon project targets a wireless access paradigm in which the network adapts to the fluidity of the city rather than assuming a static infrastructure and a stationary demand profile. The motivating hypothesis from the project proposal is that a practical \gls{cf} network becomes more feasible when low-height infrastructure can be co-created, repositioned, and activated only when the measured channel conditions justify it. In that view, the citizens are not only traffic sources but also anchors for sensing, mounting, and reconfiguring the surrounding network.
+
+This manuscript narrows that broader vision to a first simulation paper. The current code base already supports a concrete subset of the Cocoon idea: low-height wall-mounted candidate \glspl{ap}, pedestrian mobility, path-based \gls{csi} extraction, and repeated placement decisions over relocation windows in an outdoor urban scene. That subset is sufficient to establish a paper scaffold around environment geometry, strategy comparison, and performance figures, while deferring citizen-study interpretation and experimental validation to later versions.
+
+\PaperFigure[t][0.86\linewidth]{\ConceptFigurePath}{Working concept figure for Cocoon. Replace \texttt{figures/cocoon\_concept.pdf} with a redrawn version of the proposal illustration before submission.}{fig:cocoon_concept}
+
+The draft is therefore structured around three practical contributions that can be filled incrementally as results mature:
+\begin{itemize}
+    \item a concise technical framing of Cocoon as a low-height, movable-\gls{ap}, citizen-co-created access-network concept,
+    \item a manuscript-ready description of the Rabot outdoor simulation pipeline implemented in \texttt{COCOON-Sionna}, and
+    \item stable figure hooks for geometry, \gls{sinr}, and relocation-cost results generated from committed \texttt{outputs/...} assets.
+\end{itemize}
+
+\gilles{Later pass: replace the generic contribution bullets with submission-grade claims and add citations to the proposal-aligned background literature.}

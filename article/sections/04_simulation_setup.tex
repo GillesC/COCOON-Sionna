@@ -1,0 +1,36 @@
+\section{Simulation Setup}
+
+The current paper scaffold is instantiated with the Rabot outdoor scenario defined in \texttt{scenarios/rabot.yaml}. The scene is derived from an \gls{osm} boundary around the KU Leuven Gent Campus Rabot environment. Candidate movable-\gls{ap} positions are generated along building walls at low height, while user mobility is simulated over the walkable outdoor space with pedestrian- and bicycle-like speed profiles.
+
+The simulation pipeline used throughout the manuscript follows the same sequence as the repository workflow: scene construction, candidate generation, user-trajectory generation, path-based \gls{csi} extraction, strategy comparison, and postprocessing into publication-oriented figures. This section should remain descriptive and reproducible; interpretation belongs in the results and discussion sections.
+
+\begin{table}[t]
+    \centering
+    \caption{Key Rabot scenario parameters used by the current manuscript scaffold.}
+    \label{tab:rabot_setup}
+    \begin{tabular}{ll}
+        \toprule
+        Parameter & Value \\
+        \midrule
+        Carrier frequency & \SI{3.5}{\giga\hertz} \\
+        Bandwidth & \SI{100}{\mega\hertz} \\
+        User height & \SI{1.5}{\meter} \\
+        Number of users & 10 \\
+        Simulation horizon & \SI{600}{\second} \\
+        Time step & \SI{10}{\second} \\
+        Movable \glspl{ap} & 6 \\
+        Fixed \glspl{ap} & 0 \\
+        Candidate wall height & \SI{1.5}{\meter} \\
+        Candidate wall spacing & \SI{18}{\meter} \\
+        Minimum candidate spacing & \SI{12}{\meter} \\
+        Relocation window & \SI{60}{\second} \\
+        Compared strategies & baseline, local heuristic \\
+        Exact search & disabled in current Rabot config \\
+        Coverage maps & disabled in current Rabot config \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The manuscript should also state the current output contract because the figures in \cref{sec:results_geometry,sec:results_sinr,sec:results_relocation} are directly linked to committed simulation artifacts. In the present workflow, the paper expects scene-layout figures in \texttt{outputs/rabot/} and postprocessed \gls{sinr}/schedule figures in \texttt{outputs/rabot/postprocessing/}.
+
+\gilles{Optional later addition: add one compact pipeline schematic if the venue benefits from a visual overview.}
