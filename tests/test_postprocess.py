@@ -292,11 +292,17 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     assert artifacts["per_user_csv"].exists()
     assert artifacts["threshold_csv"].exists()
     assert artifacts["cdf_plot"].exists()
+    assert artifacts["cdf_plot_tikz"].exists()
     assert artifacts["threshold_plot"].exists()
     assert artifacts["esr_summary_csv"].exists()
     assert artifacts["esr_timeseries_plot"].exists()
+    assert artifacts["esr_timeseries_plot_tikz"].exists()
     assert artifacts["esr_cdf_plot"].exists()
     assert artifacts["esr_window_cdf_plot"].exists()
+    tikz_text = artifacts["cdf_plot_tikz"].read_text(encoding="utf-8")
+    assert "\\includegraphics" in tikz_text
+    assert "\\definecolor{DistributedFixedColor}{HTML}{2F5D8A}" in tikz_text
+    assert "\\definecolor{DistributedMovableColor}{HTML}{CB3A2A}" in tikz_text
     rows = list(csv.DictReader(artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
     assert rows[0]["strategy"] == "central_massive_mimo"
     assert rows[1]["strategy"] == "distributed_fixed"
@@ -317,11 +323,15 @@ def test_run_scene_visualization_postprocess_rebuilds_visuals(tmp_path: Path, mo
     artifacts = run_scene_visualization_postprocess(output_dir)
 
     assert artifacts["scene_layout"].exists()
+    assert artifacts["scene_layout_tikz"].exists()
     assert artifacts["trajectory_colormap"].exists()
+    assert artifacts["trajectory_colormap_tikz"].exists()
     assert artifacts["scene_animation"].exists()
     assert artifacts["scene_animation_with_central"].exists()
     assert artifacts["fixed_coverage_plot"].exists()
+    assert artifacts["fixed_coverage_plot_tikz"].exists()
     assert artifacts["coverage_plot"].exists()
+    assert artifacts["coverage_plot_tikz"].exists()
 
 
 def test_run_schedule_analysis_and_manuscript_report(tmp_path: Path):
@@ -332,6 +342,7 @@ def test_run_schedule_analysis_and_manuscript_report(tmp_path: Path):
 
     assert schedule_artifacts["summary_csv"].exists()
     assert schedule_artifacts["transition_csv"].exists()
+    assert schedule_artifacts["overview_tikz"].exists()
     schedule_rows = list(csv.DictReader(schedule_artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
     local_row = next(row for row in schedule_rows if row["strategy"] == "distributed_movable")
     assert float(local_row["total_distance_m"]) == 10.0

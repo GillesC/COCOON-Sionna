@@ -24,6 +24,17 @@ STRATEGY_LABELS = {
     "distributed_fixed": "Distributed fixed",
     "distributed_movable": "Distributed movable",
 }
+STRATEGY_COLORS = {
+    "central_massive_mimo": "#d4a017",
+    "distributed_fixed": "#2f5d8a",
+    "distributed_movable": "#cb3a2a",
+}
+STRATEGY_TIKZ_COLOR_NAMES = {
+    "central_massive_mimo": "CentralMassiveMimoColor",
+    "distributed_fixed": "DistributedFixedColor",
+    "distributed_movable": "DistributedMovableColor",
+}
+WINDOW_LINESTYLES = ("-", "--", ":", "-.")
 
 
 def _assert_artifacts_exist(artifacts: dict[str, Path]) -> dict[str, Path]:
@@ -44,6 +55,10 @@ def _label(name: str) -> str:
     return STRATEGY_LABELS.get(name, name)
 
 
+def _strategy_color(name: str) -> str:
+    return STRATEGY_COLORS.get(name, "#4c566a")
+
+
 def _load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
@@ -62,6 +77,48 @@ def _write_csv_rows(path: Path, fieldnames: Sequence[str], rows: Sequence[dict[s
         for row in rows:
             writer.writerow({key: row.get(key, "") for key in fieldnames})
     return path
+
+
+def _tikz_companion_path(path: Path) -> Path:
+    return path.with_suffix(".tex")
+
+
+def _write_tikz_wrapper(path: Path) -> Path | None:
+    if path.suffix.lower() not in {".png", ".pdf"}:
+        return None
+    tikz_path = _tikz_companion_path(path)
+    lines = [
+        f"% Auto-generated TikZ wrapper for {path.name}",
+        "% Requires: \\usepackage{graphicx,xcolor,tikz}",
+        "\\providecommand{\\postprocessfigurewidth}{\\linewidth}",
+    ]
+    for strategy in _ordered_strategies(STRATEGY_TIKZ_COLOR_NAMES):
+        color_name = STRATEGY_TIKZ_COLOR_NAMES[strategy]
+        color_value = _strategy_color(strategy).lstrip("#").upper()
+        lines.append(f"\\definecolor{{{color_name}}}{{HTML}}{{{color_value}}}")
+    lines.extend(
+        [
+            "\\begin{tikzpicture}",
+            f"  \\node[anchor=south west, inner sep=0] at (0,0) {{\\includegraphics[width=\\postprocessfigurewidth]{{{path.name}}}}};",
+            "\\end{tikzpicture}",
+            "",
+        ]
+    )
+    tikz_path.write_text("\n".join(lines), encoding="utf-8")
+    return tikz_path
+
+
+def _save_figure(fig, path: Path, dpi: int = 220) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, dpi=dpi)
+    return path
+
+
+def _add_plot_artifact(artifacts: dict[str, Path], key: str, path: Path) -> None:
+    artifacts[key] = path
+    tikz_path = _write_tikz_wrapper(path)
+    if tikz_path is not None:
+        artifacts[f"{key}_tikz"] = tikz_path
 
 
 def _format_markdown_value(value: Any) -> str:
@@ -312,7 +369,7 @@ def _save_empty_plot(path: Path, title: str, message: str) -> Path:
     ax.text(0.5, 0.5, message, ha="center", va="center", fontsize=12)
     ax.set_title(title)
     fig.tight_layout()
-    fig.savefig(path, dpi=200)
+    _save_figure(fig, path, dpi=200)
     plt.close(fig)
     return path
 
@@ -493,14 +550,20 @@ def run_sinr_snapshot_analysis(
     for name in strategy_names:
         x_values, y_values = _cdf_points(sinr[name])
         if x_values.size:
-            ax.step(x_values, y_values, where="post", linewidth=2.0, label=_label(name))
+            ax.step(
+                x_values,
+                y_values,
+                where="post",
+                linewidth=2.0,
+                color=_strategy_color(name),
+                label=_label(name),
+            )
     ax.set_xlabel("SINR per user snapshot [dB]")
     ax.set_ylabel("CDF")
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    artifacts["cdf_plot"] = target_dir / "sinr_cdf_publication.png"
-    fig.savefig(artifacts["cdf_plot"], dpi=220)
+    _add_plot_artifact(artifacts, "cdf_plot", _save_figure(fig, target_dir / "sinr_cdf_publication.png"))
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -510,6 +573,7 @@ def run_sinr_snapshot_analysis(
             [row["threshold_db"] for row in strategy_rows],
             [row["outage_fraction"] for row in strategy_rows],
             linewidth=2.0,
+            color=_strategy_color(name),
             label=_label(name),
         )
     ax.set_xlabel("SINR threshold [dB]")
@@ -517,21 +581,25 @@ def run_sinr_snapshot_analysis(
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    artifacts["threshold_plot"] = target_dir / "sinr_threshold_sweep.png"
-    fig.savefig(artifacts["threshold_plot"], dpi=220)
+    _add_plot_artifact(artifacts, "threshold_plot", _save_figure(fig, target_dir / "sinr_threshold_sweep.png"))
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(9, 5))
     for name in strategy_names:
-        ax.plot(times_s, np.min(sinr[name], axis=1), linewidth=1.8, label=_label(name))
+        ax.plot(
+            times_s,
+            np.min(sinr[name], axis=1),
+            linewidth=1.8,
+            color=_strategy_color(name),
+            label=_label(name),
+        )
     ax.set_xlabel("Time [s]")
     ax.set_ylabel("Worst-user SINR [dB]")
     _plot_relocation_markers(ax, relocation_times_s)
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    artifacts["worst_user_plot"] = target_dir / "worst_user_sinr_timeseries.png"
-    fig.savefig(artifacts["worst_user_plot"], dpi=220)
+    _add_plot_artifact(artifacts, "worst_user_plot", _save_figure(fig, target_dir / "worst_user_sinr_timeseries.png"))
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(9, 5))
@@ -540,6 +608,7 @@ def run_sinr_snapshot_analysis(
             times_s,
             np.sum(np.asarray(sinr[name]) < outage_threshold_db, axis=1),
             linewidth=1.8,
+            color=_strategy_color(name),
             label=_label(name),
         )
     ax.set_xlabel("Time [s]")
@@ -548,61 +617,93 @@ def run_sinr_snapshot_analysis(
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    artifacts["users_below_plot"] = target_dir / "users_below_threshold_timeseries.png"
-    fig.savefig(artifacts["users_below_plot"], dpi=220)
+    _add_plot_artifact(artifacts, "users_below_plot", _save_figure(fig, target_dir / "users_below_threshold_timeseries.png"))
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(8, 6))
     box_data = [np.mean(sinr[name], axis=0) for name in strategy_names]
     if box_data:
-        ax.boxplot(box_data, tick_labels=[_label(name) for name in strategy_names], showmeans=True)
+        boxplot = ax.boxplot(
+            box_data,
+            tick_labels=[_label(name) for name in strategy_names],
+            showmeans=True,
+            patch_artist=True,
+        )
+        for patch, name in zip(boxplot["boxes"], strategy_names, strict=True):
+            patch.set_facecolor(_strategy_color(name))
+            patch.set_alpha(0.4)
+        for whisker, name in zip(boxplot["whiskers"], np.repeat(strategy_names, 2), strict=True):
+            whisker.set_color(_strategy_color(str(name)))
+        for cap, name in zip(boxplot["caps"], np.repeat(strategy_names, 2), strict=True):
+            cap.set_color(_strategy_color(str(name)))
+        for median, name in zip(boxplot["medians"], strategy_names, strict=True):
+            median.set_color(_strategy_color(name))
+            median.set_linewidth(1.8)
+        for mean, name in zip(boxplot["means"], strategy_names, strict=True):
+            mean.set_markerfacecolor(_strategy_color(name))
+            mean.set_markeredgecolor("black")
         ax.set_ylabel("Per-user mean SINR [dB]")
         ax.grid(True, axis="y", alpha=0.3)
         fig.tight_layout()
-        artifacts["boxplot"] = target_dir / "per_user_mean_sinr_boxplot.png"
-        fig.savefig(artifacts["boxplot"], dpi=220)
+        _add_plot_artifact(artifacts, "boxplot", _save_figure(fig, target_dir / "per_user_mean_sinr_boxplot.png"))
         plt.close(fig)
     else:
         plt.close(fig)
-        artifacts["boxplot"] = _save_empty_plot(
-            target_dir / "per_user_mean_sinr_boxplot.png",
-            "Per-user mean SINR",
-            "No SINR samples available",
+        _add_plot_artifact(
+            artifacts,
+            "boxplot",
+            _save_empty_plot(
+                target_dir / "per_user_mean_sinr_boxplot.png",
+                "Per-user mean SINR",
+                "No SINR samples available",
+            ),
         )
 
     fig, ax = plt.subplots(figsize=(9, 5))
     for name in strategy_names:
-        ax.plot(times_s, esr_by_strategy[name], linewidth=1.0, alpha=0.35)
-        ax.step(times_s, esr_step_by_strategy[name], where="post", linewidth=2.2, label=_label(name))
+        ax.plot(times_s, esr_by_strategy[name], linewidth=1.0, alpha=0.35, color=_strategy_color(name))
+        ax.step(
+            times_s,
+            esr_step_by_strategy[name],
+            where="post",
+            linewidth=2.2,
+            color=_strategy_color(name),
+            label=_label(name),
+        )
     ax.set_xlabel("Time [s]")
     ax.set_ylabel("ESR [bit/s/Hz]")
     _plot_relocation_markers(ax, relocation_times_s)
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    artifacts["esr_timeseries_plot"] = target_dir / "esr_timeseries.png"
-    fig.savefig(artifacts["esr_timeseries_plot"], dpi=220)
+    _add_plot_artifact(artifacts, "esr_timeseries_plot", _save_figure(fig, target_dir / "esr_timeseries.png"))
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(8, 6))
     for name in strategy_names:
         x_values, y_values = _cdf_points(esr_by_strategy[name])
         if x_values.size:
-            ax.step(x_values, y_values, where="post", linewidth=2.0, label=_label(name))
+            ax.step(
+                x_values,
+                y_values,
+                where="post",
+                linewidth=2.0,
+                color=_strategy_color(name),
+                label=_label(name),
+            )
     ax.set_xlabel("ESR [bit/s/Hz]")
     ax.set_ylabel("CDF")
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    artifacts["esr_cdf_plot"] = target_dir / "esr_cdf.png"
-    fig.savefig(artifacts["esr_cdf_plot"], dpi=220)
+    _add_plot_artifact(artifacts, "esr_cdf_plot", _save_figure(fig, target_dir / "esr_cdf.png"))
     plt.close(fig)
 
     if strategy_names and analysis_windows:
         fig, axes = plt.subplots(len(strategy_names), 1, figsize=(8, max(4.5, 3.2 * len(strategy_names))), squeeze=False)
         for axis, name in zip(axes[:, 0], strategy_names, strict=True):
             plotted = False
-            for window in analysis_windows:
+            for window_offset, window in enumerate(analysis_windows):
                 mask = window_index_by_snapshot == int(window["window_index"])
                 if not np.any(mask):
                     continue
@@ -614,6 +715,9 @@ def run_sinr_snapshot_analysis(
                     y_values,
                     where="post",
                     linewidth=1.8,
+                    color=_strategy_color(name),
+                    linestyle=WINDOW_LINESTYLES[window_offset % len(WINDOW_LINESTYLES)],
+                    alpha=max(0.35, 1.0 - 0.12 * window_offset),
                     label=f"W{int(window['window_index'])}",
                 )
                 plotted = True
@@ -624,14 +728,17 @@ def run_sinr_snapshot_analysis(
             if plotted:
                 axis.legend(ncols=min(4, max(1, len(analysis_windows))))
         fig.tight_layout()
-        artifacts["esr_window_cdf_plot"] = target_dir / "esr_time_conditioned_cdf.png"
-        fig.savefig(artifacts["esr_window_cdf_plot"], dpi=220)
+        _add_plot_artifact(artifacts, "esr_window_cdf_plot", _save_figure(fig, target_dir / "esr_time_conditioned_cdf.png"))
         plt.close(fig)
     else:
-        artifacts["esr_window_cdf_plot"] = _save_empty_plot(
-            target_dir / "esr_time_conditioned_cdf.png",
-            "Time-conditioned ESR CDF",
-            "No ESR windows available",
+        _add_plot_artifact(
+            artifacts,
+            "esr_window_cdf_plot",
+            _save_empty_plot(
+                target_dir / "esr_time_conditioned_cdf.png",
+                "Time-conditioned ESR CDF",
+                "No ESR windows available",
+            ),
         )
 
     return _assert_artifacts_exist(artifacts)
@@ -767,37 +874,44 @@ def run_schedule_analysis(output_dir: str | Path, analysis_dir: str | Path | Non
         for strategy in strategies:
             values = [row["distance_m"] for row in move_rows if row["strategy"] == strategy]
             if values:
-                ax.hist(values, bins=min(12, max(4, len(values))), alpha=0.45, label=_label(strategy))
+                ax.hist(
+                    values,
+                    bins=min(12, max(4, len(values))),
+                    alpha=0.45,
+                    color=_strategy_color(strategy),
+                    label=_label(strategy),
+                )
         ax.set_xlabel("Relocation distance [m]")
         ax.set_ylabel("Count")
         ax.grid(True, axis="y", alpha=0.3)
         ax.legend()
         fig.tight_layout()
-        fig.savefig(histogram_path, dpi=220)
+        _save_figure(fig, histogram_path)
         plt.close(fig)
     else:
         _save_empty_plot(histogram_path, "Relocation distances", "No AP relocations were observed")
-    artifacts["histogram"] = histogram_path
+    _add_plot_artifact(artifacts, "histogram", histogram_path)
 
     overview_path = target_dir / "schedule_strategy_overview.png"
     if summary_rows:
         fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
         labels = [_label(row["strategy"]) for row in summary_rows]
-        axes[0].bar(labels, [row["total_distance_m"] for row in summary_rows], color="#4c78a8")
+        colors = [_strategy_color(str(row["strategy"])) for row in summary_rows]
+        axes[0].bar(labels, [row["total_distance_m"] for row in summary_rows], color=colors)
         axes[0].set_ylabel("Total relocation distance [m]")
         axes[0].tick_params(axis="x", rotation=15)
         axes[0].grid(True, axis="y", alpha=0.3)
-        axes[1].bar(labels, [row["move_fraction"] for row in summary_rows], color="#f58518")
+        axes[1].bar(labels, [row["move_fraction"] for row in summary_rows], color=colors)
         axes[1].set_ylabel("Fraction of AP transitions that moved")
         axes[1].tick_params(axis="x", rotation=15)
         axes[1].set_ylim(0.0, 1.0)
         axes[1].grid(True, axis="y", alpha=0.3)
         fig.tight_layout()
-        fig.savefig(overview_path, dpi=220)
+        _save_figure(fig, overview_path)
         plt.close(fig)
     else:
         _save_empty_plot(overview_path, "Schedule overview", "No schedule rows were available")
-    artifacts["overview"] = overview_path
+    _add_plot_artifact(artifacts, "overview", overview_path)
 
     return _assert_artifacts_exist(artifacts)
 
@@ -847,9 +961,9 @@ def run_scene_visualization_postprocess(
         trajectory,
         output_dir / "scene_layout.png",
     )
-    artifacts["scene_layout"] = output_dir / "scene_layout.png"
+    _add_plot_artifact(artifacts, "scene_layout", output_dir / "scene_layout.png")
     _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")
-    artifacts["trajectory_colormap"] = output_dir / "trajectory_colormap.png"
+    _add_plot_artifact(artifacts, "trajectory_colormap", output_dir / "trajectory_colormap.png")
 
     animation_path = _animate_scene(
         metadata,
@@ -888,7 +1002,7 @@ def run_scene_visualization_postprocess(
                 trajectory,
                 output_dir / "fixed_coverage_map.png",
             )
-        artifacts["fixed_coverage_plot"] = output_dir / "fixed_coverage_map.png"
+        _add_plot_artifact(artifacts, "fixed_coverage_plot", output_dir / "fixed_coverage_map.png")
 
     coverage_path = output_dir / "coverage_map.npz"
     if coverage_path.exists():
@@ -900,7 +1014,7 @@ def run_scene_visualization_postprocess(
                 trajectory,
                 output_dir / "coverage_map.png",
             )
-        artifacts["coverage_plot"] = output_dir / "coverage_map.png"
+        _add_plot_artifact(artifacts, "coverage_plot", output_dir / "coverage_map.png")
 
     return _assert_artifacts_exist(artifacts)
 
