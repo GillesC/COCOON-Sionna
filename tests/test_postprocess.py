@@ -300,7 +300,9 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     assert artifacts["esr_cdf_plot"].exists()
     assert artifacts["esr_window_cdf_plot"].exists()
     tikz_text = artifacts["cdf_plot_tikz"].read_text(encoding="utf-8")
-    assert "\\includegraphics" in tikz_text
+    assert "\\addplot" in tikz_text
+    assert "table[" in tikz_text
+    assert "\\includegraphics" not in tikz_text
     assert "\\definecolor{DistributedFixedColor}{HTML}{2F5D8A}" in tikz_text
     assert "\\definecolor{DistributedMovableColor}{HTML}{CB3A2A}" in tikz_text
     rows = list(csv.DictReader(artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
@@ -324,12 +326,14 @@ def test_run_scene_visualization_postprocess_rebuilds_visuals(tmp_path: Path, mo
 
     assert artifacts["scene_layout"].exists()
     assert artifacts["scene_layout_tikz"].exists()
+    assert "\\addplot" in artifacts["scene_layout_tikz"].read_text(encoding="utf-8")
     assert artifacts["trajectory_colormap"].exists()
     assert artifacts["trajectory_colormap_tikz"].exists()
     assert artifacts["scene_animation"].exists()
     assert artifacts["scene_animation_with_central"].exists()
     assert artifacts["fixed_coverage_plot"].exists()
     assert artifacts["fixed_coverage_plot_tikz"].exists()
+    assert "fixed_coverage_grid.csv" in artifacts["fixed_coverage_plot_tikz"].read_text(encoding="utf-8")
     assert artifacts["coverage_plot"].exists()
     assert artifacts["coverage_plot_tikz"].exists()
 
@@ -343,6 +347,7 @@ def test_run_schedule_analysis_and_manuscript_report(tmp_path: Path):
     assert schedule_artifacts["summary_csv"].exists()
     assert schedule_artifacts["transition_csv"].exists()
     assert schedule_artifacts["overview_tikz"].exists()
+    assert "\\addplot" in schedule_artifacts["overview_tikz"].read_text(encoding="utf-8")
     schedule_rows = list(csv.DictReader(schedule_artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
     local_row = next(row for row in schedule_rows if row["strategy"] == "distributed_movable")
     assert float(local_row["total_distance_m"]) == 10.0

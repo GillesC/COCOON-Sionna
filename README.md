@@ -401,9 +401,9 @@ The `postprocess` command recreates visual outputs such as:
 - `user_sinr_cdf.png`
 - ESR time-series/CDF figures and the full analysis bundle under `postprocessing/`
 
-Each static postprocessed figure also gets a same-name `.tex` TikZ wrapper
-that includes the rendered image and carries the shared placement-model color
-definitions used across the plots.
+Each static postprocessed figure also gets a same-name `.tex` PGFPlots file
+that reads CSV exports directly and reuses the shared placement-model color
+definitions across the plots.
 
 ## Postprocessing
 

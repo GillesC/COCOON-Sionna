@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
+import re
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
@@ -35,6 +37,12 @@ STRATEGY_TIKZ_COLOR_NAMES = {
     "distributed_movable": "DistributedMovableColor",
 }
 WINDOW_LINESTYLES = ("-", "--", ":", "-.")
+PGFPLOTS_LINESTYLES = {
+    "-": "solid",
+    "--": "dashed",
+    ":": "dotted",
+    "-.": "dash dot",
+}
 
 
 def _assert_artifacts_exist(artifacts: dict[str, Path]) -> dict[str, Path]:
@@ -83,29 +91,40 @@ def _tikz_companion_path(path: Path) -> Path:
     return path.with_suffix(".tex")
 
 
-def _write_tikz_wrapper(path: Path) -> Path | None:
-    if path.suffix.lower() not in {".png", ".pdf"}:
-        return None
-    tikz_path = _tikz_companion_path(path)
+def _tikz_data_dir(base_dir: Path) -> Path:
+    target = base_dir / "tikz_data"
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", str(value)).strip("_").lower()
+    return slug or "data"
+
+
+def _relative_posix_path(path: Path, start: Path) -> str:
+    return os.path.relpath(path, start).replace("\\", "/")
+
+
+def _write_tikz_file(path: Path, body_lines: Sequence[str], *, extra_comments: Sequence[str] | None = None) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        f"% Auto-generated TikZ wrapper for {path.name}",
-        "% Requires: \\usepackage{graphicx,xcolor,tikz}",
+        f"% Auto-generated PGFPlots figure for {path.stem}",
+        "% Requires: \\usepackage{pgfplots,pgfplotstable,xcolor}",
+        "% Optional: \\usepgfplotslibrary{groupplots}",
         "\\providecommand{\\postprocessfigurewidth}{\\linewidth}",
+        "\\pgfplotsset{compat=1.18}",
     ]
     for strategy in _ordered_strategies(STRATEGY_TIKZ_COLOR_NAMES):
         color_name = STRATEGY_TIKZ_COLOR_NAMES[strategy]
         color_value = _strategy_color(strategy).lstrip("#").upper()
         lines.append(f"\\definecolor{{{color_name}}}{{HTML}}{{{color_value}}}")
-    lines.extend(
-        [
-            "\\begin{tikzpicture}",
-            f"  \\node[anchor=south west, inner sep=0] at (0,0) {{\\includegraphics[width=\\postprocessfigurewidth]{{{path.name}}}}};",
-            "\\end{tikzpicture}",
-            "",
-        ]
-    )
-    tikz_path.write_text("\n".join(lines), encoding="utf-8")
-    return tikz_path
+    if extra_comments:
+        lines.extend(extra_comments)
+    lines.extend(body_lines)
+    lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
 
 
 def _save_figure(fig, path: Path, dpi: int = 220) -> Path:
@@ -114,9 +133,8 @@ def _save_figure(fig, path: Path, dpi: int = 220) -> Path:
     return path
 
 
-def _add_plot_artifact(artifacts: dict[str, Path], key: str, path: Path) -> None:
+def _add_plot_artifact(artifacts: dict[str, Path], key: str, path: Path, *, tikz_path: Path | None = None) -> None:
     artifacts[key] = path
-    tikz_path = _write_tikz_wrapper(path)
     if tikz_path is not None:
         artifacts[f"{key}_tikz"] = tikz_path
 
@@ -374,6 +392,491 @@ def _save_empty_plot(path: Path, title: str, message: str) -> Path:
     return path
 
 
+def _empty_tikz(path: Path, title: str, message: str) -> Path:
+    return _write_tikz_file(
+        path,
+        [
+            "\\begin{tikzpicture}",
+            "  \\node[align=center] at (0,0) {%s\\\\%s};" % (title, message),
+            "\\end{tikzpicture}",
+        ],
+    )
+
+
+def _tikz_color_name(strategy: str) -> str:
+    return STRATEGY_TIKZ_COLOR_NAMES.get(strategy, "black")
+
+
+def _y_limits(values: Sequence[float] | np.ndarray, margin_ratio: float = 0.06) -> tuple[float, float]:
+    flat = np.asarray(values, dtype=float).reshape(-1)
+    flat = flat[np.isfinite(flat)]
+    if flat.size == 0:
+        return (0.0, 1.0)
+    minimum = float(np.min(flat))
+    maximum = float(np.max(flat))
+    span = maximum - minimum
+    if span <= 1e-9:
+        pad = max(abs(maximum) * 0.1, 1.0)
+        return (minimum - pad, maximum + pad)
+    pad = margin_ratio * span
+    return (minimum - pad, maximum + pad)
+
+
+def _write_strategy_series_csvs(
+    data_dir: Path,
+    prefix: str,
+    rows_by_strategy: dict[str, list[dict[str, Any]]],
+    fieldnames: Sequence[str],
+) -> dict[str, Path]:
+    return {
+        strategy: _write_csv_rows(data_dir / f"{prefix}_{_slugify(strategy)}.csv", fieldnames, rows)
+        for strategy, rows in rows_by_strategy.items()
+    }
+
+
+def _write_cdf_tikz(
+    path: Path,
+    *,
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    x_column: str,
+    y_column: str,
+    series_paths: dict[str, Path],
+    strategy_names: Sequence[str],
+) -> Path:
+    body = [
+        "\\begin{tikzpicture}",
+        "  \\begin{axis}[",
+        "    width=\\postprocessfigurewidth,",
+        "    height=0.62\\postprocessfigurewidth,",
+        f"    title={{{title}}},",
+        f"    xlabel={{{xlabel}}},",
+        f"    ylabel={{{ylabel}}},",
+        "    grid=major,",
+        "    legend pos=south east,",
+        "  ]",
+    ]
+    for strategy in strategy_names:
+        csv_path = series_paths.get(strategy)
+        if csv_path is None:
+            continue
+        rel = _relative_posix_path(csv_path, path.parent)
+        body.extend(
+            [
+                "    \\addplot[const plot mark right, no markers, line width=1.2pt, color=%s] table[x=%s,y=%s,col sep=comma] {%s};"
+                % (_tikz_color_name(strategy), x_column, y_column, rel),
+                "    \\addlegendentry{%s}" % _label(strategy),
+            ]
+        )
+    body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
+    return _write_tikz_file(path, body)
+
+
+def _write_timeseries_tikz(
+    path: Path,
+    *,
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    x_column: str,
+    y_column: str,
+    series_paths: dict[str, Path],
+    strategy_names: Sequence[str],
+    relocation_times_s: np.ndarray | None = None,
+    step: bool = False,
+    faint_series_paths: dict[str, Path] | None = None,
+    faint_y_column: str | None = None,
+    y_limits: tuple[float, float] | None = None,
+) -> Path:
+    ymin, ymax = y_limits if y_limits is not None else (0.0, 1.0)
+    body = [
+        "\\begin{tikzpicture}",
+        "  \\begin{axis}[",
+        "    width=\\postprocessfigurewidth,",
+        "    height=0.58\\postprocessfigurewidth,",
+        f"    title={{{title}}},",
+        f"    xlabel={{{xlabel}}},",
+        f"    ylabel={{{ylabel}}},",
+        "    grid=major,",
+        "    legend pos=south east,",
+        f"    ymin={ymin:.8f},",
+        f"    ymax={ymax:.8f},",
+        "  ]",
+    ]
+    if relocation_times_s is not None:
+        for time_s in np.asarray(relocation_times_s, dtype=float):
+            body.append(
+                "    \\addplot[gray, densely dotted, no markers] coordinates {(%0.8f,%0.8f) (%0.8f,%0.8f)};"
+                % (float(time_s), ymin, float(time_s), ymax)
+            )
+    if faint_series_paths is not None and faint_y_column is not None:
+        for strategy in strategy_names:
+            csv_path = faint_series_paths.get(strategy)
+            if csv_path is None:
+                continue
+            rel = _relative_posix_path(csv_path, path.parent)
+            body.append(
+                "    \\addplot[no markers, line width=0.5pt, opacity=0.35, color=%s] table[x=%s,y=%s,col sep=comma] {%s};"
+                % (_tikz_color_name(strategy), x_column, faint_y_column, rel)
+            )
+    plot_style = "const plot mark right" if step else "no markers"
+    for strategy in strategy_names:
+        csv_path = series_paths.get(strategy)
+        if csv_path is None:
+            continue
+        rel = _relative_posix_path(csv_path, path.parent)
+        body.extend(
+            [
+                "    \\addplot[%s, line width=1.2pt, color=%s] table[x=%s,y=%s,col sep=comma] {%s};"
+                % (plot_style, _tikz_color_name(strategy), x_column, y_column, rel),
+                "    \\addlegendentry{%s}" % _label(strategy),
+            ]
+        )
+    body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
+    return _write_tikz_file(path, body)
+
+
+def _write_boxplot_tikz(
+    path: Path,
+    *,
+    title: str,
+    ylabel: str,
+    y_column: str,
+    series_paths: dict[str, Path],
+    strategy_names: Sequence[str],
+) -> Path:
+    tick_labels = ",".join("{%s}" % _label(strategy) for strategy in strategy_names)
+    body = [
+        "\\begin{tikzpicture}",
+        "  \\begin{axis}[",
+        "    width=\\postprocessfigurewidth,",
+        "    height=0.62\\postprocessfigurewidth,",
+        f"    title={{{title}}},",
+        f"    ylabel={{{ylabel}}},",
+        "    grid=major,",
+        "    xtick={%s}," % ",".join(str(index) for index in range(1, len(strategy_names) + 1)),
+        f"    xticklabels={{{tick_labels}}},",
+        "    xticklabel style={rotate=15,anchor=east},",
+        "  ]",
+    ]
+    for index, strategy in enumerate(strategy_names, start=1):
+        csv_path = series_paths.get(strategy)
+        if csv_path is None:
+            continue
+        rel = _relative_posix_path(csv_path, path.parent)
+        body.append(
+            "    \\addplot+[boxplot, boxplot/draw position=%d, draw=%s, fill=%s!35] table[y=%s,col sep=comma] {%s};"
+            % (index, _tikz_color_name(strategy), _tikz_color_name(strategy), y_column, rel)
+        )
+    body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
+    return _write_tikz_file(path, body)
+
+
+def _write_histogram_tikz(
+    path: Path,
+    *,
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    series_paths: dict[str, Path],
+    strategy_names: Sequence[str],
+) -> Path:
+    body = [
+        "\\begin{tikzpicture}",
+        "  \\begin{axis}[",
+        "    width=\\postprocessfigurewidth,",
+        "    height=0.62\\postprocessfigurewidth,",
+        f"    title={{{title}}},",
+        f"    xlabel={{{xlabel}}},",
+        f"    ylabel={{{ylabel}}},",
+        "    grid=major,",
+        "    ybar,",
+        "    bar width=7pt,",
+        "    legend pos=north east,",
+        "  ]",
+    ]
+    for strategy in strategy_names:
+        csv_path = series_paths.get(strategy)
+        if csv_path is None:
+            continue
+        rel = _relative_posix_path(csv_path, path.parent)
+        body.extend(
+            [
+                "    \\addplot[draw=none, fill=%s, fill opacity=0.45] table[x=bin_center_m,y=count,col sep=comma] {%s};"
+                % (_tikz_color_name(strategy), rel),
+                "    \\addlegendentry{%s}" % _label(strategy),
+            ]
+        )
+    body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
+    return _write_tikz_file(path, body)
+
+
+def _write_schedule_overview_tikz(
+    path: Path,
+    *,
+    series_paths: dict[str, Path],
+    strategy_names: Sequence[str],
+) -> Path:
+    xticks = ",".join(str(index) for index in range(len(strategy_names)))
+    xticklabels = ",".join("{%s}" % _label(strategy) for strategy in strategy_names)
+    body = [
+        "\\begin{tikzpicture}",
+        "  \\begin{axis}[",
+        "    name=leftplot,",
+        "    width=0.48\\postprocessfigurewidth,",
+        "    height=0.44\\postprocessfigurewidth,",
+        "    title={Schedule overview},",
+        "    ylabel={Total relocation distance [m]},",
+        "    grid=major,",
+        "    ybar,",
+        "    bar width=12pt,",
+        f"    xtick={{{xticks}}},",
+        f"    xticklabels={{{xticklabels}}},",
+        "    xticklabel style={rotate=15,anchor=east},",
+        "  ]",
+    ]
+    for strategy in strategy_names:
+        csv_path = series_paths.get(strategy)
+        if csv_path is None:
+            continue
+        rel = _relative_posix_path(csv_path, path.parent)
+        body.append(
+            "    \\addplot[draw=none, fill=%s] table[x=index,y=total_distance_m,col sep=comma] {%s};"
+            % (_tikz_color_name(strategy), rel)
+        )
+    body.extend(
+        [
+            "  \\end{axis}",
+            "  \\begin{axis}[",
+            "    at={(leftplot.outer north east)},",
+            "    anchor=outer north west,",
+            "    xshift=1.3cm,",
+            "    width=0.48\\postprocessfigurewidth,",
+            "    height=0.44\\postprocessfigurewidth,",
+            "    ylabel={Fraction of AP transitions that moved},",
+            "    ymin=0.0,",
+            "    ymax=1.0,",
+            "    grid=major,",
+            "    ybar,",
+            "    bar width=12pt,",
+            f"    xtick={{{xticks}}},",
+            f"    xticklabels={{{xticklabels}}},",
+            "    xticklabel style={rotate=15,anchor=east},",
+            "  ]",
+        ]
+    )
+    for strategy in strategy_names:
+        csv_path = series_paths.get(strategy)
+        if csv_path is None:
+            continue
+        rel = _relative_posix_path(csv_path, path.parent)
+        body.append(
+            "    \\addplot[draw=none, fill=%s] table[x=index,y=move_fraction,col sep=comma] {%s};"
+            % (_tikz_color_name(strategy), rel)
+        )
+    body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
+    return _write_tikz_file(path, body)
+
+
+def _write_xy_path_csv(path: Path, segments: Sequence[np.ndarray]) -> Path:
+    rows: list[dict[str, Any]] = []
+    for segment in segments:
+        data = np.asarray(segment, dtype=float)
+        if data.ndim != 2 or data.shape[0] == 0:
+            continue
+        for point in data:
+            rows.append({"x_m": float(point[0]), "y_m": float(point[1])})
+        rows.append({"x_m": float("nan"), "y_m": float("nan")})
+    return _write_csv_rows(path, ["x_m", "y_m"], rows)
+
+
+def _scene_polylines(metadata: dict[str, Any] | None, graph) -> tuple[list[np.ndarray], list[np.ndarray], list[np.ndarray]]:
+    boundary_segments: list[np.ndarray] = []
+    building_segments: list[np.ndarray] = []
+    edge_segments: list[np.ndarray] = []
+    if metadata is not None and "boundary_local" in metadata:
+        boundary = np.asarray(metadata["boundary_local"], dtype=float)
+        if boundary.ndim == 2 and len(boundary):
+            boundary_segments.append(boundary[:, :2])
+    if metadata is not None:
+        for building in metadata.get("buildings", []):
+            polygon = np.asarray(building.get("polygon_local", []), dtype=float)
+            if polygon.ndim == 2 and len(polygon):
+                building_segments.append(polygon[:, :2])
+    for u, v in graph.edges():
+        start = graph.nodes[u]
+        end = graph.nodes[v]
+        edge_segments.append(
+            np.asarray(
+                [
+                    [float(start["x"]), float(start["y"])],
+                    [float(end["x"]), float(end["y"])],
+                ],
+                dtype=float,
+            )
+        )
+    return boundary_segments, building_segments, edge_segments
+
+
+def _write_scene_layout_tikz(
+    path: Path,
+    *,
+    boundary_csv: Path | None,
+    buildings_csv: Path | None,
+    edges_csv: Path | None,
+    trajectory_csv: Path | None,
+    start_csv: Path | None,
+    end_csv: Path | None,
+    candidate_csv: Path | None,
+    selected_csv: Path | None,
+    selected_strategy: str,
+) -> Path:
+    body = [
+        "\\begin{tikzpicture}",
+        "  \\begin{axis}[",
+        "    width=\\postprocessfigurewidth,",
+        "    height=0.78\\postprocessfigurewidth,",
+        "    title={Scene layout with AP placement and UE motion},",
+        "    xlabel={x [m]},",
+        "    ylabel={y [m]},",
+        "    axis equal image,",
+        "    grid=major,",
+        "    legend pos=north east,",
+        "    unbounded coords=jump,",
+        "  ]",
+    ]
+    for csv_path, style in (
+        (boundary_csv, "black, line width=1.0pt"),
+        (buildings_csv, "gray!70, line width=0.8pt"),
+        (edges_csv, "gray!50, line width=0.5pt"),
+        (trajectory_csv, "orange!85!black, line width=0.9pt"),
+    ):
+        if csv_path is None:
+            continue
+        rel = _relative_posix_path(csv_path, path.parent)
+        body.append("    \\addplot[%s] table[x=x_m,y=y_m,col sep=comma] {%s};" % (style, rel))
+    if candidate_csv is not None:
+        body.extend(
+            [
+                "    \\addplot[only marks, mark=square*, mark size=2pt, color=DistributedFixedColor] table[x=x_m,y=y_m,col sep=comma] {%s};"
+                % _relative_posix_path(candidate_csv, path.parent),
+                "    \\addlegendentry{Candidate APs}",
+            ]
+        )
+    if selected_csv is not None:
+        body.extend(
+            [
+                "    \\addplot[only marks, mark=triangle*, mark size=3pt, color=%s] table[x=x_m,y=y_m,col sep=comma] {%s};"
+                % (_tikz_color_name(selected_strategy), _relative_posix_path(selected_csv, path.parent)),
+                "    \\addlegendentry{Selected APs}",
+            ]
+        )
+    if start_csv is not None:
+        body.extend(
+            [
+                "    \\addplot[only marks, mark=*, mark size=2.5pt, color=green!50!black] table[x=x_m,y=y_m,col sep=comma] {%s};"
+                % _relative_posix_path(start_csv, path.parent),
+                "    \\addlegendentry{UE start}",
+            ]
+        )
+    if end_csv is not None:
+        body.extend(
+            [
+                "    \\addplot[only marks, mark=x, mark size=2.5pt, color=orange!85!black] table[x=x_m,y=y_m,col sep=comma] {%s};"
+                % _relative_posix_path(end_csv, path.parent),
+                "    \\addlegendentry{UE end}",
+            ]
+        )
+    body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
+    return _write_tikz_file(path, body)
+
+
+def _write_trajectory_colormap_tikz(path: Path, *, points_csv: Path) -> Path:
+    rel = _relative_posix_path(points_csv, path.parent)
+    body = [
+        "\\begin{tikzpicture}",
+        "  \\begin{axis}[",
+        "    width=\\postprocessfigurewidth,",
+        "    height=0.72\\postprocessfigurewidth,",
+        "    title={UE trajectories colored by time},",
+        "    xlabel={x [m]},",
+        "    ylabel={y [m]},",
+        "    axis equal image,",
+        "    grid=major,",
+        "    colorbar,",
+        "    point meta min=0,",
+        "  ]",
+        "    \\addplot[scatter, only marks, mark=*, mark size=1.7pt, scatter src=explicit] table[x=x_m,y=y_m,meta=time_s,col sep=comma] {%s};"
+        % rel,
+        "  \\end{axis}",
+        "\\end{tikzpicture}",
+    ]
+    return _write_tikz_file(path, body)
+
+
+def _coverage_grid_rows(best_sinr_db: np.ndarray, cell_centers: np.ndarray) -> list[dict[str, Any]]:
+    centers = np.asarray(cell_centers, dtype=float)
+    values = np.asarray(best_sinr_db, dtype=float)
+    rows: list[dict[str, Any]] = []
+    if values.ndim != 2 or centers.ndim < 3:
+        return rows
+    for row_index in range(values.shape[0]):
+        for col_index in range(values.shape[1]):
+            rows.append(
+                {
+                    "x_m": float(centers[row_index, col_index, 0]),
+                    "y_m": float(centers[row_index, col_index, 1]),
+                    "best_sinr_db": float(values[row_index, col_index]),
+                }
+            )
+    return rows
+
+
+def _write_coverage_tikz(
+    path: Path,
+    *,
+    grid_csv: Path,
+    selected_csv: Path | None,
+    trajectory_csv: Path | None,
+    title: str,
+    selected_strategy: str,
+) -> Path:
+    body = [
+        "\\begin{tikzpicture}",
+        "  \\begin{axis}[",
+        "    width=\\postprocessfigurewidth,",
+        "    height=0.72\\postprocessfigurewidth,",
+        f"    title={{{title}}},",
+        "    xlabel={x [m]},",
+        "    ylabel={y [m]},",
+        "    axis equal image,",
+        "    grid=major,",
+        "    colorbar,",
+        "  ]",
+        "    \\addplot[scatter, only marks, mark=square*, mark size=5pt, scatter src=explicit] table[x=x_m,y=y_m,meta=best_sinr_db,col sep=comma] {%s};"
+        % _relative_posix_path(grid_csv, path.parent),
+    ]
+    if selected_csv is not None:
+        body.extend(
+            [
+                "    \\addplot[only marks, mark=triangle*, mark size=3pt, color=%s] table[x=x_m,y=y_m,col sep=comma] {%s};"
+                % (_tikz_color_name(selected_strategy), _relative_posix_path(selected_csv, path.parent)),
+                "    \\addlegendentry{Selected APs}",
+            ]
+        )
+    if trajectory_csv is not None:
+        body.extend(
+            [
+                "    \\addplot[only marks, mark=*, mark size=1.0pt, color=black, opacity=0.35] table[x=x_m,y=y_m,col sep=comma] {%s};"
+                % _relative_posix_path(trajectory_csv, path.parent),
+                "    \\addlegendentry{UE trajectory}",
+            ]
+        )
+    body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
+    return _write_tikz_file(path, body)
+
+
 def run_sinr_snapshot_analysis(
     output_dir: str | Path,
     analysis_dir: str | Path | None = None,
@@ -545,6 +1048,114 @@ def run_sinr_snapshot_analysis(
             esr_window_rows,
         ),
     }
+    tikz_data_dir = _tikz_data_dir(target_dir)
+    cdf_series_paths = _write_strategy_series_csvs(
+        tikz_data_dir,
+        "sinr_cdf",
+        {
+            name: [
+                {"value_db": float(x_value), "cdf": float(y_value)}
+                for x_value, y_value in zip(*_cdf_points(sinr[name]), strict=True)
+            ]
+            for name in strategy_names
+        },
+        ["value_db", "cdf"],
+    )
+    threshold_series_paths = _write_strategy_series_csvs(
+        tikz_data_dir,
+        "sinr_threshold",
+        {
+            name: [row for row in threshold_rows if row["strategy"] == name]
+            for name in strategy_names
+        },
+        ["threshold_db", "outage_fraction", "mean_users_below_threshold", "probability_any_user_below_threshold"],
+    )
+    worst_user_series_paths = _write_strategy_series_csvs(
+        tikz_data_dir,
+        "worst_user_sinr",
+        {
+            name: [
+                {"time_s": float(time_s), "worst_user_sinr_db": float(value)}
+                for time_s, value in zip(times_s, np.min(sinr[name], axis=1), strict=True)
+            ]
+            for name in strategy_names
+        },
+        ["time_s", "worst_user_sinr_db"],
+    )
+    users_below_series_paths = _write_strategy_series_csvs(
+        tikz_data_dir,
+        "users_below_threshold",
+        {
+            name: [
+                {"time_s": float(time_s), "users_below_threshold": int(value)}
+                for time_s, value in zip(times_s, np.sum(np.asarray(sinr[name]) < outage_threshold_db, axis=1), strict=True)
+            ]
+            for name in strategy_names
+        },
+        ["time_s", "users_below_threshold"],
+    )
+    boxplot_series_paths = _write_strategy_series_csvs(
+        tikz_data_dir,
+        "per_user_mean_sinr",
+        {
+            name: [
+                {"mean_sinr_db": float(np.mean(user_values))}
+                for user_values in np.asarray(sinr[name], dtype=float).T
+            ]
+            for name in strategy_names
+        },
+        ["mean_sinr_db"],
+    )
+    esr_timeseries_paths = _write_strategy_series_csvs(
+        tikz_data_dir,
+        "esr_timeseries",
+        {
+            name: [
+                {
+                    "time_s": float(time_s),
+                    "esr_bps_hz": float(value),
+                    "window_mean_esr_bps_hz": float(step_value),
+                }
+                for time_s, value, step_value in zip(times_s, esr_by_strategy[name], esr_step_by_strategy[name], strict=True)
+            ]
+            for name in strategy_names
+        },
+        ["time_s", "esr_bps_hz", "window_mean_esr_bps_hz"],
+    )
+    esr_cdf_series_paths = _write_strategy_series_csvs(
+        tikz_data_dir,
+        "esr_cdf",
+        {
+            name: [
+                {"esr_bps_hz": float(x_value), "cdf": float(y_value)}
+                for x_value, y_value in zip(*_cdf_points(esr_by_strategy[name]), strict=True)
+            ]
+            for name in strategy_names
+        },
+        ["esr_bps_hz", "cdf"],
+    )
+    esr_window_series_paths: dict[str, Path] = {}
+    for strategy in strategy_names:
+        for window_offset, window in enumerate(analysis_windows):
+            mask = window_index_by_snapshot == int(window["window_index"])
+            if not np.any(mask):
+                continue
+            x_values, y_values = _cdf_points(esr_by_strategy[strategy][mask])
+            if x_values.size == 0:
+                continue
+            esr_window_series_paths[f"{strategy}:W{int(window['window_index'])}"] = _write_csv_rows(
+                tikz_data_dir / f"esr_window_cdf_{_slugify(strategy)}_w{int(window['window_index'])}.csv",
+                ["esr_bps_hz", "cdf", "window_index", "window_style"],
+                [
+                    {
+                        "esr_bps_hz": float(x_value),
+                        "cdf": float(y_value),
+                        "window_index": int(window["window_index"]),
+                        "window_style": PGFPLOTS_LINESTYLES[WINDOW_LINESTYLES[window_offset % len(WINDOW_LINESTYLES)]],
+                    }
+                    for x_value, y_value in zip(x_values, y_values, strict=True)
+                ],
+            )
 
     fig, ax = plt.subplots(figsize=(8, 6))
     for name in strategy_names:
@@ -563,7 +1174,21 @@ def run_sinr_snapshot_analysis(
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    _add_plot_artifact(artifacts, "cdf_plot", _save_figure(fig, target_dir / "sinr_cdf_publication.png"))
+    _add_plot_artifact(
+        artifacts,
+        "cdf_plot",
+        _save_figure(fig, target_dir / "sinr_cdf_publication.png"),
+        tikz_path=_write_cdf_tikz(
+            _tikz_companion_path(target_dir / "sinr_cdf_publication.png"),
+            title="SINR CDF",
+            xlabel="SINR per user snapshot [dB]",
+            ylabel="CDF",
+            x_column="value_db",
+            y_column="cdf",
+            series_paths=cdf_series_paths,
+            strategy_names=strategy_names,
+        ),
+    )
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -581,7 +1206,22 @@ def run_sinr_snapshot_analysis(
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    _add_plot_artifact(artifacts, "threshold_plot", _save_figure(fig, target_dir / "sinr_threshold_sweep.png"))
+    _add_plot_artifact(
+        artifacts,
+        "threshold_plot",
+        _save_figure(fig, target_dir / "sinr_threshold_sweep.png"),
+        tikz_path=_write_timeseries_tikz(
+            _tikz_companion_path(target_dir / "sinr_threshold_sweep.png"),
+            title="SINR threshold sweep",
+            xlabel="SINR threshold [dB]",
+            ylabel="Fraction of user snapshots below threshold",
+            x_column="threshold_db",
+            y_column="outage_fraction",
+            series_paths=threshold_series_paths,
+            strategy_names=strategy_names,
+            y_limits=(0.0, 1.0),
+        ),
+    )
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(9, 5))
@@ -599,7 +1239,23 @@ def run_sinr_snapshot_analysis(
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    _add_plot_artifact(artifacts, "worst_user_plot", _save_figure(fig, target_dir / "worst_user_sinr_timeseries.png"))
+    _add_plot_artifact(
+        artifacts,
+        "worst_user_plot",
+        _save_figure(fig, target_dir / "worst_user_sinr_timeseries.png"),
+        tikz_path=_write_timeseries_tikz(
+            _tikz_companion_path(target_dir / "worst_user_sinr_timeseries.png"),
+            title="Worst-user SINR",
+            xlabel="Time [s]",
+            ylabel="Worst-user SINR [dB]",
+            x_column="time_s",
+            y_column="worst_user_sinr_db",
+            series_paths=worst_user_series_paths,
+            strategy_names=strategy_names,
+            relocation_times_s=relocation_times_s,
+            y_limits=_y_limits(np.concatenate([np.asarray(np.min(sinr[name], axis=1), dtype=float) for name in strategy_names]) if strategy_names else np.asarray([0.0])),
+        ),
+    )
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(9, 5))
@@ -617,7 +1273,27 @@ def run_sinr_snapshot_analysis(
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    _add_plot_artifact(artifacts, "users_below_plot", _save_figure(fig, target_dir / "users_below_threshold_timeseries.png"))
+    _add_plot_artifact(
+        artifacts,
+        "users_below_plot",
+        _save_figure(fig, target_dir / "users_below_threshold_timeseries.png"),
+        tikz_path=_write_timeseries_tikz(
+            _tikz_companion_path(target_dir / "users_below_threshold_timeseries.png"),
+            title="Users below threshold",
+            xlabel="Time [s]",
+            ylabel=f"Users below {outage_threshold_db:g} dB",
+            x_column="time_s",
+            y_column="users_below_threshold",
+            series_paths=users_below_series_paths,
+            strategy_names=strategy_names,
+            relocation_times_s=relocation_times_s,
+            y_limits=_y_limits(
+                np.concatenate([np.sum(np.asarray(sinr[name]) < outage_threshold_db, axis=1) for name in strategy_names])
+                if strategy_names
+                else np.asarray([0.0])
+            ),
+        ),
+    )
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -645,7 +1321,19 @@ def run_sinr_snapshot_analysis(
         ax.set_ylabel("Per-user mean SINR [dB]")
         ax.grid(True, axis="y", alpha=0.3)
         fig.tight_layout()
-        _add_plot_artifact(artifacts, "boxplot", _save_figure(fig, target_dir / "per_user_mean_sinr_boxplot.png"))
+        _add_plot_artifact(
+            artifacts,
+            "boxplot",
+            _save_figure(fig, target_dir / "per_user_mean_sinr_boxplot.png"),
+            tikz_path=_write_boxplot_tikz(
+                _tikz_companion_path(target_dir / "per_user_mean_sinr_boxplot.png"),
+                title="Per-user mean SINR",
+                ylabel="Per-user mean SINR [dB]",
+                y_column="mean_sinr_db",
+                series_paths=boxplot_series_paths,
+                strategy_names=strategy_names,
+            ),
+        )
         plt.close(fig)
     else:
         plt.close(fig)
@@ -654,6 +1342,11 @@ def run_sinr_snapshot_analysis(
             "boxplot",
             _save_empty_plot(
                 target_dir / "per_user_mean_sinr_boxplot.png",
+                "Per-user mean SINR",
+                "No SINR samples available",
+            ),
+            tikz_path=_empty_tikz(
+                _tikz_companion_path(target_dir / "per_user_mean_sinr_boxplot.png"),
                 "Per-user mean SINR",
                 "No SINR samples available",
             ),
@@ -676,7 +1369,26 @@ def run_sinr_snapshot_analysis(
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    _add_plot_artifact(artifacts, "esr_timeseries_plot", _save_figure(fig, target_dir / "esr_timeseries.png"))
+    _add_plot_artifact(
+        artifacts,
+        "esr_timeseries_plot",
+        _save_figure(fig, target_dir / "esr_timeseries.png"),
+        tikz_path=_write_timeseries_tikz(
+            _tikz_companion_path(target_dir / "esr_timeseries.png"),
+            title="ESR evolution",
+            xlabel="Time [s]",
+            ylabel="ESR [bit/s/Hz]",
+            x_column="time_s",
+            y_column="window_mean_esr_bps_hz",
+            series_paths=esr_timeseries_paths,
+            strategy_names=strategy_names,
+            relocation_times_s=relocation_times_s,
+            step=True,
+            faint_series_paths=esr_timeseries_paths,
+            faint_y_column="esr_bps_hz",
+            y_limits=_y_limits(np.concatenate([np.asarray(esr_by_strategy[name], dtype=float) for name in strategy_names]) if strategy_names else np.asarray([0.0])),
+        ),
+    )
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -696,7 +1408,21 @@ def run_sinr_snapshot_analysis(
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    _add_plot_artifact(artifacts, "esr_cdf_plot", _save_figure(fig, target_dir / "esr_cdf.png"))
+    _add_plot_artifact(
+        artifacts,
+        "esr_cdf_plot",
+        _save_figure(fig, target_dir / "esr_cdf.png"),
+        tikz_path=_write_cdf_tikz(
+            _tikz_companion_path(target_dir / "esr_cdf.png"),
+            title="ESR CDF",
+            xlabel="ESR [bit/s/Hz]",
+            ylabel="CDF",
+            x_column="esr_bps_hz",
+            y_column="cdf",
+            series_paths=esr_cdf_series_paths,
+            strategy_names=strategy_names,
+        ),
+    )
     plt.close(fig)
 
     if strategy_names and analysis_windows:
@@ -728,7 +1454,49 @@ def run_sinr_snapshot_analysis(
             if plotted:
                 axis.legend(ncols=min(4, max(1, len(analysis_windows))))
         fig.tight_layout()
-        _add_plot_artifact(artifacts, "esr_window_cdf_plot", _save_figure(fig, target_dir / "esr_time_conditioned_cdf.png"))
+        _add_plot_artifact(
+            artifacts,
+            "esr_window_cdf_plot",
+            _save_figure(fig, target_dir / "esr_time_conditioned_cdf.png"),
+            tikz_path=_write_tikz_file(
+                _tikz_companion_path(target_dir / "esr_time_conditioned_cdf.png"),
+                [
+                    "\\begin{tikzpicture}",
+                    "  \\begin{axis}[",
+                    "    width=\\postprocessfigurewidth,",
+                    "    height=0.66\\postprocessfigurewidth,",
+                    "    title={Time-conditioned ESR CDF},",
+                    "    xlabel={ESR [bit/s/Hz]},",
+                    "    ylabel={CDF},",
+                    "    grid=major,",
+                    "    legend pos=south east,",
+                    "  ]",
+                    *[
+                        line
+                        for strategy in strategy_names
+                        for window_offset, window in enumerate(analysis_windows)
+                        for line in (
+                            []
+                            if f"{strategy}:W{int(window['window_index'])}" not in esr_window_series_paths
+                            else [
+                                "    \\addplot[const plot mark right, no markers, line width=1.0pt, color=%s, %s] table[x=esr_bps_hz,y=cdf,col sep=comma] {%s};"
+                                % (
+                                    _tikz_color_name(strategy),
+                                    PGFPLOTS_LINESTYLES[WINDOW_LINESTYLES[window_offset % len(WINDOW_LINESTYLES)]],
+                                    _relative_posix_path(
+                                        esr_window_series_paths[f'{strategy}:W{int(window["window_index"])}'],
+                                        _tikz_companion_path(target_dir / "esr_time_conditioned_cdf.png").parent,
+                                    ),
+                                ),
+                                "    \\addlegendentry{%s W%d}" % (_label(strategy), int(window["window_index"])),
+                            ]
+                        )
+                    ],
+                    "  \\end{axis}",
+                    "\\end{tikzpicture}",
+                ],
+            ),
+        )
         plt.close(fig)
     else:
         _add_plot_artifact(
@@ -736,6 +1504,11 @@ def run_sinr_snapshot_analysis(
             "esr_window_cdf_plot",
             _save_empty_plot(
                 target_dir / "esr_time_conditioned_cdf.png",
+                "Time-conditioned ESR CDF",
+                "No ESR windows available",
+            ),
+            tikz_path=_empty_tikz(
+                _tikz_companion_path(target_dir / "esr_time_conditioned_cdf.png"),
                 "Time-conditioned ESR CDF",
                 "No ESR windows available",
             ),
@@ -866,9 +1639,27 @@ def run_schedule_analysis(output_dir: str | Path, analysis_dir: str | Path | Non
             summary_rows,
         ),
     }
+    tikz_data_dir = _tikz_data_dir(target_dir)
+    overview_series_paths = {
+        str(row["strategy"]): _write_csv_rows(
+            tikz_data_dir / f"schedule_overview_{_slugify(str(row['strategy']))}.csv",
+            ["index", "strategy", "strategy_label", "total_distance_m", "move_fraction"],
+            [
+                {
+                    "index": index,
+                    "strategy": row["strategy"],
+                    "strategy_label": row["strategy_label"],
+                    "total_distance_m": row["total_distance_m"],
+                    "move_fraction": row["move_fraction"],
+                }
+            ],
+        )
+        for index, row in enumerate(summary_rows)
+    }
 
     move_rows = [row for row in transition_rows if row["moved"]]
     histogram_path = target_dir / "schedule_transition_distance_histogram.png"
+    histogram_series_paths: dict[str, Path] = {}
     if move_rows:
         fig, ax = plt.subplots(figsize=(8, 6))
         for strategy in strategies:
@@ -888,9 +1679,44 @@ def run_schedule_analysis(output_dir: str | Path, analysis_dir: str | Path | Non
         fig.tight_layout()
         _save_figure(fig, histogram_path)
         plt.close(fig)
+        all_values = np.asarray([row["distance_m"] for row in move_rows], dtype=float)
+        num_bins = min(12, max(4, len(all_values)))
+        bin_edges = np.histogram_bin_edges(all_values, bins=num_bins)
+        for strategy in strategies:
+            values = np.asarray([row["distance_m"] for row in move_rows if row["strategy"] == strategy], dtype=float)
+            if values.size == 0:
+                continue
+            counts, _ = np.histogram(values, bins=bin_edges)
+            histogram_series_paths[strategy] = _write_csv_rows(
+                tikz_data_dir / f"schedule_histogram_{_slugify(strategy)}.csv",
+                ["bin_center_m", "count"],
+                [
+                    {
+                        "bin_center_m": float(0.5 * (bin_edges[index] + bin_edges[index + 1])),
+                        "count": int(count),
+                    }
+                    for index, count in enumerate(counts)
+                ],
+            )
     else:
         _save_empty_plot(histogram_path, "Relocation distances", "No AP relocations were observed")
-    _add_plot_artifact(artifacts, "histogram", histogram_path)
+    _add_plot_artifact(
+        artifacts,
+        "histogram",
+        histogram_path,
+        tikz_path=(
+            _write_histogram_tikz(
+                _tikz_companion_path(histogram_path),
+                title="Relocation distances",
+                xlabel="Relocation distance [m]",
+                ylabel="Count",
+                series_paths=histogram_series_paths,
+                strategy_names=strategies,
+            )
+            if histogram_series_paths
+            else _empty_tikz(_tikz_companion_path(histogram_path), "Relocation distances", "No AP relocations were observed")
+        ),
+    )
 
     overview_path = target_dir / "schedule_strategy_overview.png"
     if summary_rows:
@@ -911,7 +1737,20 @@ def run_schedule_analysis(output_dir: str | Path, analysis_dir: str | Path | Non
         plt.close(fig)
     else:
         _save_empty_plot(overview_path, "Schedule overview", "No schedule rows were available")
-    _add_plot_artifact(artifacts, "overview", overview_path)
+    _add_plot_artifact(
+        artifacts,
+        "overview",
+        overview_path,
+        tikz_path=(
+            _write_schedule_overview_tikz(
+                _tikz_companion_path(overview_path),
+                series_paths=overview_series_paths,
+                strategy_names=strategies,
+            )
+            if summary_rows
+            else _empty_tikz(_tikz_companion_path(overview_path), "Schedule overview", "No schedule rows were available")
+        ),
+    )
 
     return _assert_artifacts_exist(artifacts)
 
@@ -951,6 +1790,60 @@ def run_scene_visualization_postprocess(
     central_sites = load_candidate_sites(_require_file(_strategy_site_path(output_dir, "central_massive_mimo")))
     animation_schedule_rows = _load_schedule_rows(_require_file(output_dir / f"{animation_strategy}_schedule.csv"))
     speedup = float(scene_animation_speedup if scene_animation_speedup is not None else summary.get("scene_animation_speedup", 1.0))
+    tikz_data_dir = _tikz_data_dir(output_dir)
+    boundary_segments, building_segments, edge_segments = _scene_polylines(metadata, graph)
+    boundary_csv = _write_xy_path_csv(tikz_data_dir / "scene_layout_boundary.csv", boundary_segments) if boundary_segments else None
+    buildings_csv = _write_xy_path_csv(tikz_data_dir / "scene_layout_buildings.csv", building_segments) if building_segments else None
+    edges_csv = _write_xy_path_csv(tikz_data_dir / "scene_layout_walk_edges.csv", edge_segments) if edge_segments else None
+    trajectory_segments = [np.asarray(trajectory.positions_m[:, u_idx, :2], dtype=float) for u_idx, _ in enumerate(trajectory.ue_ids)]
+    trajectory_paths_csv = _write_xy_path_csv(tikz_data_dir / "scene_layout_trajectories.csv", trajectory_segments)
+    trajectory_points_csv = _write_csv_rows(
+        tikz_data_dir / "trajectory_colormap_points.csv",
+        ["time_s", "x_m", "y_m"],
+        [
+            {
+                "time_s": float(trajectory.times_s[t_idx]),
+                "x_m": float(trajectory.positions_m[t_idx, u_idx, 0]),
+                "y_m": float(trajectory.positions_m[t_idx, u_idx, 1]),
+            }
+            for t_idx in range(len(trajectory.times_s))
+            for u_idx in range(len(trajectory.ue_ids))
+        ],
+    )
+    ue_start_csv = _write_csv_rows(
+        tikz_data_dir / "scene_layout_ue_start.csv",
+        ["x_m", "y_m"],
+        [
+            {"x_m": float(trajectory.positions_m[0, u_idx, 0]), "y_m": float(trajectory.positions_m[0, u_idx, 1])}
+            for u_idx in range(len(trajectory.ue_ids))
+        ],
+    )
+    ue_end_csv = _write_csv_rows(
+        tikz_data_dir / "scene_layout_ue_end.csv",
+        ["x_m", "y_m"],
+        [
+            {"x_m": float(trajectory.positions_m[-1, u_idx, 0]), "y_m": float(trajectory.positions_m[-1, u_idx, 1])}
+            for u_idx in range(len(trajectory.ue_ids))
+        ],
+    )
+    candidate_csv = _write_csv_rows(
+        tikz_data_dir / "scene_layout_candidate_sites.csv",
+        ["x_m", "y_m"],
+        [{"x_m": float(site.x_m), "y_m": float(site.y_m)} for site in [*candidate_sites, *rooftop_sites]],
+    )
+    selected_best_csv = _write_csv_rows(
+        tikz_data_dir / "scene_layout_selected_sites.csv",
+        ["x_m", "y_m"],
+        [{"x_m": float(site.x_m), "y_m": float(site.y_m)} for site in best_sites],
+    )
+    trajectory_overlay_csv = _write_csv_rows(
+        tikz_data_dir / "coverage_trajectory_points.csv",
+        ["x_m", "y_m"],
+        [
+            {"x_m": float(position[0]), "y_m": float(position[1])}
+            for position in np.asarray(trajectory.positions_m[..., :2], dtype=float).reshape(-1, 2)
+        ],
+    )
 
     artifacts: dict[str, Path] = {}
     _plot_scene_layout(
@@ -961,9 +1854,33 @@ def run_scene_visualization_postprocess(
         trajectory,
         output_dir / "scene_layout.png",
     )
-    _add_plot_artifact(artifacts, "scene_layout", output_dir / "scene_layout.png")
+    _add_plot_artifact(
+        artifacts,
+        "scene_layout",
+        output_dir / "scene_layout.png",
+        tikz_path=_write_scene_layout_tikz(
+            _tikz_companion_path(output_dir / "scene_layout.png"),
+            boundary_csv=boundary_csv,
+            buildings_csv=buildings_csv,
+            edges_csv=edges_csv,
+            trajectory_csv=trajectory_paths_csv,
+            start_csv=ue_start_csv,
+            end_csv=ue_end_csv,
+            candidate_csv=candidate_csv,
+            selected_csv=selected_best_csv,
+            selected_strategy=best_strategy,
+        ),
+    )
     _plot_colored_trajectories(trajectory, output_dir / "trajectory_colormap.png")
-    _add_plot_artifact(artifacts, "trajectory_colormap", output_dir / "trajectory_colormap.png")
+    _add_plot_artifact(
+        artifacts,
+        "trajectory_colormap",
+        output_dir / "trajectory_colormap.png",
+        tikz_path=_write_trajectory_colormap_tikz(
+            _tikz_companion_path(output_dir / "trajectory_colormap.png"),
+            points_csv=trajectory_points_csv,
+        ),
+    )
 
     animation_path = _animate_scene(
         metadata,
@@ -995,6 +1912,14 @@ def run_scene_visualization_postprocess(
     fixed_coverage_path = output_dir / "fixed_coverage_map.npz"
     if fixed_coverage_path.exists():
         with np.load(fixed_coverage_path, allow_pickle=True) as payload:
+            fixed_grid_csv = _write_csv_rows(
+                tikz_data_dir / "fixed_coverage_grid.csv",
+                ["x_m", "y_m", "best_sinr_db"],
+                _coverage_grid_rows(
+                    np.asarray(payload["best_sinr_db"], dtype=float),
+                    np.asarray(payload["cell_centers"], dtype=float),
+                ),
+            )
             _plot_coverage(
                 np.asarray(payload["best_sinr_db"], dtype=float),
                 np.asarray(payload["cell_centers"], dtype=float),
@@ -1002,11 +1927,36 @@ def run_scene_visualization_postprocess(
                 trajectory,
                 output_dir / "fixed_coverage_map.png",
             )
-        _add_plot_artifact(artifacts, "fixed_coverage_plot", output_dir / "fixed_coverage_map.png")
+        fixed_selected_csv = _write_csv_rows(
+            tikz_data_dir / "fixed_coverage_selected_sites.csv",
+            ["x_m", "y_m"],
+            [{"x_m": float(site.x_m), "y_m": float(site.y_m)} for site in baseline_sites],
+        )
+        _add_plot_artifact(
+            artifacts,
+            "fixed_coverage_plot",
+            output_dir / "fixed_coverage_map.png",
+            tikz_path=_write_coverage_tikz(
+                _tikz_companion_path(output_dir / "fixed_coverage_map.png"),
+                grid_csv=fixed_grid_csv,
+                selected_csv=fixed_selected_csv,
+                trajectory_csv=trajectory_overlay_csv,
+                title="Fixed coverage map",
+                selected_strategy=baseline_strategy,
+            ),
+        )
 
     coverage_path = output_dir / "coverage_map.npz"
     if coverage_path.exists():
         with np.load(coverage_path, allow_pickle=True) as payload:
+            coverage_grid_csv = _write_csv_rows(
+                tikz_data_dir / "coverage_grid.csv",
+                ["x_m", "y_m", "best_sinr_db"],
+                _coverage_grid_rows(
+                    np.asarray(payload["best_sinr_db"], dtype=float),
+                    np.asarray(payload["cell_centers"], dtype=float),
+                ),
+            )
             _plot_coverage(
                 np.asarray(payload["best_sinr_db"], dtype=float),
                 np.asarray(payload["cell_centers"], dtype=float),
@@ -1014,7 +1964,24 @@ def run_scene_visualization_postprocess(
                 trajectory,
                 output_dir / "coverage_map.png",
             )
-        _add_plot_artifact(artifacts, "coverage_plot", output_dir / "coverage_map.png")
+        coverage_selected_csv = _write_csv_rows(
+            tikz_data_dir / "coverage_selected_sites.csv",
+            ["x_m", "y_m"],
+            [{"x_m": float(site.x_m), "y_m": float(site.y_m)} for site in best_sites],
+        )
+        _add_plot_artifact(
+            artifacts,
+            "coverage_plot",
+            output_dir / "coverage_map.png",
+            tikz_path=_write_coverage_tikz(
+                _tikz_companion_path(output_dir / "coverage_map.png"),
+                grid_csv=coverage_grid_csv,
+                selected_csv=coverage_selected_csv,
+                trajectory_csv=trajectory_overlay_csv,
+                title="Coverage map",
+                selected_strategy=best_strategy,
+            ),
+        )
 
     return _assert_artifacts_exist(artifacts)
 
