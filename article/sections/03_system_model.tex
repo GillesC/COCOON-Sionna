@@ -32,19 +32,20 @@ These per-snapshot \gls{sinr} values form the basis of the trajectory-level \gls
 
 \subsection{Placement Strategies}
 
-The placement layer compares four strategies under a common \gls{ap} budget:
+The placement layer compares five strategies under a common \gls{ap} budget:
 \begin{itemize}
     \item \texttt{central\_massive\_mimo}: one rooftop proxy \gls{ap} is placed on the building whose rooftop representative point is nearest the area center; the proxy is oriented toward the area center. This is a normalized central reference, not a full single co-located-array placement model.
     \item \texttt{distributed\_fixed}: a distributed set of wall-mounted candidate positions is sampled once and kept fixed over the full trajectory.
     \item \texttt{distributed\_movable}: optimization 1. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with a history-aware local-\gls{csi} rule.
     \item \texttt{distributed\_movable\_optimization\_2}: optimization 2. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with a current-window local-sum-rate rule.
+    \item \texttt{distributed\_movable\_optimization\_3}: optimization 3. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with the same current-window distance-threshold neighborhood as optimization 2, but with a current-window local-average-power rule.
 \end{itemize}
 
 Let $\mathcal{C}$ denote the wall-mounted candidate pool and let $\mathcal{S}_w \subseteq \mathcal{C}$ denote the selected movable-\gls{ap} subset in relocation window $w$. In the Rabot scenario studied here, $\lvert \mathcal{S}_w \rvert = N_{\mathrm{mov}}=6$ and no always-on distributed \glspl{ap} are used, so the distributed comparison isolates the effect of changing the movable subset over time.
 
 \subsection{Relocation Heuristic}
 
-At an intuitive level, the relocation mechanism repeats the same observe-score-relocate loop at every relocation instant. The controller first determines which user snapshots are geographically close to the candidate wall-mounted sites. It then evaluates those candidates through the corresponding \gls{ap}-to-\gls{ue} channel realizations and derived \gls{sinr} values, rather than through geometry alone, and finally reassigns the movable \glspl{ap} to a new subset of locations. Optimization~1 keeps a history of local channel observations and discounts older samples exponentially. Optimization~2 discards history, keeps only the users within a distance threshold of the candidate subset in the current window, and chooses the subset that maximizes the resulting local sum-rate.
+At an intuitive level, the relocation mechanism repeats the same observe-score-relocate loop at every relocation instant. The controller first determines which user snapshots are geographically close to the candidate wall-mounted sites. It then evaluates those candidates through the corresponding \gls{ap}-to-\gls{ue} channel realizations and derived link metrics, rather than through geometry alone, and finally reassigns the movable \glspl{ap} to a new subset of locations. Optimization~1 keeps a history of local channel observations and discounts older samples exponentially. Optimization~2 discards history, keeps only the users within a distance threshold of the candidate subset in the current window, and chooses the subset that maximizes the resulting local sum-rate. Optimization~3 uses the same current-window distance-threshold neighborhood as optimization~2, but replaces the local sum-rate objective with the local average received power.
 
 The movable distributed strategy is implemented as a windowed receding-horizon controller. Let $\{t_n\}_{n=0}^{N_t-1}$ denote the simulated snapshot times and let $T_{\mathrm{rel}}$ denote the relocation interval. The trajectory is partitioned into disjoint decision windows
 \begin{equation}
@@ -110,15 +111,26 @@ Only the users in $\mathcal{U}_{d_{\mathrm{th}}}(\mathcal{S},n)$ are retained wh
 \end{equation}
 Consequently, optimization~2 still uses user positions only to decide which local samples belong to the radius-threshold neighborhood, whereas the actual score is computed from the \gls{csi}-derived \gls{sinr} values of those users. No historical terms are retained in this objective.
 
+\paragraph{Optimization 3: current-window distance-threshold average-power controller.}
+The third online rule reuses the same distance-threshold neighborhood $\mathcal{U}_{d_{\mathrm{th}}}(\mathcal{S},n)$ as optimization~2 and also discards historical samples. Let $\rho_{u,n}(\mathcal{S})$ denote the total received \gls{ap}-to-\gls{ue} power at user $u$ and snapshot $n$ when subset $\mathcal{S}$ is active, aggregated over the selected distributed \glspl{ap}. The optimization-3 objective is
+\begin{equation}
+    J_w^{(3)}(\mathcal{S}) =
+    \frac{1}{\sum_{n \in \mathcal{W}_w} |\mathcal{U}_{d_{\mathrm{th}}}(\mathcal{S},n)|}
+    \sum_{n \in \mathcal{W}_w}
+    \sum_{u \in \mathcal{U}_{d_{\mathrm{th}}}(\mathcal{S},n)}
+    \rho_{u,n}(\mathcal{S}).
+\end{equation}
+Consequently, optimization~3 uses the same geometric support region as optimization~2, but it ranks subsets directly by the average received power seen by the retained user snapshots instead of by a rate expression. The position information still serves only to construct the distance-threshold neighborhood; the score itself is derived from \gls{ap}-to-\gls{ue} power samples.
+
 \paragraph{Greedy subset construction.}
-Both optimization rules use the same forward-selection search. Starting from $\mathcal{S}_w^{(0)}=\varnothing$, the controller adds one candidate at a time according to
+All three optimization rules use the same forward-selection search. Starting from $\mathcal{S}_w^{(0)}=\varnothing$, the controller adds one candidate at a time according to
 \begin{equation}
     c_r^\star =
     \arg\max_{c \in \mathcal{C}\setminus \mathcal{S}_w^{(r-1)}}
     J_w^{(q)}\!\left(\mathcal{S}_w^{(r-1)} \cup \{c\}\right),
 \end{equation}
 \begin{equation}
-    q \in \{1,2\},
+    q \in \{1,2,3\},
     \qquad
     \mathcal{S}_w^{(r)} =
     \mathcal{S}_w^{(r-1)} \cup \{c_r^\star\},
@@ -139,5 +151,5 @@ Once all windows have been simulated, the concatenated movable-strategy trajecto
 \begin{equation}
     F = -\alpha P_{\mathrm{out}} + \beta P_{10} + \eta T_{\mathrm{peer}},
 \end{equation}
-where $P_{\mathrm{out}}$ is the fraction of user snapshots below the configured \gls{sinr} threshold, $P_{10}$ is the trajectory-wide 10th percentile, and $T_{\mathrm{peer}}$ is a peer-weighted mean \gls{sinr} term derived from \gls{ue}-to-\gls{ue} \gls{csi}. The coefficients $(\alpha,\beta,\eta)$ correspond to the configured outage, percentile, and peer tie-break weights. This final score is used for reporting and mode comparison; the online relocation controller itself is driven by either $J_w^{(1)}(\mathcal{S})$ or $J_w^{(2)}(\mathcal{S})$, depending on the selected movable-strategy variant.
+where $P_{\mathrm{out}}$ is the fraction of user snapshots below the configured \gls{sinr} threshold, $P_{10}$ is the trajectory-wide 10th percentile, and $T_{\mathrm{peer}}$ is a peer-weighted mean \gls{sinr} term derived from \gls{ue}-to-\gls{ue} \gls{csi}. The coefficients $(\alpha,\beta,\eta)$ correspond to the configured outage, percentile, and peer tie-break weights. This final score is used for reporting and mode comparison; the online relocation controller itself is driven by one of $J_w^{(1)}(\mathcal{S})$, $J_w^{(2)}(\mathcal{S})$, or $J_w^{(3)}(\mathcal{S})$, depending on the selected movable-strategy variant.
 The above formulation defines the relocation mechanisms used throughout the Rabot simulations.

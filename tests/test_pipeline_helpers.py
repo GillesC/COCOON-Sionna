@@ -19,6 +19,7 @@ from cocoon_sionna.pipeline import (
     _generate_rooftop_candidates,
     _instantaneous_user_sinr_samples,
     _local_percentile_10,
+    _local_window_average_power,
     _local_window_sum_rate,
     _make_reference_movable_sites,
     _movable_ap_count,
@@ -235,6 +236,41 @@ def test_distance_threshold_mask_and_local_window_sum_rate_use_local_users_only(
     )
 
     expected = 0.5 * (np.log2(1.0 + 3.0) + np.log2(1.0 + 15.0))
+    assert np.isclose(score, expected)
+
+
+def test_local_window_average_power_uses_same_radius_mask_as_optimization_2():
+    trajectory = Trajectory(
+        times_s=np.array([0.0, 5.0]),
+        ue_ids=["ue_0", "ue_1"],
+        positions_m=np.array(
+            [
+                [[0.0, 0.0, 1.5], [30.0, 0.0, 1.5]],
+                [[1.0, 0.0, 1.5], [40.0, 0.0, 1.5]],
+            ],
+            dtype=float,
+        ),
+        velocities_mps=np.zeros((2, 2, 3), dtype=float),
+    )
+    site = CandidateSite("cand", 0.0, 0.0, 1.5, 0.0, -10.0, "wall")
+
+    score = _local_window_average_power(
+        {
+            "link_power_w": np.array(
+                [
+                    [[2.0, 100.0], [3.0, 200.0]],
+                    [[5.0, 100.0], [7.0, 200.0]],
+                ],
+                dtype=float,
+            )
+        },
+        trajectory,
+        ("cand",),
+        {"cand": site},
+        distance_threshold_m=5.0,
+    )
+
+    expected = np.mean([2.0 + 3.0, 5.0 + 7.0])
     assert np.isclose(score, expected)
 
 

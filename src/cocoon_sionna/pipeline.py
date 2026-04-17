@@ -50,6 +50,7 @@ ALL_STRATEGY_NAMES = (
     "distributed_fixed",
     "distributed_movable",
     "distributed_movable_optimization_2",
+    "distributed_movable_optimization_3",
 )
 LEGACY_STRATEGY_NAMES = ("random_baseline", "local_csi_p10", "capped_exact_search")
 CENTRAL_AP_SITE_ID = "central_ap_01"
@@ -104,6 +105,7 @@ def _strategy_linestyle(strategy_name: str) -> str:
         "distributed_fixed": "-",
         "distributed_movable": "--",
         "distributed_movable_optimization_2": "-",
+        "distributed_movable_optimization_3": ":",
     }
     return styles.get(strategy_name, "-")
 
@@ -1763,6 +1765,30 @@ def _local_window_sum_rate(
     return float(np.mean(np.sum(local_rates, axis=1)))
 
 
+def _local_window_average_power(
+    ap_ue_segment: dict[str, Any],
+    trajectory: Trajectory,
+    selected_candidate_ids: tuple[str, ...],
+    candidate_index: dict[str, CandidateSite],
+    distance_threshold_m: float,
+) -> float:
+    if not selected_candidate_ids:
+        return -1e12
+    local_sites = [candidate_index[site_id] for site_id in selected_candidate_ids]
+    local_mask = _distance_threshold_snapshot_mask(trajectory, local_sites, distance_threshold_m)
+    if local_mask.size == 0 or not np.any(local_mask):
+        return -1e12
+
+    link_power_w = np.asarray(ap_ue_segment["link_power_w"], dtype=float)
+    if link_power_w.ndim != 3:
+        raise ValueError("AP-UE link power must have shape [time, ap, user]")
+    total_power_w = np.sum(link_power_w, axis=1)
+    if total_power_w.shape != local_mask.shape:
+        raise ValueError("distance-threshold mask shape must match AP-UE power samples")
+
+    return float(np.mean(total_power_w[local_mask]))
+
+
 def _per_user_mean_best_sinr(best_sinr_db: np.ndarray) -> np.ndarray:
     values = np.asarray(best_sinr_db, dtype=float)
     if values.ndim == 1:
@@ -1815,6 +1841,7 @@ def _plot_user_sinr_cdf(strategy_ap_ue: dict[str, dict[str, Any]], output_path: 
         "distributed_fixed": ("#1f77b4", "-"),
         "distributed_movable": ("#ff7f0e", "--"),
         "distributed_movable_optimization_2": ("#ff7f0e", "-"),
+        "distributed_movable_optimization_3": ("#ff7f0e", ":"),
     }
     minimum = None
     for name in strategy_names:
@@ -2247,6 +2274,18 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                     selected_candidate_union=set(random_candidate_ids),
                     details={"selection_mode": "geometric_placeholder"},
                 ),
+                "distributed_movable_optimization_3": StrategyArtifacts(
+                    name="distributed_movable_optimization_3",
+                    selected_sites=list(baseline_sites),
+                    movable_sites=list(baseline_sites),
+                    ap_ue={},
+                    ap_ap={},
+                    score=PlacementScore(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    schedule_rows=list(static_schedule),
+                    final_candidate_ids=list(random_candidate_ids),
+                    selected_candidate_union=set(random_candidate_ids),
+                    details={"selection_mode": "geometric_placeholder"},
+                ),
                 "central_massive_mimo": StrategyArtifacts(
                     name="central_massive_mimo",
                     selected_sites=[central_placeholder_site],
@@ -2426,6 +2465,37 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             )
             return selected_ids, False, len(subset_cache)
 
+        def optimization_3_selector(window_index: int, window_trajectory: Trajectory, window_need_weights: np.ndarray, _current_movable_sites):
+            del window_index
+            del window_need_weights
+            subset_cache: dict[tuple[str, ...], dict[str, Any]] = {}
+
+            def ap_ue_for_subset(subset: tuple[str, ...]) -> dict[str, Any]:
+                if subset not in subset_cache:
+                    active_sites = [candidate_index[site_id] for site_id in subset]
+                    subset_cache[subset] = distributed_runner.compute_ap_ue_csi(
+                        active_sites,
+                        window_trajectory,
+                        export_full=False,
+                    )
+                return subset_cache[subset]
+
+            def local_evaluator(subset: tuple[str, ...]) -> float:
+                return _local_window_average_power(
+                    ap_ue_for_subset(subset),
+                    window_trajectory,
+                    subset,
+                    candidate_index,
+                    optimization_2_distance_threshold_m,
+                )
+
+            selected_ids = select_local_csi_candidates(
+                movable_candidate_ids,
+                len(initial_movable_sites),
+                local_evaluator,
+            )
+            return selected_ids, False, len(subset_cache)
+
         peer_need_weights = np.asarray(peer_csi["need_weights"], dtype=float)
         strategy_results: dict[str, StrategyArtifacts] = {
             "distributed_fixed": _evaluate_static_strategy(
@@ -2463,6 +2533,18 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 optimization_2_selector,
                 csi_exports_enabled,
             ),
+            "distributed_movable_optimization_3": _evaluate_strategy_windows(
+                "distributed_movable_optimization_3",
+                distributed_runner,
+                config,
+                [],
+                initial_movable_sites,
+                candidate_index,
+                trajectory,
+                peer_need_weights,
+                optimization_3_selector,
+                csi_exports_enabled,
+            ),
             "central_massive_mimo": _evaluate_central_massive_mimo(
                 central_runner,
                 config,
@@ -2479,6 +2561,10 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         }
         strategy_results["distributed_movable_optimization_2"].details = {
             "selection_mode": "windowed_local_sum_rate_radius",
+            "optimization_2_distance_threshold_m": optimization_2_distance_threshold_m,
+        }
+        strategy_results["distributed_movable_optimization_3"].details = {
+            "selection_mode": "windowed_local_average_power_radius",
             "optimization_2_distance_threshold_m": optimization_2_distance_threshold_m,
         }
         strategy_results["central_massive_mimo"].details.update(

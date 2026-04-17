@@ -25,30 +25,35 @@ STRATEGY_ORDER = (
     "distributed_fixed",
     "distributed_movable",
     "distributed_movable_optimization_2",
+    "distributed_movable_optimization_3",
 )
 STRATEGY_LABELS = {
     "central_massive_mimo": "Central massive MIMO",
     "distributed_fixed": "Distributed fixed",
     "distributed_movable": "Distributed movable (Opt. 1)",
     "distributed_movable_optimization_2": "Distributed movable (Opt. 2)",
+    "distributed_movable_optimization_3": "Distributed movable (Opt. 3)",
 }
 STRATEGY_COLORS = {
     "central_massive_mimo": "#d4a017",
     "distributed_fixed": "#2f5d8a",
     "distributed_movable": "#cb3a2a",
     "distributed_movable_optimization_2": "#cb3a2a",
+    "distributed_movable_optimization_3": "#cb3a2a",
 }
 STRATEGY_TIKZ_COLOR_NAMES = {
     "central_massive_mimo": "CentralMassiveMimoColor",
     "distributed_fixed": "DistributedFixedColor",
     "distributed_movable": "DistributedMovableColor",
     "distributed_movable_optimization_2": "DistributedMovableColor",
+    "distributed_movable_optimization_3": "DistributedMovableColor",
 }
 STRATEGY_LINESTYLES = {
     "central_massive_mimo": "-.",
     "distributed_fixed": "-",
     "distributed_movable": "--",
     "distributed_movable_optimization_2": "-",
+    "distributed_movable_optimization_3": ":",
 }
 WINDOW_LINESTYLES = ("-", "--", ":", "-.")
 PGFPLOTS_LINESTYLES = {

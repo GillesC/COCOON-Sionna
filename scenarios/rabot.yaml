@@ -44,7 +44,7 @@ mobility:
   source: scene_metadata
   num_users: 10
   # Simulation horizon and temporal resolution in seconds.
-  duration_s: 600.0
+  duration_s: 60.0
   step_s: 10.0
   # Allow users to move through open outdoor space, not only along OSM paths.
   allow_open_area: true

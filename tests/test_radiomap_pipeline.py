@@ -119,6 +119,7 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
         "distributed_fixed",
         "distributed_movable",
         "distributed_movable_optimization_2",
+        "distributed_movable_optimization_3",
     }
     assert calls["radio_map"] == 2
     assert all(site_count == 1 for site_count in calls["ap_ue_site_counts"])
