@@ -303,8 +303,18 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     assert "\\addplot" in tikz_text
     assert "table[" in tikz_text
     assert "\\includegraphics" not in tikz_text
+    assert "title={" not in tikz_text
     assert "\\definecolor{DistributedFixedColor}{HTML}{2F5D8A}" in tikz_text
     assert "\\definecolor{DistributedMovableColor}{HTML}{CB3A2A}" in tikz_text
+    assert "each nth point=5" in tikz_text
+    assert "xmin=-20" in tikz_text
+    esr_tikz_text = artifacts["esr_timeseries_plot_tikz"].read_text(encoding="utf-8")
+    assert "title={" not in esr_tikz_text
+    assert "forget plot" in esr_tikz_text
+    assert "window_mean_esr_bps_hz" not in esr_tikz_text
+    boxplot_tikz_text = artifacts["boxplot_tikz"].read_text(encoding="utf-8")
+    assert "title={" not in boxplot_tikz_text
+    assert "xlabel={Per-user mean SINR [dB]}" in boxplot_tikz_text
     rows = list(csv.DictReader(artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
     assert rows[0]["strategy"] == "central_massive_mimo"
     assert rows[1]["strategy"] == "distributed_fixed"

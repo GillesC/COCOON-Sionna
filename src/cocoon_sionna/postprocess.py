@@ -488,28 +488,32 @@ def _write_cdf_tikz(
     y_column: str,
     series_paths: dict[str, Path],
     strategy_names: Sequence[str],
+    xmin: float | None = None,
+    each_nth_point: int | None = None,
 ) -> Path:
     body = [
         "\\begin{tikzpicture}",
         "  \\begin{axis}[",
         "    width=\\postprocessfigurewidth,",
         "    height=0.62\\postprocessfigurewidth,",
-        f"    title={{{title}}},",
         f"    xlabel={{{xlabel}}},",
         f"    ylabel={{{ylabel}}},",
         "    grid=major,",
         "    legend pos=south east,",
-        "  ]",
     ]
+    if xmin is not None:
+        body.append(f"    xmin={float(xmin):g},")
+    body.append("  ]")
     for strategy in strategy_names:
         csv_path = series_paths.get(strategy)
         if csv_path is None:
             continue
         rel = _relative_posix_path(csv_path, path.parent)
+        extra_style = f",each nth point={int(each_nth_point)}" if each_nth_point is not None else ""
         body.extend(
             [
-                "    \\addplot[const plot mark right, no markers, line width=1.2pt, color=%s, %s] table[x=%s,y=%s,col sep=comma] {%s};"
-                % (_tikz_color_name(strategy), _tikz_line_style(strategy), x_column, y_column, rel),
+                "    \\addplot[const plot mark right, no markers, line width=1.2pt, color=%s, %s%s] table[x=%s,y=%s,col sep=comma] {%s};"
+                % (_tikz_color_name(strategy), _tikz_line_style(strategy), extra_style, x_column, y_column, rel),
                 "    \\addlegendentry{%s}" % _label(strategy),
             ]
         )
@@ -532,6 +536,7 @@ def _write_timeseries_tikz(
     faint_series_paths: dict[str, Path] | None = None,
     faint_y_column: str | None = None,
     y_limits: tuple[float, float] | None = None,
+    include_primary_series: bool = True,
 ) -> Path:
     ymin, ymax = y_limits if y_limits is not None else (0.0, 1.0)
     body = [
@@ -539,7 +544,6 @@ def _write_timeseries_tikz(
         "  \\begin{axis}[",
         "    width=\\postprocessfigurewidth,",
         "    height=0.58\\postprocessfigurewidth,",
-        f"    title={{{title}}},",
         f"    xlabel={{{xlabel}}},",
         f"    ylabel={{{ylabel}}},",
         "    grid=major,",
@@ -551,9 +555,11 @@ def _write_timeseries_tikz(
     if relocation_times_s is not None:
         for time_s in np.asarray(relocation_times_s, dtype=float):
             body.append(
-                "    \\addplot[gray, densely dotted, no markers] coordinates {(%0.8f,%0.8f) (%0.8f,%0.8f)};"
+                "    \\addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(%0.8f,%0.8f) (%0.8f,%0.8f)};"
                 % (float(time_s), ymin, float(time_s), ymax)
             )
+        if faint_series_paths is not None or include_primary_series:
+            body.append("")
     if faint_series_paths is not None and faint_y_column is not None:
         for strategy in strategy_names:
             csv_path = faint_series_paths.get(strategy)
@@ -564,19 +570,20 @@ def _write_timeseries_tikz(
                 "    \\addplot[no markers, line width=0.5pt, opacity=0.35, color=%s, %s] table[x=%s,y=%s,col sep=comma] {%s};"
                 % (_tikz_color_name(strategy), _tikz_line_style(strategy), x_column, faint_y_column, rel)
             )
-    plot_style = "const plot mark right" if step else "no markers"
-    for strategy in strategy_names:
-        csv_path = series_paths.get(strategy)
-        if csv_path is None:
-            continue
-        rel = _relative_posix_path(csv_path, path.parent)
-        body.extend(
-            [
-                "    \\addplot[%s, line width=1.2pt, color=%s, %s] table[x=%s,y=%s,col sep=comma] {%s};"
-                % (plot_style, _tikz_color_name(strategy), _tikz_line_style(strategy), x_column, y_column, rel),
-                "    \\addlegendentry{%s}" % _label(strategy),
-            ]
-        )
+    if include_primary_series:
+        plot_style = "const plot mark right" if step else "no markers"
+        for strategy in strategy_names:
+            csv_path = series_paths.get(strategy)
+            if csv_path is None:
+                continue
+            rel = _relative_posix_path(csv_path, path.parent)
+            body.extend(
+                [
+                    "    \\addplot[%s, line width=1.2pt, color=%s, %s] table[x=%s,y=%s,col sep=comma] {%s};"
+                    % (plot_style, _tikz_color_name(strategy), _tikz_line_style(strategy), x_column, y_column, rel),
+                    "    \\addlegendentry{%s}" % _label(strategy),
+                ]
+            )
     body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
     return _write_tikz_file(path, body)
 
@@ -585,6 +592,7 @@ def _write_boxplot_tikz(
     path: Path,
     *,
     title: str,
+    xlabel: str | None,
     ylabel: str,
     y_column: str,
     series_paths: dict[str, Path],
@@ -596,21 +604,23 @@ def _write_boxplot_tikz(
         "  \\begin{axis}[",
         "    width=\\postprocessfigurewidth,",
         "    height=0.62\\postprocessfigurewidth,",
-        f"    title={{{title}}},",
+        (f"    xlabel={{{xlabel}}}," if xlabel else ""),
         f"    ylabel={{{ylabel}}},",
         "    grid=major,",
         "    xtick={%s}," % ",".join(str(index) for index in range(1, len(strategy_names) + 1)),
         f"    xticklabels={{{tick_labels}}},",
         "    xticklabel style={rotate=15,anchor=east},",
+        "    xmin=0,",
         "  ]",
     ]
+    body = [line for line in body if line]
     for index, strategy in enumerate(strategy_names, start=1):
         csv_path = series_paths.get(strategy)
         if csv_path is None:
             continue
         rel = _relative_posix_path(csv_path, path.parent)
         body.append(
-            "    \\addplot+[boxplot, boxplot/draw position=%d, draw=%s, fill=%s!35] table[y=%s,col sep=comma] {%s};"
+            "    \\addplot[boxplot, boxplot/draw position=%d, draw=%s, fill=%s!35] table[y=%s,col sep=comma] {%s};"
             % (index, _tikz_color_name(strategy), _tikz_color_name(strategy), y_column, rel)
         )
     body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
@@ -631,7 +641,6 @@ def _write_histogram_tikz(
         "  \\begin{axis}[",
         "    width=\\postprocessfigurewidth,",
         "    height=0.62\\postprocessfigurewidth,",
-        f"    title={{{title}}},",
         f"    xlabel={{{xlabel}}},",
         f"    ylabel={{{ylabel}}},",
         "    grid=major,",
@@ -670,7 +679,6 @@ def _write_schedule_overview_tikz(
         "    name=leftplot,",
         "    width=0.48\\postprocessfigurewidth,",
         "    height=0.44\\postprocessfigurewidth,",
-        "    title={Schedule overview},",
         "    ylabel={Total relocation distance [m]},",
         "    grid=major,",
         "    ybar,",
@@ -783,7 +791,6 @@ def _write_scene_layout_tikz(
         "  \\begin{axis}[",
         "    width=\\postprocessfigurewidth,",
         "    height=0.78\\postprocessfigurewidth,",
-        "    title={Scene layout with AP placement and UE motion},",
         "    xlabel={x [m]},",
         "    ylabel={y [m]},",
         "    axis equal image,",
@@ -853,7 +860,6 @@ def _write_trajectory_colormap_tikz(path: Path, *, points_csv: Path) -> Path:
         "  \\begin{axis}[",
         "    width=\\postprocessfigurewidth,",
         "    height=0.72\\postprocessfigurewidth,",
-        "    title={UE trajectories colored by time},",
         "    xlabel={x [m]},",
         "    ylabel={y [m]},",
         "    axis equal image,",
@@ -901,7 +907,6 @@ def _write_coverage_tikz(
         "  \\begin{axis}[",
         "    width=\\postprocessfigurewidth,",
         "    height=0.72\\postprocessfigurewidth,",
-        f"    title={{{title}}},",
         "    xlabel={x [m]},",
         "    ylabel={y [m]},",
         "    axis equal image,",
@@ -1242,6 +1247,8 @@ def run_sinr_snapshot_analysis(
             y_column="cdf",
             series_paths=cdf_series_paths,
             strategy_names=strategy_names,
+            xmin=-20.0,
+            each_nth_point=5,
         ),
     )
     plt.close(fig)
@@ -1386,7 +1393,8 @@ def run_sinr_snapshot_analysis(
             tikz_path=_write_boxplot_tikz(
                 _tikz_companion_path(target_dir / "per_user_mean_sinr_boxplot.png"),
                 title="Per-user mean SINR",
-                ylabel="Per-user mean SINR [dB]",
+                xlabel="Per-user mean SINR [dB]",
+                ylabel="Deployment Strategy",
                 y_column="mean_sinr_db",
                 series_paths=boxplot_series_paths,
                 strategy_names=strategy_names,
@@ -1453,6 +1461,7 @@ def run_sinr_snapshot_analysis(
             faint_series_paths=esr_timeseries_paths,
             faint_y_column="esr_bps_hz",
             y_limits=_y_limits(np.concatenate([np.asarray(esr_by_strategy[name], dtype=float) for name in strategy_names]) if strategy_names else np.asarray([0.0])),
+            include_primary_series=False,
         ),
     )
     plt.close(fig)
@@ -1488,6 +1497,7 @@ def run_sinr_snapshot_analysis(
             y_column="cdf",
             series_paths=esr_cdf_series_paths,
             strategy_names=strategy_names,
+            each_nth_point=5,
         ),
     )
     plt.close(fig)
@@ -1532,7 +1542,6 @@ def run_sinr_snapshot_analysis(
                     "  \\begin{axis}[",
                     "    width=\\postprocessfigurewidth,",
                     "    height=0.66\\postprocessfigurewidth,",
-                    "    title={Time-conditioned ESR CDF},",
                     "    xlabel={ESR [bit/s/Hz]},",
                     "    ylabel={CDF},",
                     "    grid=major,",

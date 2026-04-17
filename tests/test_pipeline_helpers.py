@@ -256,10 +256,12 @@ def test_local_window_average_power_uses_same_radius_mask_as_optimization_2():
 
     score = _local_window_average_power(
         {
+            "tx_site_ids": ["cand"],
+            "sinr_linear": np.ones((2, 2), dtype=float),
             "link_power_w": np.array(
                 [
-                    [[2.0, 100.0], [3.0, 200.0]],
-                    [[5.0, 100.0], [7.0, 200.0]],
+                    [[5.0, 300.0]],
+                    [[12.0, 300.0]],
                 ],
                 dtype=float,
             )
@@ -270,7 +272,44 @@ def test_local_window_average_power_uses_same_radius_mask_as_optimization_2():
         distance_threshold_m=5.0,
     )
 
-    expected = np.mean([2.0 + 3.0, 5.0 + 7.0])
+    expected = np.mean([5.0, 12.0])
+    assert np.isclose(score, expected)
+
+
+def test_local_window_average_power_accepts_user_ap_power_axis_order():
+    trajectory = Trajectory(
+        times_s=np.array([0.0, 5.0]),
+        ue_ids=["ue_0", "ue_1"],
+        positions_m=np.array(
+            [
+                [[0.0, 0.0, 1.5], [30.0, 0.0, 1.5]],
+                [[1.0, 0.0, 1.5], [40.0, 0.0, 1.5]],
+            ],
+            dtype=float,
+        ),
+        velocities_mps=np.zeros((2, 2, 3), dtype=float),
+    )
+    site = CandidateSite("cand", 0.0, 0.0, 1.5, 0.0, -10.0, "wall")
+
+    score = _local_window_average_power(
+        {
+            "tx_site_ids": ["cand"],
+            "sinr_linear": np.ones((2, 2), dtype=float),
+            "link_power_w": np.array(
+                [
+                    [[5.0], [300.0]],
+                    [[12.0], [300.0]],
+                ],
+                dtype=float,
+            )
+        },
+        trajectory,
+        ("cand",),
+        {"cand": site},
+        distance_threshold_m=5.0,
+    )
+
+    expected = np.mean([5.0, 12.0])
     assert np.isclose(score, expected)
 
 

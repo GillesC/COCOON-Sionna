@@ -1780,11 +1780,28 @@ def _local_window_average_power(
         return -1e12
 
     link_power_w = np.asarray(ap_ue_segment["link_power_w"], dtype=float)
-    if link_power_w.ndim != 3:
-        raise ValueError("AP-UE link power must have shape [time, ap, user]")
-    total_power_w = np.sum(link_power_w, axis=1)
-    if total_power_w.shape != local_mask.shape:
-        raise ValueError("distance-threshold mask shape must match AP-UE power samples")
+    target_shape = np.asarray(ap_ue_segment.get("sinr_linear", local_mask), dtype=float).shape
+    ap_count = len(ap_ue_segment.get("tx_site_ids", selected_candidate_ids))
+    if link_power_w.shape == target_shape:
+        total_power_w = link_power_w
+    else:
+        total_power_w = None
+        axes = tuple(range(1, link_power_w.ndim))
+        candidate_reductions: list[tuple[int, tuple[int, ...], np.ndarray]] = []
+        for num_axes in range(1, len(axes) + 1):
+            for reduce_axes in itertools.combinations(axes, num_axes):
+                reduced = np.sum(link_power_w, axis=reduce_axes)
+                if reduced.shape == target_shape:
+                    reduced_extent = int(np.prod([link_power_w.shape[axis] for axis in reduce_axes], dtype=int))
+                    priority = 0 if reduced_extent == ap_count else 1
+                    candidate_reductions.append((priority, reduce_axes, reduced))
+        if candidate_reductions:
+            candidate_reductions.sort(key=lambda item: (item[0], len(item[1]), item[1]))
+            total_power_w = candidate_reductions[0][2]
+        if total_power_w is None:
+            raise ValueError(
+                "distance-threshold mask shape must match AP-UE power samples after AP-axis reduction"
+            )
 
     return float(np.mean(total_power_w[local_mask]))
 
