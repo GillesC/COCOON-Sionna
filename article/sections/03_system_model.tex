@@ -37,15 +37,15 @@ The placement layer compares five strategies under a common \gls{ap} budget:
     \item \texttt{central\_massive\_mimo}: one rooftop proxy \gls{ap} is placed on the building whose rooftop representative point is nearest the area center; the proxy is oriented toward the area center. This is a normalized central reference, not a full single co-located-array placement model.
     \item \texttt{distributed\_fixed}: a distributed set of wall-mounted candidate positions is sampled once and kept fixed over the full trajectory.
     \item \texttt{distributed\_movable}: optimization 1. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with a history-aware local-\gls{csi} rule.
-    \item \texttt{distributed\_movable\_optimization\_2}: optimization 2. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with a current-window local-sum-rate rule.
-    \item \texttt{distributed\_movable\_optimization\_3}: optimization 3. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with the same current-window distance-threshold neighborhood as optimization 2, but with a current-window local-average-power rule.
+    \item \texttt{distributed\_movable\_optimization\_2}: optimization 2. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with a current-window nearest-user \gls{ue}-to-\gls{ue} proxy-\gls{csi} rule and a proxy-\gls{esr} objective.
+    \item \texttt{distributed\_movable\_optimization\_3}: optimization 3. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with the same nearest-user proxy association as optimization 2, but with a proxy-average-power objective based on $|\mathrm{CSI}|^2$.
 \end{itemize}
 
 Let $\mathcal{C}$ denote the wall-mounted candidate pool and let $\mathcal{S}_w \subseteq \mathcal{C}$ denote the selected movable-\gls{ap} subset in relocation window $w$. In the Rabot scenario studied here, $\lvert \mathcal{S}_w \rvert = N_{\mathrm{mov}}=6$ and no always-on distributed \glspl{ap} are used, so the distributed comparison isolates the effect of changing the movable subset over time.
 
 \subsection{Relocation Heuristic}
 
-At an intuitive level, the relocation mechanism repeats the same observe-score-relocate loop at every relocation instant. The controller first determines which user snapshots are geographically close to the candidate wall-mounted sites. It then evaluates those candidates through the corresponding \gls{ap}-to-\gls{ue} channel realizations and derived link metrics, rather than through geometry alone, and finally reassigns the movable \glspl{ap} to a new subset of locations. Optimization~1 keeps a history of local channel observations and discounts older samples exponentially. Optimization~2 discards history, keeps only the users within a distance threshold of the candidate subset in the current window, and chooses the subset that maximizes the resulting local sum-rate. Optimization~3 uses the same current-window distance-threshold neighborhood as optimization~2, but replaces the local sum-rate objective with the local average received power.
+At an intuitive level, the relocation mechanism repeats the same observe-score-relocate loop at every relocation instant. Optimization~1 uses simulated \gls{ap}-to-\gls{ue} channel observations from previously evaluated subsets and discounts older samples exponentially. Optimization~2 and optimization~3 follow a different practical assumption: the \gls{ap}-to-\gls{ue} channel of a dormant candidate position is not known before an \gls{ap} is actually moved there. Consequently, these two rules do not optimize directly over candidate-position \gls{ap}-to-\gls{ue} \gls{csi}. Instead, each candidate site is associated with the closest user within a distance threshold, the measured \gls{ue}-to-\gls{ue} channel of that nearby user is reused as a proxy for the dormant candidate site, and the subset is ranked either by proxy \gls{esr} (optimization~2) or by proxy average received power (optimization~3). Once the best subset has been chosen, the movable \glspl{ap} are relocated to those candidate positions and the actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed for storage, postprocessing, and final reporting.
 
 The movable distributed strategy is implemented as a windowed receding-horizon controller. Let $\{t_n\}_{n=0}^{N_t-1}$ denote the simulated snapshot times and let $T_{\mathrm{rel}}$ denote the relocation interval. The trajectory is partitioned into disjoint decision windows
 \begin{equation}
@@ -91,36 +91,56 @@ with $\lambda$ the configured decay rate. Hence, newer samples always dominate o
 \end{equation}
 where $Q_{0.1}^{\omega}(\cdot)$ denotes the weighted 10th-percentile operator induced by $\omega_n^{(w)}$. The use of a lower-tail percentile, rather than a mean, makes the controller deliberately conservative with respect to persistently weak local links.
 
-\paragraph{Optimization 2: current-window distance-threshold sum-rate controller.}
-The second online rule removes the $K$-nearest construction and does not use historical samples. Let $d_{\mathrm{th}}$ denote the configured distance threshold. For subset $\mathcal{S}$ and snapshot $n \in \mathcal{W}_w$, define the local user set
+\paragraph{Optimization 2: current-window nearest-user proxy-\gls{csi} controller.}
+The second online rule removes the $K$-nearest construction and does not use historical samples. Let $d_{\mathrm{th}}$ denote the configured distance threshold. For each candidate site $c \in \mathcal{C}$ and snapshot $n \in \mathcal{W}_w$, define the anchor user
 \begin{equation}
-    \mathcal{U}_{d_{\mathrm{th}}}(\mathcal{S},n) =
-    \left\{
-        u \in \mathcal{U} :
-        \min_{c \in \mathcal{S}}
-        \left\|\mathbf{r}_{u,n}-\mathbf{x}_c\right\|_2 \le d_{\mathrm{th}}
+    \ell(c,n)=
+    \arg\min_{u \in \mathcal{U}}
+    \left\|\mathbf{r}_{u,n}-\mathbf{x}_c\right\|_2,
+\end{equation}
+and the validity indicator
+\begin{equation}
+    \delta(c,n)=
+    \mathbf{1}\!\left\{
+        \left\|\mathbf{r}_{\ell(c,n),n}-\mathbf{x}_c\right\|_2 \le d_{\mathrm{th}}
     \right\}.
 \end{equation}
-Only the users in $\mathcal{U}_{d_{\mathrm{th}}}(\mathcal{S},n)$ are retained when evaluating subset $\mathcal{S}$ in window $w$. If the same \gls{ap}-to-\gls{ue} \gls{sinr} symbol $\gamma_{u,n}(\mathcal{S})$ is used, the optimization-2 objective is the current-window local mean sum-rate
+The dormant candidate-position \gls{ap}-to-\gls{ue} channel is not available before relocation. Therefore, optimization~2 replaces it by a proxy channel extracted from the measured \gls{ue}-to-\gls{ue} \gls{csi}. If $h^{\mathrm{UU}}_{u,v,n}$ denotes the narrowband \gls{ue}-to-\gls{ue} coefficient from transmitter-user $v$ to receiver-user $u$ at snapshot $n$, the proxy coefficient used for candidate $c$ is
+\begin{equation}
+    \tilde{h}_{u,c,n}=
+    \begin{cases}
+        h^{\mathrm{UU}}_{u,\ell(c,n),n}, & \delta(c,n)=1,\; u \neq \ell(c,n), \\
+        h^{\mathrm{UU}}_{v^\star,\ell(c,n),n}, & \delta(c,n)=1,\; u = \ell(c,n), \\
+        0, & \delta(c,n)=0,
+    \end{cases}
+\end{equation}
+where $v^\star=\arg\max_{v \in \mathcal{U}} |h^{\mathrm{UU}}_{v,\ell(c,n),n}|$ supplies a surrogate self-link because the diagonal user-to-itself measurement is not observable. For a candidate subset $\mathcal{S}$, the proxy channel matrix $\tilde{\mathbf{H}}_n(\mathcal{S})$ is formed by stacking the columns $\tilde{h}_{u,c,n}$ for all $c \in \mathcal{S}$. The same \gls{zf} procedure as in the deployed \gls{ap} case is then applied to $\tilde{\mathbf{H}}_n(\mathcal{S})$, yielding a proxy \gls{sinr} $\tilde{\gamma}_{u,n}(\mathcal{S})$ and the current-window proxy-\gls{esr} objective
 \begin{equation}
     J_w^{(2)}(\mathcal{S}) =
     \frac{1}{|\mathcal{W}_w|}
     \sum_{n \in \mathcal{W}_w}
-    \sum_{u \in \mathcal{U}_{d_{\mathrm{th}}}(\mathcal{S},n)}
-    \log_2\!\left(1+\gamma_{u,n}(\mathcal{S})\right).
+    \sum_{u \in \mathcal{U}}
+    \log_2\!\left(1+\tilde{\gamma}_{u,n}(\mathcal{S})\right).
 \end{equation}
-Consequently, optimization~2 still uses user positions only to decide which local samples belong to the radius-threshold neighborhood, whereas the actual score is computed from the \gls{csi}-derived \gls{sinr} values of those users. No historical terms are retained in this objective.
+Consequently, optimization~2 uses measured \gls{ue}-to-\gls{ue} proxy \gls{csi} to rank candidate subsets, while avoiding the unrealistic assumption that dormant candidate-position \gls{ap}-to-\gls{ue} channels are already known.
 
-\paragraph{Optimization 3: current-window distance-threshold average-power controller.}
-The third online rule reuses the same distance-threshold neighborhood $\mathcal{U}_{d_{\mathrm{th}}}(\mathcal{S},n)$ as optimization~2 and also discards historical samples. Let $\rho_{u,n}(\mathcal{S})$ denote the total received \gls{ap}-to-\gls{ue} power at user $u$ and snapshot $n$ when subset $\mathcal{S}$ is active, aggregated over the selected distributed \glspl{ap}. The optimization-3 objective is
+\paragraph{Optimization 3: current-window nearest-user proxy-power controller.}
+The third online rule reuses the same nearest-user anchor $\ell(c,n)$ and validity indicator $\delta(c,n)$ as optimization~2, but it does not use the complex proxy coefficient directly. Instead, it works with the proxy received-power quantity
+\begin{equation}
+    \tilde{\rho}_{u,c,n} =
+    \frac{P_{\mathrm{AP}}}{P_{\mathrm{UE}}}
+    \left|\tilde{h}_{u,c,n}\right|^2,
+\end{equation}
+where the factor $P_{\mathrm{AP}}/P_{\mathrm{UE}}$ rescales the measured \gls{ue}-to-\gls{ue} proxy power to the distributed-\gls{ap} transmit-power budget. The optimization-3 objective is then
 \begin{equation}
     J_w^{(3)}(\mathcal{S}) =
-    \frac{1}{\sum_{n \in \mathcal{W}_w} |\mathcal{U}_{d_{\mathrm{th}}}(\mathcal{S},n)|}
+    \frac{1}{|\mathcal{W}_w|\,|\mathcal{U}|}
     \sum_{n \in \mathcal{W}_w}
-    \sum_{u \in \mathcal{U}_{d_{\mathrm{th}}}(\mathcal{S},n)}
-    \rho_{u,n}(\mathcal{S}).
+    \sum_{u \in \mathcal{U}}
+    \sum_{c \in \mathcal{S}}
+    \tilde{\rho}_{u,c,n}.
 \end{equation}
-Consequently, optimization~3 uses the same geometric support region as optimization~2, but it ranks subsets directly by the average received power seen by the retained user snapshots instead of by a rate expression. The position information still serves only to construct the distance-threshold neighborhood; the score itself is derived from \gls{ap}-to-\gls{ue} power samples.
+Optimization~3 is therefore the power-only counterpart of optimization~2: it uses the same nearest-user proxy association, but it requires only $|\mathrm{CSI}|^2$ rather than the complex proxy channel.
 
 \paragraph{Greedy subset construction.}
 All three optimization rules use the same forward-selection search. Starting from $\mathcal{S}_w^{(0)}=\varnothing$, the controller adds one candidate at a time according to

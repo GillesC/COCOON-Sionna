@@ -92,6 +92,10 @@ placement:
   num_fixed_aps: 0
   # Number of distributed APs used by both the fixed and movable distributed modes.
   num_movable_aps: 6
+  # Enable or disable the three movable deployment heuristics.
+  enable_optimization_1: true
+  enable_optimization_2: true
+  enable_optimization_3: true
   # AP scoring weights and placement constraints.
   sinr_threshold_db: 0.0
   outage_weight: 1.0
@@ -108,7 +112,7 @@ placement:
   random_seed: 11
   # Optimization 1 uses K=10 nearest UE snapshots per candidate.
   heuristic_k_nearest: 10
-  # Optimization 2 uses the users within this radius of the candidate subset in each window.
+  # Optimization 2/3 bind each candidate to the nearest user snapshot within this radius and score UE-UE proxies from that anchor.
   optimization_2_distance_threshold_m: 25.0
   exact_max_iterations: 50000
 

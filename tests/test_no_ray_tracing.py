@@ -125,3 +125,26 @@ def test_run_scenario_rejects_nonzero_fixed_ap_count(monkeypatch, tmp_path: Path
         assert "num_fixed_aps == 0" in str(exc)
     else:
         raise AssertionError("Expected run_scenario() to reject nonzero num_fixed_aps")
+
+
+def test_run_scenario_without_ray_tracing_can_disable_selected_optimizations(monkeypatch, tmp_path: Path):
+    config = load_scenario_config("scenarios/rabot.yaml")
+    config.outputs.output_dir = tmp_path / "rabot_no_opt2_opt3"
+    config.solver.enable_ray_tracing = False
+    config.placement.enable_optimization_1 = True
+    config.placement.enable_optimization_2 = False
+    config.placement.enable_optimization_3 = False
+    config.mobility.graph_path = _stub_scene(monkeypatch, tmp_path)
+    config.outputs.output_dir.mkdir(parents=True, exist_ok=True)
+    (config.outputs.output_dir / "distributed_movable_optimization_2_aps.csv").write_text("stale", encoding="utf-8")
+    (config.outputs.output_dir / "distributed_movable_optimization_3_aps.csv").write_text("stale", encoding="utf-8")
+
+    summary = run_scenario(config)
+
+    assert summary["ray_tracing_enabled"] is False
+    assert "distributed_movable" in summary["strategies"]
+    assert "distributed_movable_optimization_2" not in summary["strategies"]
+    assert "distributed_movable_optimization_3" not in summary["strategies"]
+    assert (config.outputs.output_dir / "distributed_movable_aps.csv").exists()
+    assert not (config.outputs.output_dir / "distributed_movable_optimization_2_aps.csv").exists()
+    assert not (config.outputs.output_dir / "distributed_movable_optimization_3_aps.csv").exists()

@@ -122,6 +122,7 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
         "distributed_movable_optimization_3",
     }
     assert calls["radio_map"] == 2
+    assert len(calls["ap_ue_site_counts"]) == 6
     assert all(site_count == 1 for site_count in calls["ap_ue_site_counts"])
     assert (config.outputs.output_dir / "coverage_map.npz").exists()
     assert (config.outputs.output_dir / "fixed_coverage_map.npz").exists()
@@ -215,7 +216,7 @@ def test_run_scenario_can_skip_csi_storage_and_full_exports(monkeypatch, tmp_pat
 
     assert summary["csi_exports_enabled"] is False
     assert summary["csi_cache_enabled"] is False
-    assert calls["ue_ue_export_full"] == [False]
+    assert calls["ue_ue_export_full"] == [True]
     assert calls["ap_ue_export_full"]
     assert calls["ap_ap_export_full"]
     assert all(value is False for value in calls["ap_ue_export_full"])

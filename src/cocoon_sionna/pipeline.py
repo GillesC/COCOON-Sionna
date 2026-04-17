@@ -21,6 +21,7 @@ from matplotlib.collections import LineCollection
 from matplotlib.lines import Line2D
 from matplotlib.colors import Normalize
 import numpy as np
+from scipy.constants import Boltzmann
 from scipy.optimize import linear_sum_assignment
 from shapely.geometry import Point, Polygon
 
@@ -34,7 +35,12 @@ from .optimization import (
     summarize_candidate_set,
 )
 from .scene_builder import OSMSceneBuilder, SceneArtifacts
-from .sionna_rt_adapter import SceneInputs, SionnaRtRunner, load_scene_metadata
+from .sionna_rt_adapter import (
+    SceneInputs,
+    SionnaRtRunner,
+    _zf_sinr_terms_from_mimo_channel,
+    load_scene_metadata,
+)
 from .sites import CandidateSite
 from .sites import (
     generate_wall_candidate_sites,
@@ -88,7 +94,14 @@ class StrategyArtifacts:
 
 
 def _active_strategy_names(config: ScenarioConfig) -> tuple[str, ...]:
-    return ALL_STRATEGY_NAMES
+    names = ["central_massive_mimo", "distributed_fixed"]
+    if config.placement.enable_optimization_1:
+        names.append("distributed_movable")
+    if config.placement.enable_optimization_2:
+        names.append("distributed_movable_optimization_2")
+    if config.placement.enable_optimization_3:
+        names.append("distributed_movable_optimization_3")
+    return tuple(names)
 
 
 def _validate_three_mode_config(config: ScenarioConfig) -> None:
@@ -120,6 +133,14 @@ def _legacy_output_paths(output_dir: Path) -> list[Path]:
     paths = [output_dir / "fixed_aps.csv"]
     for name in LEGACY_STRATEGY_NAMES:
         paths.append(output_dir / f"{name}_movable_aps.csv")
+        paths.append(output_dir / f"{name}_schedule.csv")
+    return paths
+
+
+def _strategy_output_paths(output_dir: Path) -> list[Path]:
+    paths: list[Path] = [output_dir / "strategy_comparison.csv"]
+    for name in ALL_STRATEGY_NAMES:
+        paths.append(output_dir / _strategy_site_csv_name(name))
         paths.append(output_dir / f"{name}_schedule.csv")
     return paths
 
@@ -1806,6 +1827,204 @@ def _local_window_average_power(
     return float(np.mean(total_power_w[local_mask]))
 
 
+def _window_candidate_anchor_users(
+    trajectory: Trajectory,
+    sites: list[CandidateSite],
+    distance_threshold_m: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    positions = np.asarray(trajectory.positions_m[..., :2], dtype=float)
+    if positions.ndim != 3 or positions.size == 0 or not sites or positions.shape[1] == 0:
+        return np.zeros((positions.shape[0] if positions.ndim == 3 else 0, len(sites)), dtype=int), np.zeros(
+            (positions.shape[0] if positions.ndim == 3 else 0, len(sites)),
+            dtype=bool,
+        )
+    threshold_m = max(float(distance_threshold_m), 0.0)
+    if threshold_m <= 0.0:
+        return np.zeros((positions.shape[0], len(sites)), dtype=int), np.zeros((positions.shape[0], len(sites)), dtype=bool)
+
+    site_xy = np.asarray([[float(site.x_m), float(site.y_m)] for site in sites], dtype=float)
+    distances = np.linalg.norm(positions[:, :, None, :] - site_xy[None, None, :, :], axis=3)
+    anchor_indices = np.argmin(distances, axis=1)
+    anchor_distances = np.take_along_axis(distances, anchor_indices[:, None, :], axis=1).reshape(
+        positions.shape[0],
+        len(sites),
+    )
+    return anchor_indices.astype(int), anchor_distances <= threshold_m
+
+
+def _proxy_ap_candidate_power_from_peer_csi(
+    peer_link_power_w: np.ndarray,
+    trajectory: Trajectory,
+    selected_candidate_ids: tuple[str, ...],
+    candidate_index: dict[str, CandidateSite],
+    distance_threshold_m: float,
+    tx_power_scale: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if not selected_candidate_ids:
+        return (
+            np.zeros((0, 0, 0), dtype=float),
+            np.zeros((0, 0), dtype=int),
+            np.zeros((0, 0), dtype=bool),
+        )
+
+    local_sites = [candidate_index[site_id] for site_id in selected_candidate_ids]
+    anchor_indices, valid_mask = _window_candidate_anchor_users(trajectory, local_sites, distance_threshold_m)
+    expected_shape = (len(trajectory.times_s), len(trajectory.ue_ids), len(trajectory.ue_ids))
+    link_power = np.asarray(peer_link_power_w, dtype=float)
+    if link_power.shape != expected_shape:
+        raise ValueError("UE-UE proxy power samples must match [time, user, user]")
+
+    proxy_power_w = np.zeros((len(trajectory.times_s), len(local_sites), len(trajectory.ue_ids)), dtype=float)
+    if proxy_power_w.size == 0:
+        return proxy_power_w, anchor_indices, valid_mask
+
+    snapshot_indices = np.arange(len(trajectory.times_s), dtype=int)
+    for site_index in range(len(local_sites)):
+        anchor_rows = np.asarray(link_power[snapshot_indices, anchor_indices[:, site_index], :], dtype=float)
+        anchor_nonself = np.array(anchor_rows, copy=True)
+        anchor_nonself[snapshot_indices, anchor_indices[:, site_index]] = -np.inf
+        anchor_strength = np.max(anchor_nonself, axis=1, initial=0.0)
+        anchor_strength[~np.isfinite(anchor_strength)] = 0.0
+        anchor_rows[snapshot_indices, anchor_indices[:, site_index]] = anchor_strength
+        anchor_rows[~valid_mask[:, site_index], :] = 0.0
+        proxy_power_w[:, site_index, :] = max(float(tx_power_scale), 0.0) * np.clip(anchor_rows, 0.0, None)
+
+    return proxy_power_w, anchor_indices, valid_mask
+
+
+def _peer_cfr_to_narrowband(peer_cfr: np.ndarray, peer_link_power_w: np.ndarray) -> np.ndarray:
+    cfr = np.asarray(peer_cfr)
+    link_power = np.asarray(peer_link_power_w, dtype=float)
+    if cfr.ndim < 4:
+        raise ValueError("UE-UE proxy CFR must retain time, user, and feature axes")
+    if cfr.shape[0] != link_power.shape[0]:
+        raise ValueError("UE-UE proxy CFR time axis must match UE-UE power samples")
+
+    num_users = int(link_power.shape[1])
+    candidate_axes = [axis for axis in range(1, cfr.ndim) if cfr.shape[axis] == num_users]
+    best_channel = None
+    best_error = float("inf")
+    for rx_axis, tx_axis in itertools.permutations(candidate_axes, 2):
+        reoriented = np.moveaxis(cfr, (0, rx_axis, tx_axis), (0, 1, 2))
+        reduce_axes = tuple(range(3, reoriented.ndim))
+        power = np.mean(np.abs(reoriented) ** 2, axis=reduce_axes) if reduce_axes else np.abs(reoriented) ** 2
+        if power.shape != link_power.shape:
+            continue
+        error = float(np.nanmean(np.abs(power - link_power)))
+        if error < best_error:
+            best_error = error
+            best_channel = np.mean(reoriented, axis=reduce_axes) if reduce_axes else reoriented
+    if best_channel is None:
+        raise ValueError("Unable to infer UE-UE CFR user axes from the stored proxy payload")
+    return np.asarray(best_channel, dtype=np.complex128)
+
+
+def _proxy_ap_candidate_channel_from_peer_csi(
+    peer_csi_segment: dict[str, Any],
+    trajectory: Trajectory,
+    selected_candidate_ids: tuple[str, ...],
+    candidate_index: dict[str, CandidateSite],
+    distance_threshold_m: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if "cfr" not in peer_csi_segment:
+        raise ValueError("UE-UE proxy CSI requires a CFR export")
+
+    local_sites = [candidate_index[site_id] for site_id in selected_candidate_ids]
+    anchor_indices, valid_mask = _window_candidate_anchor_users(trajectory, local_sites, distance_threshold_m)
+    narrowband = _peer_cfr_to_narrowband(peer_csi_segment["cfr"], peer_csi_segment["link_power_w"])
+    if narrowband.shape != (len(trajectory.times_s), len(trajectory.ue_ids), len(trajectory.ue_ids)):
+        raise ValueError("UE-UE proxy narrowband channel must match [time, user, user]")
+
+    proxy_channel = np.zeros((len(trajectory.times_s), len(trajectory.ue_ids), len(local_sites)), dtype=np.complex128)
+    snapshot_indices = np.arange(len(trajectory.times_s), dtype=int)
+    for site_index in range(len(local_sites)):
+        anchor_columns = np.asarray(narrowband[snapshot_indices, :, anchor_indices[:, site_index]], dtype=np.complex128)
+        nonself_magnitudes = np.abs(anchor_columns)
+        nonself_magnitudes[snapshot_indices, anchor_indices[:, site_index]] = -1.0
+        strongest_peer_indices = np.argmax(nonself_magnitudes, axis=1)
+        strongest_peer_values = anchor_columns[snapshot_indices, strongest_peer_indices]
+        anchor_columns[snapshot_indices, anchor_indices[:, site_index]] = 0.0 + 0.0j
+        valid_self_fill = np.max(nonself_magnitudes, axis=1) >= 0.0
+        anchor_columns[
+            snapshot_indices[valid_self_fill],
+            anchor_indices[valid_self_fill, site_index],
+        ] = strongest_peer_values[valid_self_fill]
+        anchor_columns[~valid_mask[:, site_index], :] = 0.0 + 0.0j
+        proxy_channel[:, :, site_index] = anchor_columns
+    return proxy_channel, anchor_indices, valid_mask
+
+
+def _proxy_window_sum_rate_from_peer_csi(
+    peer_csi_segment: dict[str, Any],
+    trajectory: Trajectory,
+    selected_candidate_ids: tuple[str, ...],
+    candidate_index: dict[str, CandidateSite],
+    distance_threshold_m: float,
+    noise_power_w: float,
+    total_tx_power_w: float,
+    tx_power_scale: float,
+) -> float:
+    if "cfr" in peer_csi_segment:
+        proxy_channel, _anchor_indices, valid_mask = _proxy_ap_candidate_channel_from_peer_csi(
+            peer_csi_segment,
+            trajectory,
+            selected_candidate_ids,
+            candidate_index,
+            distance_threshold_m,
+        )
+        if proxy_channel.size == 0 or not np.any(valid_mask):
+            return -1e12
+
+        esr_samples: list[float] = []
+        for snapshot_index in range(proxy_channel.shape[0]):
+            channel = proxy_channel[snapshot_index][:, None, :, None]
+            sinr_terms = _zf_sinr_terms_from_mimo_channel(
+                channel,
+                total_tx_power_w=max(float(total_tx_power_w), 0.0),
+                noise_power_w=max(float(noise_power_w), 1e-12),
+            )
+            esr_samples.append(float(np.sum(np.log2(1.0 + np.clip(sinr_terms["sinr"], 0.0, None)))))
+        return float(np.mean(esr_samples)) if esr_samples else -1e12
+
+    proxy_power_w, _anchor_indices, valid_mask = _proxy_ap_candidate_power_from_peer_csi(
+        peer_csi_segment["link_power_w"],
+        trajectory,
+        selected_candidate_ids,
+        candidate_index,
+        distance_threshold_m,
+        tx_power_scale,
+    )
+    if proxy_power_w.size == 0 or not np.any(valid_mask):
+        return -1e12
+
+    desired_power_w = np.max(proxy_power_w, axis=1)
+    total_power_w = np.sum(proxy_power_w, axis=1)
+    interference_power_w = np.clip(total_power_w - desired_power_w, 0.0, None)
+    sinr_linear = desired_power_w / (interference_power_w + max(float(noise_power_w), 1e-12))
+    return float(np.mean(np.sum(np.log2(1.0 + np.clip(sinr_linear, 0.0, None)), axis=1)))
+
+
+def _proxy_window_average_power_from_peer_csi(
+    peer_link_power_w: np.ndarray,
+    trajectory: Trajectory,
+    selected_candidate_ids: tuple[str, ...],
+    candidate_index: dict[str, CandidateSite],
+    distance_threshold_m: float,
+    tx_power_scale: float,
+) -> float:
+    proxy_power_w, _anchor_indices, valid_mask = _proxy_ap_candidate_power_from_peer_csi(
+        peer_link_power_w,
+        trajectory,
+        selected_candidate_ids,
+        candidate_index,
+        distance_threshold_m,
+        tx_power_scale,
+    )
+    if proxy_power_w.size == 0 or not np.any(valid_mask):
+        return -1e12
+    return float(np.mean(np.sum(proxy_power_w, axis=1)))
+
+
 def _per_user_mean_best_sinr(best_sinr_db: np.ndarray) -> np.ndarray:
     values = np.asarray(best_sinr_db, dtype=float)
     if values.ndim == 1:
@@ -2163,6 +2382,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
     logger.info("Starting scenario '%s'", config.name)
     logger.info("Writing outputs to %s", output_dir)
     _remove_artifacts(_legacy_output_paths(output_dir))
+    _remove_artifacts(_strategy_output_paths(output_dir))
     _remove_artifacts(_visualization_artifact_paths(output_dir))
     if csi_cache_enabled:
         logger.warning("CSI cache reuse is not yet implemented for the multi-strategy placement pipeline; skipping cache")
@@ -2267,42 +2487,6 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                     selected_candidate_union=set(random_candidate_ids),
                     details={"selection_mode": "geometric_placeholder"},
                 ),
-                "distributed_movable": StrategyArtifacts(
-                    name="distributed_movable",
-                    selected_sites=list(baseline_sites),
-                    movable_sites=list(baseline_sites),
-                    ap_ue={},
-                    ap_ap={},
-                    score=PlacementScore(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-                    schedule_rows=list(static_schedule),
-                    final_candidate_ids=list(random_candidate_ids),
-                    selected_candidate_union=set(random_candidate_ids),
-                    details={"selection_mode": "geometric_placeholder"},
-                ),
-                "distributed_movable_optimization_2": StrategyArtifacts(
-                    name="distributed_movable_optimization_2",
-                    selected_sites=list(baseline_sites),
-                    movable_sites=list(baseline_sites),
-                    ap_ue={},
-                    ap_ap={},
-                    score=PlacementScore(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-                    schedule_rows=list(static_schedule),
-                    final_candidate_ids=list(random_candidate_ids),
-                    selected_candidate_union=set(random_candidate_ids),
-                    details={"selection_mode": "geometric_placeholder"},
-                ),
-                "distributed_movable_optimization_3": StrategyArtifacts(
-                    name="distributed_movable_optimization_3",
-                    selected_sites=list(baseline_sites),
-                    movable_sites=list(baseline_sites),
-                    ap_ue={},
-                    ap_ap={},
-                    score=PlacementScore(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-                    schedule_rows=list(static_schedule),
-                    final_candidate_ids=list(random_candidate_ids),
-                    selected_candidate_union=set(random_candidate_ids),
-                    details={"selection_mode": "geometric_placeholder"},
-                ),
                 "central_massive_mimo": StrategyArtifacts(
                     name="central_massive_mimo",
                     selected_sites=[central_placeholder_site],
@@ -2327,6 +2511,45 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                     },
                 ),
             }
+            if config.placement.enable_optimization_1:
+                strategy_results["distributed_movable"] = StrategyArtifacts(
+                    name="distributed_movable",
+                    selected_sites=list(baseline_sites),
+                    movable_sites=list(baseline_sites),
+                    ap_ue={},
+                    ap_ap={},
+                    score=PlacementScore(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    schedule_rows=list(static_schedule),
+                    final_candidate_ids=list(random_candidate_ids),
+                    selected_candidate_union=set(random_candidate_ids),
+                    details={"selection_mode": "geometric_placeholder"},
+                )
+            if config.placement.enable_optimization_2:
+                strategy_results["distributed_movable_optimization_2"] = StrategyArtifacts(
+                    name="distributed_movable_optimization_2",
+                    selected_sites=list(baseline_sites),
+                    movable_sites=list(baseline_sites),
+                    ap_ue={},
+                    ap_ap={},
+                    score=PlacementScore(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    schedule_rows=list(static_schedule),
+                    final_candidate_ids=list(random_candidate_ids),
+                    selected_candidate_union=set(random_candidate_ids),
+                    details={"selection_mode": "geometric_placeholder"},
+                )
+            if config.placement.enable_optimization_3:
+                strategy_results["distributed_movable_optimization_3"] = StrategyArtifacts(
+                    name="distributed_movable_optimization_3",
+                    selected_sites=list(baseline_sites),
+                    movable_sites=list(baseline_sites),
+                    ap_ue={},
+                    ap_ap={},
+                    score=PlacementScore(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    schedule_rows=list(static_schedule),
+                    final_candidate_ids=list(random_candidate_ids),
+                    selected_candidate_union=set(random_candidate_ids),
+                    details={"selection_mode": "geometric_placeholder"},
+                )
             best_strategy_name = "distributed_fixed"
             animation_strategy_name = _scene_animation_strategy_name(strategy_results, best_strategy_name)
             animation_strategy = strategy_results[animation_strategy_name]
@@ -2414,13 +2637,26 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         scenario_progress.update(1)
 
         logger.info("Computing UE-UE CSI snapshots")
-        peer_csi = distributed_runner.compute_ue_ue_csi(trajectory, export_full=csi_exports_enabled)
+        peer_csi = distributed_runner.compute_ue_ue_csi(trajectory, export_full=True)
         scenario_progress.update(1)
 
         initial_movable_sites = list(baseline_sites)
         historical_decay_rate = float(config.placement.historical_csi_decay_rate_per_s)
         optimization_2_distance_threshold_m = float(config.placement.optimization_2_distance_threshold_m)
         subset_history: dict[tuple[str, ...], list[dict[str, Any]]] = {}
+        window_indices = _window_slices(trajectory.times_s, config.placement.window_interval_s)
+        peer_csi_windows: list[dict[str, Any]] = []
+        for indices in window_indices:
+            segment = {
+                "link_power_w": np.asarray(peer_csi["link_power_w"], dtype=float)[indices],
+            }
+            if "cfr" in peer_csi:
+                segment["cfr"] = np.asarray(peer_csi["cfr"])[indices]
+            peer_csi_windows.append(segment)
+        ap_tx_power_w = float(10 ** (config.radio.tx_power_dbm_ap / 10.0) / 1000.0)
+        ue_tx_power_w = float(10 ** (config.radio.tx_power_dbm_ue / 10.0) / 1000.0)
+        proxy_tx_power_scale = ap_tx_power_w / max(ue_tx_power_w, 1e-12)
+        proxy_noise_power_w = float(Boltzmann * config.radio.temperature_k * config.radio.bandwidth_hz)
 
         def local_selector(window_index: int, window_trajectory: Trajectory, window_need_weights: np.ndarray, _current_movable_sites):
             del window_need_weights
@@ -2452,28 +2688,23 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             return selected_ids, False, len(evaluated_subsets)
 
         def optimization_2_selector(window_index: int, window_trajectory: Trajectory, window_need_weights: np.ndarray, _current_movable_sites):
-            del window_index
             del window_need_weights
-            subset_cache: dict[tuple[str, ...], dict[str, Any]] = {}
-
-            def ap_ue_for_subset(subset: tuple[str, ...]) -> dict[str, Any]:
-                if subset not in subset_cache:
-                    active_sites = [candidate_index[site_id] for site_id in subset]
-                    subset_cache[subset] = distributed_runner.compute_ap_ue_csi(
-                        active_sites,
-                        window_trajectory,
-                        export_full=False,
-                    )
-                return subset_cache[subset]
+            subset_cache: dict[tuple[str, ...], float] = {}
+            peer_csi_window = peer_csi_windows[window_index]
 
             def local_evaluator(subset: tuple[str, ...]) -> float:
-                return _local_window_sum_rate(
-                    ap_ue_for_subset(subset),
-                    window_trajectory,
-                    subset,
-                    candidate_index,
-                    optimization_2_distance_threshold_m,
-                )
+                if subset not in subset_cache:
+                    subset_cache[subset] = _proxy_window_sum_rate_from_peer_csi(
+                        peer_csi_window,
+                        window_trajectory,
+                        subset,
+                        candidate_index,
+                        optimization_2_distance_threshold_m,
+                        proxy_noise_power_w,
+                        len(subset) * ap_tx_power_w,
+                        proxy_tx_power_scale,
+                    )
+                return subset_cache[subset]
 
             selected_ids = select_local_csi_candidates(
                 movable_candidate_ids,
@@ -2483,28 +2714,21 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             return selected_ids, False, len(subset_cache)
 
         def optimization_3_selector(window_index: int, window_trajectory: Trajectory, window_need_weights: np.ndarray, _current_movable_sites):
-            del window_index
             del window_need_weights
-            subset_cache: dict[tuple[str, ...], dict[str, Any]] = {}
-
-            def ap_ue_for_subset(subset: tuple[str, ...]) -> dict[str, Any]:
-                if subset not in subset_cache:
-                    active_sites = [candidate_index[site_id] for site_id in subset]
-                    subset_cache[subset] = distributed_runner.compute_ap_ue_csi(
-                        active_sites,
-                        window_trajectory,
-                        export_full=False,
-                    )
-                return subset_cache[subset]
+            subset_cache: dict[tuple[str, ...], float] = {}
+            peer_csi_window = peer_csi_windows[window_index]
 
             def local_evaluator(subset: tuple[str, ...]) -> float:
-                return _local_window_average_power(
-                    ap_ue_for_subset(subset),
-                    window_trajectory,
-                    subset,
-                    candidate_index,
-                    optimization_2_distance_threshold_m,
-                )
+                if subset not in subset_cache:
+                    subset_cache[subset] = _proxy_window_average_power_from_peer_csi(
+                        peer_csi_window["link_power_w"],
+                        window_trajectory,
+                        subset,
+                        candidate_index,
+                        optimization_2_distance_threshold_m,
+                        proxy_tx_power_scale,
+                    )
+                return subset_cache[subset]
 
             selected_ids = select_local_csi_candidates(
                 movable_candidate_ids,
@@ -2526,7 +2750,17 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 list(random_candidate_ids),
                 details={"selection_mode": "seed_constellation"},
             ),
-            "distributed_movable": _evaluate_strategy_windows(
+            "central_massive_mimo": _evaluate_central_massive_mimo(
+                central_runner,
+                config,
+                rooftop_candidates,
+                trajectory,
+                peer_need_weights,
+                csi_exports_enabled,
+            ),
+        }
+        if config.placement.enable_optimization_1:
+            strategy_results["distributed_movable"] = _evaluate_strategy_windows(
                 "distributed_movable",
                 distributed_runner,
                 config,
@@ -2537,8 +2771,14 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 peer_need_weights,
                 local_selector,
                 csi_exports_enabled,
-            ),
-            "distributed_movable_optimization_2": _evaluate_strategy_windows(
+            )
+            strategy_results["distributed_movable"].details = {
+                "selection_mode": "windowed_local_csi_history",
+                "historical_csi_decay_rate_per_s": historical_decay_rate,
+                "heuristic_k_nearest": int(config.placement.heuristic_k_nearest),
+            }
+        if config.placement.enable_optimization_2:
+            strategy_results["distributed_movable_optimization_2"] = _evaluate_strategy_windows(
                 "distributed_movable_optimization_2",
                 distributed_runner,
                 config,
@@ -2549,8 +2789,14 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 peer_need_weights,
                 optimization_2_selector,
                 csi_exports_enabled,
-            ),
-            "distributed_movable_optimization_3": _evaluate_strategy_windows(
+            )
+            strategy_results["distributed_movable_optimization_2"].details = {
+                "selection_mode": "windowed_ue_proxy_esr",
+                "selection_proxy": "ue_ue_csi",
+                "optimization_2_distance_threshold_m": optimization_2_distance_threshold_m,
+            }
+        if config.placement.enable_optimization_3:
+            strategy_results["distributed_movable_optimization_3"] = _evaluate_strategy_windows(
                 "distributed_movable_optimization_3",
                 distributed_runner,
                 config,
@@ -2561,29 +2807,12 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 peer_need_weights,
                 optimization_3_selector,
                 csi_exports_enabled,
-            ),
-            "central_massive_mimo": _evaluate_central_massive_mimo(
-                central_runner,
-                config,
-                rooftop_candidates,
-                trajectory,
-                peer_need_weights,
-                csi_exports_enabled,
-            ),
-        }
-        strategy_results["distributed_movable"].details = {
-            "selection_mode": "windowed_local_csi_history",
-            "historical_csi_decay_rate_per_s": historical_decay_rate,
-            "heuristic_k_nearest": int(config.placement.heuristic_k_nearest),
-        }
-        strategy_results["distributed_movable_optimization_2"].details = {
-            "selection_mode": "windowed_local_sum_rate_radius",
-            "optimization_2_distance_threshold_m": optimization_2_distance_threshold_m,
-        }
-        strategy_results["distributed_movable_optimization_3"].details = {
-            "selection_mode": "windowed_local_average_power_radius",
-            "optimization_2_distance_threshold_m": optimization_2_distance_threshold_m,
-        }
+            )
+            strategy_results["distributed_movable_optimization_3"].details = {
+                "selection_mode": "windowed_ue_proxy_average_power",
+                "selection_proxy": "ue_ue_power",
+                "optimization_2_distance_threshold_m": optimization_2_distance_threshold_m,
+            }
         strategy_results["central_massive_mimo"].details.update(
             {
                 "central_ap_num_rows": int(central_radio.ap_num_rows),

@@ -26,6 +26,9 @@ from cocoon_sionna.pipeline import (
     _nearest_snapshot_mask,
     _per_user_mean_best_sinr,
     _plot_scene_layout,
+    _proxy_ap_candidate_power_from_peer_csi,
+    _proxy_window_sum_rate_from_peer_csi,
+    _window_candidate_anchor_users,
     _relocate_sites,
     _restore_cached_artifact,
     _scene_animation_strategy_name,
@@ -311,6 +314,99 @@ def test_local_window_average_power_accepts_user_ap_power_axis_order():
 
     expected = np.mean([5.0, 12.0])
     assert np.isclose(score, expected)
+
+
+def test_window_candidate_anchor_users_selects_nearest_user_per_snapshot():
+    trajectory = Trajectory(
+        times_s=np.array([0.0, 5.0]),
+        ue_ids=["ue_0", "ue_1"],
+        positions_m=np.array(
+            [
+                [[0.0, 0.0, 1.5], [10.0, 0.0, 1.5]],
+                [[10.0, 0.0, 1.5], [0.0, 0.0, 1.5]],
+            ],
+            dtype=float,
+        ),
+        velocities_mps=np.zeros((2, 2, 3), dtype=float),
+    )
+    site = CandidateSite("cand", 1.0, 0.0, 1.5, 0.0, -10.0, "wall")
+
+    anchor_indices, valid_mask = _window_candidate_anchor_users(trajectory, [site], distance_threshold_m=5.0)
+
+    assert anchor_indices.tolist() == [[0], [1]]
+    assert valid_mask.tolist() == [[True], [True]]
+
+
+def test_proxy_ap_candidate_power_from_peer_csi_scales_abs_csi_squared_proxy():
+    trajectory = Trajectory(
+        times_s=np.array([0.0]),
+        ue_ids=["ue_0", "ue_1"],
+        positions_m=np.array([[[0.0, 0.0, 1.5], [10.0, 0.0, 1.5]]], dtype=float),
+        velocities_mps=np.zeros((1, 2, 3), dtype=float),
+    )
+    site = CandidateSite("cand", 0.0, 0.0, 1.5, 0.0, -10.0, "wall")
+
+    proxy_power_w, anchor_indices, valid_mask = _proxy_ap_candidate_power_from_peer_csi(
+        np.array([[[0.0, 5.0], [2.0, 0.0]]], dtype=float),
+        trajectory,
+        ("cand",),
+        {"cand": site},
+        distance_threshold_m=5.0,
+        tx_power_scale=2.0,
+    )
+
+    assert anchor_indices.tolist() == [[0]]
+    assert valid_mask.tolist() == [[True]]
+    np.testing.assert_allclose(proxy_power_w[0, 0], np.array([10.0, 10.0]))
+
+
+def test_proxy_window_sum_rate_uses_csi_when_cfr_is_available(monkeypatch):
+    trajectory = Trajectory(
+        times_s=np.array([0.0]),
+        ue_ids=["ue_0", "ue_1"],
+        positions_m=np.array([[[0.0, 0.0, 1.5], [10.0, 0.0, 1.5]]], dtype=float),
+        velocities_mps=np.zeros((1, 2, 3), dtype=float),
+    )
+    site = CandidateSite("cand", 0.0, 0.0, 1.5, 0.0, -10.0, "wall")
+    calls: list[np.ndarray] = []
+
+    def fake_zf(channel, total_tx_power_w, noise_power_w):
+        calls.append(np.asarray(channel))
+        assert np.isclose(total_tx_power_w, 1.0)
+        assert np.isclose(noise_power_w, 0.5)
+        return {
+            "desired_power_w": np.array([0.0, 0.0], dtype=float),
+            "interference_power_w": np.array([0.0, 0.0], dtype=float),
+            "noise_power_w": np.array([0.5, 0.5], dtype=float),
+            "sinr": np.array([3.0, 1.0], dtype=float),
+        }
+
+    monkeypatch.setattr("cocoon_sionna.pipeline._zf_sinr_terms_from_mimo_channel", fake_zf)
+    score = _proxy_window_sum_rate_from_peer_csi(
+        {
+            "link_power_w": np.array([[[0.0, 9.0], [4.0, 0.0]]], dtype=float),
+            "cfr": np.array(
+                [
+                    [
+                        [[0.0 + 0.0j], [3.0 + 0.0j]],
+                        [[2.0 + 0.0j], [0.0 + 0.0j]],
+                    ]
+                ],
+                dtype=np.complex128,
+            ),
+        },
+        trajectory,
+        ("cand",),
+        {"cand": site},
+        distance_threshold_m=5.0,
+        noise_power_w=0.5,
+        total_tx_power_w=1.0,
+        tx_power_scale=1.0,
+    )
+
+    assert len(calls) == 1
+    np.testing.assert_allclose(np.abs(calls[0][:, 0, 0, 0]), np.array([2.0, 2.0]))
+    assert np.isclose(score, np.log2(1.0 + 3.0) + np.log2(1.0 + 1.0))
 
 
 def test_should_render_sionna_scene_artifacts_skips_cpu_llvm_backend():

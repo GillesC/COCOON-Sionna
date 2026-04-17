@@ -131,6 +131,9 @@ class SolverConfig:
 class PlacementConfig:
     num_fixed_aps: int = 0
     num_movable_aps: int = 3
+    enable_optimization_1: bool = True
+    enable_optimization_2: bool = True
+    enable_optimization_3: bool = True
     sinr_threshold_db: float = 3.0
     outage_weight: float = 1.0
     percentile_weight: float = 0.05
@@ -335,6 +338,9 @@ def _load_placement(data: dict[str, Any]) -> PlacementConfig:
     return PlacementConfig(
         num_fixed_aps=int(data.get("num_fixed_aps", 0)),
         num_movable_aps=int(data.get("num_movable_aps", 3)),
+        enable_optimization_1=bool(data.get("enable_optimization_1", True)),
+        enable_optimization_2=bool(data.get("enable_optimization_2", True)),
+        enable_optimization_3=bool(data.get("enable_optimization_3", True)),
         sinr_threshold_db=float(data.get("sinr_threshold_db", 3.0)),
         outage_weight=float(data.get("outage_weight", 1.0)),
         percentile_weight=float(data.get("percentile_weight", 0.05)),
