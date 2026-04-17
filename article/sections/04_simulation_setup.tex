@@ -8,7 +8,7 @@ The simulation workflow used by the paper matches the repository workflow:
     \item generate wall-mounted candidate \glspl{ap} and the single rooftop proxy site,
     \item simulate user trajectories over the walkable outdoor area,
     \item compute path-based \gls{csi} and explicit \gls{sinr} terms,
-    \item compare the central, fixed-distributed, and movable-distributed strategies,
+    \item compare the central, fixed-distributed, and two movable-distributed strategies,
     \item export reusable result files,
     \item generate analysis figures in a separate postprocessing step.
 \end{enumerate}
@@ -36,10 +36,11 @@ This section documents the reproducible processing chain from scene generation t
         Minimum candidate spacing & \SI{12}{\meter} \\
         Candidate wall offset & \SI{0.25}{\meter} \\
         Relocation window & \SI{600}{\second} \\
-        Historical \gls{csi} decay rate & \num{0.01155}~\si{\per\second} \\
-        Local neighborhood size & 10 nearest \gls{ue} snapshots per candidate \\
+        Historical \gls{csi} decay rate & \num{0.00116}~\si{\per\second} \\
+        Optimization-1 neighborhood size & $K=10$ nearest \gls{ue} snapshots per candidate \\
+        Optimization-2 distance threshold & \SI{25}{\meter} \\
         Initialization seed & 11 \\
-        Compared strategies & central proxy, fixed distributed, movable distributed \\
+        Compared strategies & central proxy, fixed distributed, movable distributed opt.~1, movable distributed opt.~2 \\
         Coverage maps & disabled in current Rabot config \\
         \bottomrule
     \end{tabular}
@@ -55,11 +56,12 @@ This section documents the reproducible processing chain from scene generation t
         \midrule
         \texttt{central\_massive\_mimo} & Single rooftop proxy on the building nearest the area center, oriented toward the center. Use as central reference only. \\
         \texttt{distributed\_fixed} & One distributed subset is selected from wall candidates and kept unchanged for the full run. \\
-        \texttt{distributed\_movable} & The distributed subset is reselected every relocation window using local \gls{csi} with exponential decay over historical samples. \\
+        \texttt{distributed\_movable} & Optimization~1. The distributed subset is reselected every relocation window from the local historical-\gls{csi} objective based on the configured $K=10$ nearest \gls{ue} snapshots per candidate and exponential aging of older samples. \\
+        \texttt{distributed\_movable\_optimization\_2} & Optimization~2. The distributed subset is reselected every relocation window from the current-window local-sum-rate objective over users within the configured distance threshold of the candidate subset. \\
         \bottomrule
     \end{tabular}
 \end{table}
 
 The figure set in \cref{sec:results_geometry,sec:results_sinr,sec:results_relocation} is bundled locally under \texttt{article/figures/rabot/} so the manuscript carries its own buildable asset set. These files are mirrored from the generated Rabot outputs in \texttt{outputs/rabot/} and \texttt{outputs/rabot/postprocessing/}, which remain the regeneration source for the reported figures.
 
-For the current Rabot instantiation, the relocation controller starts from a single seed constellation drawn from the wall-mounted candidate pool using the configured random seed. That seed constellation is frozen for the \texttt{distributed\_fixed} baseline and also provides the initial labeled movable-\gls{ap} positions for \texttt{distributed\_movable}. Thereafter, every relocation window applies the greedy local-\gls{csi} subset search from \cref{sec:system_model} and then solves a minimum-displacement assignment so that schedule traces, relocation distances, and move fractions correspond to the motion of persistent AP identities rather than to arbitrary reordering of candidate sites.
+For the current Rabot instantiation, the relocation controller starts from a single seed constellation drawn from the wall-mounted candidate pool using the configured random seed. That seed constellation is frozen for the \texttt{distributed\_fixed} baseline and also provides the initial labeled movable-\gls{ap} positions for \texttt{distributed\_movable} and \texttt{distributed\_movable\_optimization\_2}. Thereafter, every relocation window applies the greedy subset search from \cref{sec:system_model} with either the optimization-1 or optimization-2 objective and then solves a minimum-displacement assignment so that schedule traces, relocation distances, and move fractions correspond to the motion of persistent AP identities rather than to arbitrary reordering of candidate sites.

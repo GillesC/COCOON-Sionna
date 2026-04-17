@@ -20,21 +20,35 @@ from .mobility import Trajectory, load_graph_json
 from .pipeline import _animate_scene, _plot_colored_trajectories, _plot_coverage, _plot_scene_layout
 from .sites import load_candidate_sites
 
-STRATEGY_ORDER = ("central_massive_mimo", "distributed_fixed", "distributed_movable")
+STRATEGY_ORDER = (
+    "central_massive_mimo",
+    "distributed_fixed",
+    "distributed_movable",
+    "distributed_movable_optimization_2",
+)
 STRATEGY_LABELS = {
     "central_massive_mimo": "Central massive MIMO",
     "distributed_fixed": "Distributed fixed",
-    "distributed_movable": "Distributed movable",
+    "distributed_movable": "Distributed movable (Opt. 1)",
+    "distributed_movable_optimization_2": "Distributed movable (Opt. 2)",
 }
 STRATEGY_COLORS = {
     "central_massive_mimo": "#d4a017",
     "distributed_fixed": "#2f5d8a",
     "distributed_movable": "#cb3a2a",
+    "distributed_movable_optimization_2": "#cb3a2a",
 }
 STRATEGY_TIKZ_COLOR_NAMES = {
     "central_massive_mimo": "CentralMassiveMimoColor",
     "distributed_fixed": "DistributedFixedColor",
     "distributed_movable": "DistributedMovableColor",
+    "distributed_movable_optimization_2": "DistributedMovableColor",
+}
+STRATEGY_LINESTYLES = {
+    "central_massive_mimo": "-.",
+    "distributed_fixed": "-",
+    "distributed_movable": "--",
+    "distributed_movable_optimization_2": "-",
 }
 WINDOW_LINESTYLES = ("-", "--", ":", "-.")
 PGFPLOTS_LINESTYLES = {
@@ -65,6 +79,10 @@ def _label(name: str) -> str:
 
 def _strategy_color(name: str) -> str:
     return STRATEGY_COLORS.get(name, "#4c566a")
+
+
+def _strategy_linestyle(name: str) -> str:
+    return STRATEGY_LINESTYLES.get(name, "-")
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -115,8 +133,12 @@ def _write_tikz_file(path: Path, body_lines: Sequence[str], *, extra_comments: S
         "\\providecommand{\\postprocessfigurewidth}{\\linewidth}",
         "\\pgfplotsset{compat=1.18}",
     ]
+    defined_colors: set[str] = set()
     for strategy in _ordered_strategies(STRATEGY_TIKZ_COLOR_NAMES):
         color_name = STRATEGY_TIKZ_COLOR_NAMES[strategy]
+        if color_name in defined_colors:
+            continue
+        defined_colors.add(color_name)
         color_value = _strategy_color(strategy).lstrip("#").upper()
         lines.append(f"\\definecolor{{{color_name}}}{{HTML}}{{{color_value}}}")
     if extra_comments:
@@ -210,9 +232,22 @@ def _scene_context_paths(output_dir: Path, summary: dict[str, Any]) -> tuple[Pat
     return (metadata_path if metadata_path.exists() else None, graph_path if graph_path.exists() else None)
 
 
+def _relocation_schedule_path(output_dir: Path) -> Path | None:
+    for strategy in STRATEGY_ORDER:
+        if strategy in {"central_massive_mimo", "distributed_fixed"}:
+            continue
+        candidate = output_dir / f"{strategy}_schedule.csv"
+        if candidate.exists():
+            return candidate
+    for candidate in sorted(output_dir.glob("*_schedule.csv")):
+        if candidate.exists():
+            return candidate
+    return None
+
+
 def _load_relocation_event_times(output_dir: Path) -> np.ndarray:
-    schedule_path = output_dir / "distributed_movable_schedule.csv"
-    if not schedule_path.exists():
+    schedule_path = _relocation_schedule_path(output_dir)
+    if schedule_path is None:
         return np.asarray([], dtype=float)
     rows = _load_schedule_rows(schedule_path)
     if not rows:
@@ -222,8 +257,8 @@ def _load_relocation_event_times(output_dir: Path) -> np.ndarray:
 
 
 def _analysis_windows(output_dir: Path, times_s: np.ndarray) -> list[dict[str, float | int]]:
-    schedule_path = output_dir / "distributed_movable_schedule.csv"
-    if schedule_path.exists():
+    schedule_path = _relocation_schedule_path(output_dir)
+    if schedule_path is not None:
         rows = _load_schedule_rows(schedule_path)
         windows: list[dict[str, float | int]] = []
         seen: set[int] = set()
@@ -407,6 +442,10 @@ def _tikz_color_name(strategy: str) -> str:
     return STRATEGY_TIKZ_COLOR_NAMES.get(strategy, "black")
 
 
+def _tikz_line_style(strategy: str) -> str:
+    return PGFPLOTS_LINESTYLES.get(_strategy_linestyle(strategy), "solid")
+
+
 def _y_limits(values: Sequence[float] | np.ndarray, margin_ratio: float = 0.06) -> tuple[float, float]:
     flat = np.asarray(values, dtype=float).reshape(-1)
     flat = flat[np.isfinite(flat)]
@@ -464,8 +503,8 @@ def _write_cdf_tikz(
         rel = _relative_posix_path(csv_path, path.parent)
         body.extend(
             [
-                "    \\addplot[const plot mark right, no markers, line width=1.2pt, color=%s] table[x=%s,y=%s,col sep=comma] {%s};"
-                % (_tikz_color_name(strategy), x_column, y_column, rel),
+                "    \\addplot[const plot mark right, no markers, line width=1.2pt, color=%s, %s] table[x=%s,y=%s,col sep=comma] {%s};"
+                % (_tikz_color_name(strategy), _tikz_line_style(strategy), x_column, y_column, rel),
                 "    \\addlegendentry{%s}" % _label(strategy),
             ]
         )
@@ -517,8 +556,8 @@ def _write_timeseries_tikz(
                 continue
             rel = _relative_posix_path(csv_path, path.parent)
             body.append(
-                "    \\addplot[no markers, line width=0.5pt, opacity=0.35, color=%s] table[x=%s,y=%s,col sep=comma] {%s};"
-                % (_tikz_color_name(strategy), x_column, faint_y_column, rel)
+                "    \\addplot[no markers, line width=0.5pt, opacity=0.35, color=%s, %s] table[x=%s,y=%s,col sep=comma] {%s};"
+                % (_tikz_color_name(strategy), _tikz_line_style(strategy), x_column, faint_y_column, rel)
             )
     plot_style = "const plot mark right" if step else "no markers"
     for strategy in strategy_names:
@@ -528,8 +567,8 @@ def _write_timeseries_tikz(
         rel = _relative_posix_path(csv_path, path.parent)
         body.extend(
             [
-                "    \\addplot[%s, line width=1.2pt, color=%s] table[x=%s,y=%s,col sep=comma] {%s};"
-                % (plot_style, _tikz_color_name(strategy), x_column, y_column, rel),
+                "    \\addplot[%s, line width=1.2pt, color=%s, %s] table[x=%s,y=%s,col sep=comma] {%s};"
+                % (plot_style, _tikz_color_name(strategy), _tikz_line_style(strategy), x_column, y_column, rel),
                 "    \\addlegendentry{%s}" % _label(strategy),
             ]
         )
@@ -1177,6 +1216,7 @@ def run_sinr_snapshot_analysis(
                 where="post",
                 linewidth=2.0,
                 color=_strategy_color(name),
+                linestyle=_strategy_linestyle(name),
                 label=_label(name),
             )
     ax.set_xlabel("SINR per user snapshot [dB]")
@@ -1209,6 +1249,7 @@ def run_sinr_snapshot_analysis(
             [row["outage_fraction"] for row in strategy_rows],
             linewidth=2.0,
             color=_strategy_color(name),
+            linestyle=_strategy_linestyle(name),
             label=_label(name),
         )
     ax.set_xlabel("SINR threshold [dB]")
@@ -1241,6 +1282,7 @@ def run_sinr_snapshot_analysis(
             np.min(sinr[name], axis=1),
             linewidth=1.8,
             color=_strategy_color(name),
+            linestyle=_strategy_linestyle(name),
             label=_label(name),
         )
     ax.set_xlabel("Time [s]")
@@ -1275,6 +1317,7 @@ def run_sinr_snapshot_analysis(
             np.sum(np.asarray(sinr[name]) < outage_threshold_db, axis=1),
             linewidth=1.8,
             color=_strategy_color(name),
+            linestyle=_strategy_linestyle(name),
             label=_label(name),
         )
     ax.set_xlabel("Time [s]")
@@ -1364,13 +1407,21 @@ def run_sinr_snapshot_analysis(
 
     fig, ax = plt.subplots(figsize=(9, 5))
     for name in strategy_names:
-        ax.plot(times_s, esr_by_strategy[name], linewidth=1.0, alpha=0.35, color=_strategy_color(name))
+        ax.plot(
+            times_s,
+            esr_by_strategy[name],
+            linewidth=1.0,
+            alpha=0.35,
+            color=_strategy_color(name),
+            linestyle=_strategy_linestyle(name),
+        )
         ax.step(
             times_s,
             esr_step_by_strategy[name],
             where="post",
             linewidth=2.2,
             color=_strategy_color(name),
+            linestyle=_strategy_linestyle(name),
             label=_label(name),
         )
     ax.set_xlabel("Time [s]")
@@ -1411,6 +1462,7 @@ def run_sinr_snapshot_analysis(
                 where="post",
                 linewidth=2.0,
                 color=_strategy_color(name),
+                linestyle=_strategy_linestyle(name),
                 label=_label(name),
             )
     ax.set_xlabel("ESR [bit/s/Hz]")

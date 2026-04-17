@@ -144,6 +144,7 @@ class PlacementConfig:
     historical_csi_decay_rate_per_s: float = math.log(2.0) / 6.0
     random_seed: int = 7
     heuristic_k_nearest: int = 8
+    optimization_2_distance_threshold_m: float = 25.0
     exact_max_iterations: int = 50000
 
 
@@ -349,6 +350,7 @@ def _load_placement(data: dict[str, Any]) -> PlacementConfig:
         ),
         random_seed=int(data.get("random_seed", 7)),
         heuristic_k_nearest=int(data.get("heuristic_k_nearest", 8)),
+        optimization_2_distance_threshold_m=float(data.get("optimization_2_distance_threshold_m", 25.0)),
         exact_max_iterations=int(data.get("exact_max_iterations", 50000)),
     )
 

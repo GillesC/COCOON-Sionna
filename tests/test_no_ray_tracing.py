@@ -86,6 +86,8 @@ def test_run_scenario_without_ray_tracing_writes_trajectory_outputs(monkeypatch,
     assert (config.outputs.output_dir / "distributed_fixed_schedule.csv").exists()
     assert (config.outputs.output_dir / "distributed_movable_aps.csv").exists()
     assert (config.outputs.output_dir / "distributed_movable_schedule.csv").exists()
+    assert (config.outputs.output_dir / "distributed_movable_optimization_2_aps.csv").exists()
+    assert (config.outputs.output_dir / "distributed_movable_optimization_2_schedule.csv").exists()
     assert (config.outputs.output_dir / "strategy_comparison.csv").exists()
     assert not (config.outputs.output_dir / "coverage_map.npz").exists()
     assert not (config.outputs.output_dir / "scene_layout.png").exists()

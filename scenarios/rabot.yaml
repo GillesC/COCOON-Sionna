@@ -44,8 +44,8 @@ mobility:
   source: scene_metadata
   num_users: 10
   # Simulation horizon and temporal resolution in seconds.
-  duration_s: 3600.0
-  step_s: 5.0
+  duration_s: 600.0
+  step_s: 10.0
   # Allow users to move through open outdoor space, not only along OSM paths.
   allow_open_area: true
   # Spacing and connectivity of the free-space mobility roadmap, in meters.
@@ -102,11 +102,14 @@ placement:
   candidate_corner_clearance_m: 3.0
   candidate_wall_height_m: 1.5
   candidate_wall_offset_m: 0.25
-  window_interval_s: 600.0
+  window_interval_s: 60.0
   # Exponential decay for historical CSI weighting during movable-AP relocation.
-  historical_csi_decay_rate_per_s: 0.011552453009332421
+  historical_csi_decay_rate_per_s: 0.0011552453009332421
   random_seed: 11
+  # Optimization 1 uses K=10 nearest UE snapshots per candidate.
   heuristic_k_nearest: 10
+  # Optimization 2 uses the users within this radius of the candidate subset in each window.
+  optimization_2_distance_threshold_m: 25.0
   exact_max_iterations: 50000
 
 # Seed AP candidate file. For OSM scenarios, extra wall candidates are generated automatically.

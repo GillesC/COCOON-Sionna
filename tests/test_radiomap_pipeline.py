@@ -114,7 +114,12 @@ def test_optimization_scoring_does_not_call_radiomap_per_candidate(monkeypatch, 
 
     assert summary["radio_map_enabled"] is True
     assert summary["baseline_strategy"] == "distributed_fixed"
-    assert summary["best_strategy"] in {"central_massive_mimo", "distributed_fixed", "distributed_movable"}
+    assert summary["best_strategy"] in {
+        "central_massive_mimo",
+        "distributed_fixed",
+        "distributed_movable",
+        "distributed_movable_optimization_2",
+    }
     assert calls["radio_map"] == 2
     assert all(site_count == 1 for site_count in calls["ap_ue_site_counts"])
     assert (config.outputs.output_dir / "coverage_map.npz").exists()

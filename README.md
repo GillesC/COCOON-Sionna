@@ -7,7 +7,7 @@ pipeline built on top of Sionna RT. The project:
 - simulating pedestrian mobility and pairwise CSI for `AP-AP`, `AP-UE`, and `UE-UE`
 - generating wall-mounted candidate AP positions at `1.5 m`
 - generating one rooftop central-AP proxy from the building nearest the area center
-- comparing three deployment modes over the same CSI-derived objective
+- comparing four deployment modes over the same CSI-derived objective
 - exporting reusable simulation data first and generating figures in postprocessing
 
 At a high level, each scenario does the following:
@@ -16,7 +16,7 @@ At a high level, each scenario does the following:
 2. Generate wall-mounted candidate AP positions over building boundaries at `1.5 m`.
 3. Generate UE trajectories over the walkable space.
 4. Compute path-based wireless channels with Sionna RT.
-5. Compare `central_massive_mimo`, `distributed_fixed`, and `distributed_movable`.
+5. Compare `central_massive_mimo`, `distributed_fixed`, `distributed_movable`, and `distributed_movable_optimization_2`.
 6. Export CSI, optional coverage-map data, trajectories, per-mode summaries, and placement schedules.
 7. Rebuild figures, animations, and ESR analyses from the stored outputs via postprocessing.
 
@@ -184,6 +184,7 @@ placement:
   candidate_min_spacing_m: 3.0
   random_seed: 7
   heuristic_k_nearest: 8
+  optimization_2_distance_threshold_m: 25.0
   exact_max_iterations: 50000
 ```
 
@@ -199,7 +200,7 @@ reference.
 
 ### Strategies To Compare
 
-Each scenario compares these three deployment modes:
+Each scenario compares these deployment modes:
 
 - `central_massive_mimo`: select the building whose rooftop representative
   point is nearest the area center, place one rooftop proxy AP there, mount it
@@ -209,6 +210,10 @@ Each scenario compares these three deployment modes:
 - `distributed_movable`: keep the same distributed AP budget, but relocate the
   APs per window using a local-CSI heuristic with exponentially decayed
   historical CSI over the wall-mounted candidate AP positions
+- `distributed_movable_optimization_2`: keep the same distributed AP budget,
+  but relocate the APs per window using only the current window, the users
+  within a distance threshold of the candidate subset, and the resulting local
+  sum-rate
 
 ### Placement Scoring
 
@@ -220,11 +225,17 @@ Placement evaluation uses CSI only:
 3. `AP-AP` CSI is exported for analysis, but the placement score does not
    depend on a full radio map.
 
-The `distributed_movable` heuristic uses the `K` nearest UE snapshots around
-each candidate AP position, aggregates local CSI over time with exponential
-decay, and ranks candidates by their local weighted `P10` SINR. This targets a
-90%-user SINR floor while discounting stale CSI. The comparison summary still
-reports the full trajectory-level score for each mode.
+`distributed_movable` is optimization 1. It uses the configured `K` nearest UE
+snapshots around each candidate AP position, aggregates local CSI over time
+with exponential decay, and ranks candidates by their local weighted `P10`
+SINR. Samples at the current decision time keep weight `1`, while older CSI is
+down-weighted by `exp(-\lambda \Delta t)`.
+
+`distributed_movable_optimization_2` is optimization 2. It uses only the
+current relocation window, keeps the UE snapshots within
+`optimization_2_distance_threshold_m` of the candidate subset, and ranks
+candidates by the resulting local sum-rate
+`\sum \log_2(1+\mathrm{SINR})`.
 
 ### Evaluation Flow Per Scenario
 
@@ -237,9 +248,10 @@ With ray tracing enabled, a full scenario run proceeds as follows:
 5. Compute the CSI used for scoring:
    `UE-UE`, `AP-UE`, and exported `AP-AP`.
 6. Build the distributed baseline as the initial sampled AP constellation.
-7. Compare the three modes:
-   `distributed_fixed` stays static, `distributed_movable` relocates APs per
-   window with exponentially decayed historical CSI, and
+7. Compare the deployment modes:
+   `distributed_fixed` stays static, `distributed_movable` applies the
+   historical `K`-nearest local-CSI heuristic, `distributed_movable_optimization_2`
+   applies the distance-threshold local-sum-rate heuristic, and
    `central_massive_mimo` evaluates the fixed rooftop proxy over the full
    trajectory.
 8. Export per-mode placements, schedules, optional coverage-map data, SINR
@@ -341,6 +353,8 @@ Each `run` writes to its configured output directory and produces reusable data:
 - `distributed_fixed_schedule.csv`
 - `distributed_movable_aps.csv`
 - `distributed_movable_schedule.csv`
+- `distributed_movable_optimization_2_aps.csv`
+- `distributed_movable_optimization_2_schedule.csv`
 - `strategy_comparison.csv`
 - `summary.json`
 - `infra_csi_snapshots.npz`
@@ -368,11 +382,14 @@ positions.
 `central_ap_rooftop_candidates.csv` stores the rooftop candidates considered by
 `central_massive_mimo`.
 `central_massive_mimo_ap.csv`, `distributed_fixed_aps.csv`, and
-`distributed_movable_aps.csv` store the selected deployment for each mode.
+`distributed_movable_aps.csv`, and
+`distributed_movable_optimization_2_aps.csv` store the selected deployment for
+each mode.
 `central_massive_mimo_schedule.csv`, `distributed_fixed_schedule.csv`, and
-`distributed_movable_schedule.csv` store the per-window AP schedules. The
-central and fixed distributed schedules remain static; the movable distributed
-schedule can change per relocation window.
+`distributed_movable_schedule.csv`, and
+`distributed_movable_optimization_2_schedule.csv` store the per-window AP
+schedules. The central and fixed distributed schedules remain static; the
+movable distributed schedules can change per relocation window.
 `strategy_comparison.csv` reports the per-mode score, outage, and percentile
 metrics.
 `summary.json` records the same comparison metrics together with the selected
@@ -457,7 +474,11 @@ For OSM-built scenes, the generated Sionna assets are emitted as:
 - The distributed baseline is the initial sampled AP constellation and remains
   fixed for the full run.
 - `distributed_movable` reuses the same distributed AP budget but can relocate
-  the APs per optimization window using exponentially decayed historical CSI.
+  the APs per optimization window using exponentially decayed historical CSI
+  over the configured `K` nearest UE snapshots.
+- `distributed_movable_optimization_2` reuses the same distributed AP budget
+  but relocates the APs from the current-window users within a distance
+  threshold and the resulting local sum-rate.
 - The central AP is normalized to the same total antenna-element budget and the
   same total transmit-power budget as the distributed deployments.
 - The Placement Model does not optimize a true single co-located massive-MIMO

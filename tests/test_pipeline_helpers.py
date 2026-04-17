@@ -13,11 +13,13 @@ from cocoon_sionna.pipeline import (
     _animate_scene,
     _build_csi_cache_key,
     _cache_optional_artifact,
+    _distance_threshold_snapshot_mask,
     _historical_local_percentile_10,
     _factor_central_ap_array,
     _generate_rooftop_candidates,
     _instantaneous_user_sinr_samples,
     _local_percentile_10,
+    _local_window_sum_rate,
     _make_reference_movable_sites,
     _movable_ap_count,
     _nearest_snapshot_mask,
@@ -204,6 +206,36 @@ def test_historical_local_percentile_10_applies_exponential_decay():
     )
 
     assert reduced == 10.0
+
+
+def test_distance_threshold_mask_and_local_window_sum_rate_use_local_users_only():
+    trajectory = Trajectory(
+        times_s=np.array([0.0, 5.0]),
+        ue_ids=["ue_0", "ue_1"],
+        positions_m=np.array(
+            [
+                [[0.0, 0.0, 1.5], [30.0, 0.0, 1.5]],
+                [[1.0, 0.0, 1.5], [40.0, 0.0, 1.5]],
+            ],
+            dtype=float,
+        ),
+        velocities_mps=np.zeros((2, 2, 3), dtype=float),
+    )
+    site = CandidateSite("cand", 0.0, 0.0, 1.5, 0.0, -10.0, "wall")
+
+    mask = _distance_threshold_snapshot_mask(trajectory, [site], distance_threshold_m=5.0)
+    assert mask.tolist() == [[True, False], [True, False]]
+
+    score = _local_window_sum_rate(
+        {"sinr_linear": np.array([[3.0, 100.0], [15.0, 100.0]], dtype=float)},
+        trajectory,
+        ("cand",),
+        {"cand": site},
+        distance_threshold_m=5.0,
+    )
+
+    expected = 0.5 * (np.log2(1.0 + 3.0) + np.log2(1.0 + 15.0))
+    assert np.isclose(score, expected)
 
 
 def test_should_render_sionna_scene_artifacts_skips_cpu_llvm_backend():

@@ -22,9 +22,10 @@ def test_load_rabot_config():
     assert config.placement.num_movable_aps == 6
     assert config.candidate_sites_path.exists()
     assert config.placement.heuristic_k_nearest == 10
+    assert config.placement.optimization_2_distance_threshold_m == 25.0
     assert config.mobility.speed_variation_fraction == 0.15
-    assert config.placement.window_interval_s == 60.0
-    assert math.isclose(config.placement.historical_csi_decay_rate_per_s, math.log(2.0) / 60.0)
+    assert config.placement.window_interval_s == 600.0
+    assert math.isclose(config.placement.historical_csi_decay_rate_per_s, math.log(2.0) / 600.0)
     assert config.outputs.write_csi_exports is False
     assert config.outputs.enable_csi_cache is False
 
@@ -37,7 +38,7 @@ def test_load_rabot_boundary_bbox():
     assert west < east
     assert south < north
     assert config.scene.boundary_path is None
-    assert config.outputs.scene_animation_speedup == 10.0
+    assert config.outputs.scene_animation_speedup == 200.0
     assert config.coverage.enabled is False
     assert config.outputs.write_csi_exports is False
     assert config.outputs.enable_csi_cache is False

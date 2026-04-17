@@ -45,7 +45,12 @@ from .sites import (
 
 logger = logging.getLogger(__name__)
 
-ALL_STRATEGY_NAMES = ("central_massive_mimo", "distributed_fixed", "distributed_movable")
+ALL_STRATEGY_NAMES = (
+    "central_massive_mimo",
+    "distributed_fixed",
+    "distributed_movable",
+    "distributed_movable_optimization_2",
+)
 LEGACY_STRATEGY_NAMES = ("random_baseline", "local_csi_p10", "capped_exact_search")
 CENTRAL_AP_SITE_ID = "central_ap_01"
 CENTRAL_AP_ROOF_OFFSET_M = 1.5
@@ -88,9 +93,19 @@ def _active_strategy_names(config: ScenarioConfig) -> tuple[str, ...]:
 def _validate_three_mode_config(config: ScenarioConfig) -> None:
     if int(config.placement.num_fixed_aps) != 0:
         raise ValueError(
-            "Three-mode comparison requires placement.num_fixed_aps == 0 because "
+            "Comparison requires placement.num_fixed_aps == 0 because "
             "the distributed baseline is the initial full AP constellation."
         )
+
+
+def _strategy_linestyle(strategy_name: str) -> str:
+    styles = {
+        "central_massive_mimo": "-.",
+        "distributed_fixed": "-",
+        "distributed_movable": "--",
+        "distributed_movable_optimization_2": "-",
+    }
+    return styles.get(strategy_name, "-")
 
 
 def _strategy_site_csv_name(strategy_name: str) -> str:
@@ -1706,6 +1721,48 @@ def _historical_local_percentile_10(
     )
 
 
+def _distance_threshold_snapshot_mask(
+    trajectory: Trajectory,
+    sites: list[CandidateSite],
+    distance_threshold_m: float,
+) -> np.ndarray:
+    positions = np.asarray(trajectory.positions_m[..., :2], dtype=float)
+    if positions.ndim != 3 or positions.size == 0:
+        return np.zeros((0, 0), dtype=bool)
+    if not sites:
+        return np.zeros(positions.shape[:2], dtype=bool)
+    threshold_m = max(float(distance_threshold_m), 0.0)
+    if threshold_m <= 0.0:
+        return np.zeros(positions.shape[:2], dtype=bool)
+
+    flat_positions = positions.reshape(-1, 2)
+    site_xy = np.asarray([[float(site.x_m), float(site.y_m)] for site in sites], dtype=float)
+    distances = np.linalg.norm(flat_positions[:, None, :] - site_xy[None, :, :], axis=2)
+    return np.any(distances <= threshold_m, axis=1).reshape(positions.shape[0], positions.shape[1])
+
+
+def _local_window_sum_rate(
+    ap_ue_segment: dict[str, Any],
+    trajectory: Trajectory,
+    selected_candidate_ids: tuple[str, ...],
+    candidate_index: dict[str, CandidateSite],
+    distance_threshold_m: float,
+) -> float:
+    if not selected_candidate_ids:
+        return -1e12
+    local_sites = [candidate_index[site_id] for site_id in selected_candidate_ids]
+    local_mask = _distance_threshold_snapshot_mask(trajectory, local_sites, distance_threshold_m)
+    if local_mask.size == 0 or not np.any(local_mask):
+        return -1e12
+
+    sinr_linear = np.asarray(ap_ue_segment["sinr_linear"], dtype=float)
+    if sinr_linear.shape != local_mask.shape:
+        raise ValueError("distance-threshold mask shape must match AP-UE SINR samples")
+
+    local_rates = np.where(local_mask, np.log2(1.0 + np.clip(sinr_linear, 0.0, None)), 0.0)
+    return float(np.mean(np.sum(local_rates, axis=1)))
+
+
 def _per_user_mean_best_sinr(best_sinr_db: np.ndarray) -> np.ndarray:
     values = np.asarray(best_sinr_db, dtype=float)
     if values.ndim == 1:
@@ -1757,6 +1814,7 @@ def _plot_user_sinr_cdf(strategy_ap_ue: dict[str, dict[str, Any]], output_path: 
         "central_massive_mimo": ("#2ca02c", "-."),
         "distributed_fixed": ("#1f77b4", "-"),
         "distributed_movable": ("#ff7f0e", "--"),
+        "distributed_movable_optimization_2": ("#ff7f0e", "-"),
     }
     minimum = None
     for name in strategy_names:
@@ -1766,7 +1824,7 @@ def _plot_user_sinr_cdf(strategy_ap_ue: dict[str, dict[str, Any]], output_path: 
         x_values, y_values = _cdf_points(_instantaneous_user_sinr_samples(payload["best_sinr_db"]))
         if x_values.size == 0:
             continue
-        color, linestyle = styles.get(name, ("#444444", "-"))
+        color, linestyle = styles.get(name, ("#444444", _strategy_linestyle(name)))
         minimum = float(np.min(x_values)) if minimum is None else min(minimum, float(np.min(x_values)))
         plt.step(x_values, y_values, where="post", linewidth=2.0, linestyle=linestyle, color=color, label=name)
     plt.xlabel("Instantaneous distributed-MIMO ZF SINR per user snapshot [dB]")
@@ -2177,6 +2235,18 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                     selected_candidate_union=set(random_candidate_ids),
                     details={"selection_mode": "geometric_placeholder"},
                 ),
+                "distributed_movable_optimization_2": StrategyArtifacts(
+                    name="distributed_movable_optimization_2",
+                    selected_sites=list(baseline_sites),
+                    movable_sites=list(baseline_sites),
+                    ap_ue={},
+                    ap_ap={},
+                    score=PlacementScore(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    schedule_rows=list(static_schedule),
+                    final_candidate_ids=list(random_candidate_ids),
+                    selected_candidate_union=set(random_candidate_ids),
+                    details={"selection_mode": "geometric_placeholder"},
+                ),
                 "central_massive_mimo": StrategyArtifacts(
                     name="central_massive_mimo",
                     selected_sites=[central_placeholder_site],
@@ -2206,8 +2276,11 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             animation_strategy = strategy_results[animation_strategy_name]
             visualized_sites = list(strategy_results[best_strategy_name].selected_sites)
             distributed_selected_union = set().union(
-                strategy_results["distributed_fixed"].selected_candidate_union,
-                strategy_results["distributed_movable"].selected_candidate_union,
+                *(
+                    artifact.selected_candidate_union
+                    for name, artifact in strategy_results.items()
+                    if name != "central_massive_mimo"
+                )
             )
             write_candidate_sites(
                 output_dir / "candidate_ap_positions.csv",
@@ -2290,6 +2363,7 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
 
         initial_movable_sites = list(baseline_sites)
         historical_decay_rate = float(config.placement.historical_csi_decay_rate_per_s)
+        optimization_2_distance_threshold_m = float(config.placement.optimization_2_distance_threshold_m)
         subset_history: dict[tuple[str, ...], list[dict[str, Any]]] = {}
 
         def local_selector(window_index: int, window_trajectory: Trajectory, window_need_weights: np.ndarray, _current_movable_sites):
@@ -2321,6 +2395,37 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             )
             return selected_ids, False, len(evaluated_subsets)
 
+        def optimization_2_selector(window_index: int, window_trajectory: Trajectory, window_need_weights: np.ndarray, _current_movable_sites):
+            del window_index
+            del window_need_weights
+            subset_cache: dict[tuple[str, ...], dict[str, Any]] = {}
+
+            def ap_ue_for_subset(subset: tuple[str, ...]) -> dict[str, Any]:
+                if subset not in subset_cache:
+                    active_sites = [candidate_index[site_id] for site_id in subset]
+                    subset_cache[subset] = distributed_runner.compute_ap_ue_csi(
+                        active_sites,
+                        window_trajectory,
+                        export_full=False,
+                    )
+                return subset_cache[subset]
+
+            def local_evaluator(subset: tuple[str, ...]) -> float:
+                return _local_window_sum_rate(
+                    ap_ue_for_subset(subset),
+                    window_trajectory,
+                    subset,
+                    candidate_index,
+                    optimization_2_distance_threshold_m,
+                )
+
+            selected_ids = select_local_csi_candidates(
+                movable_candidate_ids,
+                len(initial_movable_sites),
+                local_evaluator,
+            )
+            return selected_ids, False, len(subset_cache)
+
         peer_need_weights = np.asarray(peer_csi["need_weights"], dtype=float)
         strategy_results: dict[str, StrategyArtifacts] = {
             "distributed_fixed": _evaluate_static_strategy(
@@ -2346,6 +2451,18 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
                 local_selector,
                 csi_exports_enabled,
             ),
+            "distributed_movable_optimization_2": _evaluate_strategy_windows(
+                "distributed_movable_optimization_2",
+                distributed_runner,
+                config,
+                [],
+                initial_movable_sites,
+                candidate_index,
+                trajectory,
+                peer_need_weights,
+                optimization_2_selector,
+                csi_exports_enabled,
+            ),
             "central_massive_mimo": _evaluate_central_massive_mimo(
                 central_runner,
                 config,
@@ -2358,6 +2475,11 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         strategy_results["distributed_movable"].details = {
             "selection_mode": "windowed_local_csi_history",
             "historical_csi_decay_rate_per_s": historical_decay_rate,
+            "heuristic_k_nearest": int(config.placement.heuristic_k_nearest),
+        }
+        strategy_results["distributed_movable_optimization_2"].details = {
+            "selection_mode": "windowed_local_sum_rate_radius",
+            "optimization_2_distance_threshold_m": optimization_2_distance_threshold_m,
         }
         strategy_results["central_massive_mimo"].details.update(
             {
@@ -2377,9 +2499,8 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         animation_strategy_name = _scene_animation_strategy_name(strategy_results, best_strategy_name)
         animation_strategy = strategy_results[animation_strategy_name]
         runner_by_strategy = {
-            "central_massive_mimo": central_runner,
-            "distributed_fixed": distributed_runner,
-            "distributed_movable": distributed_runner,
+            name: (central_runner if name == "central_massive_mimo" else distributed_runner)
+            for name in strategy_names
         }
         if animation_strategy_name != best_strategy_name:
             logger.info(
@@ -2460,8 +2581,11 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
         scenario_progress.update(1)
 
         distributed_selected_union = set().union(
-            strategy_results["distributed_fixed"].selected_candidate_union,
-            strategy_results["distributed_movable"].selected_candidate_union,
+            *(
+                artifact.selected_candidate_union
+                for name, artifact in strategy_results.items()
+                if name != "central_massive_mimo"
+            )
         )
         write_candidate_sites(
             output_dir / "candidate_ap_positions.csv",
