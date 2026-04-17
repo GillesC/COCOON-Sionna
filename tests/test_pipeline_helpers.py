@@ -409,6 +409,48 @@ def test_proxy_window_sum_rate_uses_csi_when_cfr_is_available(monkeypatch):
     assert np.isclose(score, np.log2(1.0 + 3.0) + np.log2(1.0 + 1.0))
 
 
+def test_proxy_window_sum_rate_falls_back_to_power_when_cfr_shape_is_undecodable():
+    trajectory = Trajectory(
+        times_s=np.array([0.0, 5.0]),
+        ue_ids=["ue_0", "ue_1"],
+        positions_m=np.array(
+            [
+                [[0.0, 0.0, 1.5], [30.0, 0.0, 1.5]],
+                [[1.0, 0.0, 1.5], [40.0, 0.0, 1.5]],
+            ],
+            dtype=float,
+        ),
+        velocities_mps=np.zeros((2, 2, 3), dtype=float),
+    )
+    site = CandidateSite("cand", 0.0, 0.0, 1.5, 0.0, -10.0, "wall")
+
+    score = _proxy_window_sum_rate_from_peer_csi(
+        {
+            "link_power_w": np.array(
+                [
+                    [[0.0, 5.0], [2.0, 0.0]],
+                    [[0.0, 12.0], [3.0, 0.0]],
+                ],
+                dtype=float,
+            ),
+            "cfr": np.zeros((2, 1, 1, 4), dtype=np.complex128),
+        },
+        trajectory,
+        ("cand",),
+        {"cand": site},
+        distance_threshold_m=5.0,
+        noise_power_w=0.5,
+        total_tx_power_w=1.0,
+        tx_power_scale=1.0,
+    )
+
+    expected = 0.5 * (
+        2.0 * np.log2(1.0 + (5.0 / 0.5))
+        + 2.0 * np.log2(1.0 + (12.0 / 0.5))
+    )
+    assert np.isclose(score, expected)
+
+
 def test_should_render_sionna_scene_artifacts_skips_cpu_llvm_backend():
     assert not _should_render_sionna_scene_artifacts({"device": "CPU", "variant": "llvm_ad_mono_polarized"})
     assert _should_render_sionna_scene_artifacts({"device": "GPU", "variant": "cuda_ad_mono_polarized"})

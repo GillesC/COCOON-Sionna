@@ -1965,26 +1965,36 @@ def _proxy_window_sum_rate_from_peer_csi(
     tx_power_scale: float,
 ) -> float:
     if "cfr" in peer_csi_segment:
-        proxy_channel, _anchor_indices, valid_mask = _proxy_ap_candidate_channel_from_peer_csi(
-            peer_csi_segment,
-            trajectory,
-            selected_candidate_ids,
-            candidate_index,
-            distance_threshold_m,
-        )
-        if proxy_channel.size == 0 or not np.any(valid_mask):
-            return -1e12
-
-        esr_samples: list[float] = []
-        for snapshot_index in range(proxy_channel.shape[0]):
-            channel = proxy_channel[snapshot_index][:, None, :, None]
-            sinr_terms = _zf_sinr_terms_from_mimo_channel(
-                channel,
-                total_tx_power_w=max(float(total_tx_power_w), 0.0),
-                noise_power_w=max(float(noise_power_w), 1e-12),
+        try:
+            proxy_channel, _anchor_indices, valid_mask = _proxy_ap_candidate_channel_from_peer_csi(
+                peer_csi_segment,
+                trajectory,
+                selected_candidate_ids,
+                candidate_index,
+                distance_threshold_m,
             )
-            esr_samples.append(float(np.sum(np.log2(1.0 + np.clip(sinr_terms["sinr"], 0.0, None)))))
-        return float(np.mean(esr_samples)) if esr_samples else -1e12
+        except ValueError as exc:
+            logger.warning(
+                "Falling back to UE-UE power-proxy ESR because proxy CSI decoding failed: %s "
+                "(cfr_shape=%s, link_power_shape=%s)",
+                exc,
+                np.asarray(peer_csi_segment["cfr"]).shape,
+                np.asarray(peer_csi_segment["link_power_w"]).shape,
+            )
+        else:
+            if proxy_channel.size == 0 or not np.any(valid_mask):
+                return -1e12
+
+            esr_samples: list[float] = []
+            for snapshot_index in range(proxy_channel.shape[0]):
+                channel = proxy_channel[snapshot_index][:, None, :, None]
+                sinr_terms = _zf_sinr_terms_from_mimo_channel(
+                    channel,
+                    total_tx_power_w=max(float(total_tx_power_w), 0.0),
+                    noise_power_w=max(float(noise_power_w), 1e-12),
+                )
+                esr_samples.append(float(np.sum(np.log2(1.0 + np.clip(sinr_terms["sinr"], 0.0, None)))))
+            return float(np.mean(esr_samples)) if esr_samples else -1e12
 
     proxy_power_w, _anchor_indices, valid_mask = _proxy_ap_candidate_power_from_peer_csi(
         peer_csi_segment["link_power_w"],
