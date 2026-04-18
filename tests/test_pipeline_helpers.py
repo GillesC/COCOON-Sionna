@@ -379,9 +379,10 @@ def test_proxy_window_sum_rate_uses_csi_when_cfr_is_available(monkeypatch):
             "interference_power_w": np.array([0.0, 0.0], dtype=float),
             "noise_power_w": np.array([0.5, 0.5], dtype=float),
             "sinr": np.array([3.0, 1.0], dtype=float),
+            "spectral_efficiency_bps_hz": np.log2(1.0 + np.array([3.0, 1.0], dtype=float)),
         }
 
-    monkeypatch.setattr("cocoon_sionna.pipeline._zf_sinr_terms_from_mimo_channel", fake_zf)
+    monkeypatch.setattr("cocoon_sionna.pipeline._zf_sinr_terms_from_wideband_mimo_channel", fake_zf)
     score = _proxy_window_sum_rate_from_peer_csi(
         {
             "link_power_w": np.array([[[0.0, 9.0], [4.0, 0.0]]], dtype=float),
@@ -405,7 +406,7 @@ def test_proxy_window_sum_rate_uses_csi_when_cfr_is_available(monkeypatch):
     )
 
     assert len(calls) == 1
-    np.testing.assert_allclose(np.abs(calls[0][:, 0, 0, 0]), np.array([2.0, 2.0]))
+    np.testing.assert_allclose(np.abs(calls[0][:, 0, 0, 0, 0]), np.array([2.0, 2.0]))
     assert np.isclose(score, np.log2(1.0 + 3.0) + np.log2(1.0 + 1.0))
 
 

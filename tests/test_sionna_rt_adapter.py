@@ -13,6 +13,7 @@ from cocoon_sionna.sionna_rt_adapter import (
     _stack_padded,
     _zf_sinr_from_mimo_channel,
     _zf_sinr_terms_from_mimo_channel,
+    _zf_sinr_terms_from_wideband_mimo_channel,
     SionnaRtRunner,
     SceneInputs,
 )
@@ -75,6 +76,18 @@ def test_zf_sinr_terms_from_mimo_channel_retains_interference_term():
         terms["sinr"],
         terms["desired_power_w"] / (terms["interference_power_w"] + terms["noise_power_w"]),
     )
+
+
+def test_zf_sinr_terms_from_wideband_mimo_channel_returns_rate_equivalent_sinr():
+    channel = np.zeros((1, 1, 1, 1, 2), dtype=np.complex128)
+    channel[0, 0, 0, 0, :] = np.array([1.0, 2.0], dtype=np.complex128)
+
+    terms = _zf_sinr_terms_from_wideband_mimo_channel(channel, total_tx_power_w=2.0, noise_power_w=1.0)
+
+    expected_sinr_per_tone = np.array([2.0, 8.0], dtype=float)
+    expected_spectral_efficiency = np.mean(np.log2(1.0 + expected_sinr_per_tone))
+    np.testing.assert_allclose(terms["spectral_efficiency_bps_hz"], np.array([expected_spectral_efficiency]))
+    np.testing.assert_allclose(terms["sinr"], np.array([2.0**expected_spectral_efficiency - 1.0]))
 
 
 def test_parse_nvidia_compute_capabilities_ignores_invalid_rows():

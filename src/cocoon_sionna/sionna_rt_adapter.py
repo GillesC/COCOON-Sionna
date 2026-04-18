@@ -188,6 +188,56 @@ def _zf_sinr_terms_from_mimo_channel(
     }
 
 
+def _wideband_spectral_efficiency_from_sinr(sinr: np.ndarray) -> np.ndarray:
+    return np.mean(np.log2(1.0 + np.clip(np.asarray(sinr, dtype=float), 0.0, None)), axis=0)
+
+
+def _zf_sinr_terms_from_wideband_mimo_channel(
+    channel: np.ndarray,
+    total_tx_power_w: float,
+    noise_power_w: float,
+) -> dict[str, np.ndarray]:
+    wideband_channel = np.asarray(channel, dtype=np.complex128)
+    if wideband_channel.ndim == 4:
+        narrowband = _zf_sinr_terms_from_mimo_channel(
+            wideband_channel,
+            total_tx_power_w=total_tx_power_w,
+            noise_power_w=noise_power_w,
+        )
+        narrowband["spectral_efficiency_bps_hz"] = np.log2(1.0 + np.clip(narrowband["sinr"], 0.0, None))
+        return narrowband
+    if wideband_channel.ndim != 5:
+        raise ValueError(f"Unsupported wideband MIMO channel rank: {wideband_channel.ndim}")
+
+    num_frequencies = wideband_channel.shape[-1]
+    if num_frequencies <= 0:
+        raise ValueError("wideband MIMO channel must expose at least one frequency bin")
+
+    per_tone_tx_power_w = float(total_tx_power_w) / num_frequencies
+    per_tone_noise_power_w = float(noise_power_w) / num_frequencies
+    tone_terms = [
+        _zf_sinr_terms_from_mimo_channel(
+            wideband_channel[..., tone_index],
+            total_tx_power_w=per_tone_tx_power_w,
+            noise_power_w=per_tone_noise_power_w,
+        )
+        for tone_index in range(num_frequencies)
+    ]
+    desired = np.stack([np.asarray(item["desired_power_w"], dtype=float) for item in tone_terms], axis=0)
+    interference = np.stack([np.asarray(item["interference_power_w"], dtype=float) for item in tone_terms], axis=0)
+    noise = np.stack([np.asarray(item["noise_power_w"], dtype=float) for item in tone_terms], axis=0)
+    sinr_by_tone = np.stack([np.asarray(item["sinr"], dtype=float) for item in tone_terms], axis=0)
+    spectral_efficiency = _wideband_spectral_efficiency_from_sinr(sinr_by_tone)
+    effective_sinr = np.power(2.0, spectral_efficiency) - 1.0
+    return {
+        "desired_power_w": np.mean(desired, axis=0),
+        "interference_power_w": np.mean(interference, axis=0),
+        "noise_power_w": np.mean(noise, axis=0),
+        "sinr": np.clip(effective_sinr, 0.0, None),
+        "spectral_efficiency_bps_hz": spectral_efficiency,
+    }
+
+
 def _zf_sinr_from_mimo_channel(
     channel: np.ndarray,
     total_tx_power_w: float,
@@ -207,6 +257,25 @@ def _zf_sinr_terms_from_paths(paths, total_tx_power_w: float, noise_power_w: flo
     narrowband_channel = np.sum(coeff, axis=-1)
     return _zf_sinr_terms_from_mimo_channel(
         narrowband_channel,
+        total_tx_power_w=total_tx_power_w,
+        noise_power_w=noise_power_w,
+    )
+
+
+def _mimo_channel_from_cfr(cfr: np.ndarray) -> np.ndarray:
+    channel = np.asarray(cfr, dtype=np.complex128)
+    if channel.ndim == 6:
+        channel = channel[..., 0, :] if channel.shape[4] == 1 else np.mean(channel, axis=4)
+    if channel.ndim == 4:
+        channel = channel[:, :, :, None, :]
+    if channel.ndim != 5:
+        raise ValueError(f"Unsupported CFR rank for wideband MIMO conversion: {channel.ndim}")
+    return channel
+
+
+def _zf_sinr_terms_from_cfr(cfr: np.ndarray, total_tx_power_w: float, noise_power_w: float) -> dict[str, np.ndarray]:
+    return _zf_sinr_terms_from_wideband_mimo_channel(
+        _mimo_channel_from_cfr(cfr),
         total_tx_power_w=total_tx_power_w,
         noise_power_w=noise_power_w,
     )
@@ -596,6 +665,7 @@ class SionnaRtRunner:
             interference_power_snapshots = []
             noise_power_snapshots = []
             zf_sinr_snapshots = []
+            spectral_efficiency_snapshots = []
             total_tx_power_w = len(sites) * _tx_power_w(self.radio.tx_power_dbm_ap)
             noise_power_w = _noise_power_w(self.radio)
             with progress_bar(
@@ -610,15 +680,15 @@ class SionnaRtRunner:
                     rx_names = [f"ue_rx_{ue_id}" for ue_id in trajectory.ue_ids]
                     self._add_receivers(scene, rt, rx_names, trajectory.positions_m[t_idx], trajectory.velocities_mps[t_idx])
                     paths = self._solve_paths(scene, rt)
-                    if export_full:
-                        cfr = _complex_from_tuple(
-                            paths.cfr(
-                                frequencies=rt["mi"].Float(frequencies),
-                                sampling_frequency=self.radio.effective_sampling_frequency_hz,
-                                num_time_steps=1,
-                                out_type="numpy",
-                            )
+                    cfr = _complex_from_tuple(
+                        paths.cfr(
+                            frequencies=rt["mi"].Float(frequencies),
+                            sampling_frequency=self.radio.effective_sampling_frequency_hz,
+                            num_time_steps=1,
+                            out_type="numpy",
                         )
+                    )
+                    if export_full:
                         cir, tau = paths.cir(
                             sampling_frequency=self.radio.effective_sampling_frequency_hz,
                             num_time_steps=1,
@@ -628,9 +698,9 @@ class SionnaRtRunner:
                         cfr_snapshots.append(cfr)
                         cir_snapshots.append(cir_complex)
                         tau_snapshots.append(np.asarray(tau))
-                    link_powers.append(self._link_power_from_paths(paths))
-                    sinr_terms = _zf_sinr_terms_from_paths(
-                        paths,
+                    link_powers.append(self._link_power_from_cfr(cfr))
+                    sinr_terms = _zf_sinr_terms_from_cfr(
+                        cfr,
                         total_tx_power_w=total_tx_power_w,
                         noise_power_w=noise_power_w,
                     )
@@ -638,18 +708,21 @@ class SionnaRtRunner:
                     interference_power_snapshots.append(sinr_terms["interference_power_w"])
                     noise_power_snapshots.append(sinr_terms["noise_power_w"])
                     zf_sinr_snapshots.append(sinr_terms["sinr"])
+                    spectral_efficiency_snapshots.append(sinr_terms["spectral_efficiency_bps_hz"])
                     progress.update(1)
             power = np.stack(link_powers, axis=0) * _tx_power_w(self.radio.tx_power_dbm_ap)
             desired_power = np.stack(desired_power_snapshots, axis=0)
             interference_power = np.stack(interference_power_snapshots, axis=0)
             noise_power = np.stack(noise_power_snapshots, axis=0)
             sinr = np.stack(zf_sinr_snapshots, axis=0)
+            spectral_efficiency = np.stack(spectral_efficiency_snapshots, axis=0)
             result = {
                 "tx_site_ids": [site.site_id for site in sites],
                 "rx_ue_ids": list(trajectory.ue_ids),
                 "times_s": trajectory.times_s,
                 "sinr_linear": sinr,
                 "best_sinr_db": 10.0 * np.log10(np.clip(sinr, 1e-12, None)),
+                "spectral_efficiency_bps_hz": spectral_efficiency,
                 "desired_power_w": desired_power,
                 "interference_power_w": interference_power,
                 "noise_power_w": noise_power,
@@ -741,21 +814,21 @@ class SionnaRtRunner:
                     )
                     self._add_receivers(scene, rt, rx_names, trajectory.positions_m[t_idx], trajectory.velocities_mps[t_idx])
                     paths = self._solve_paths(scene, rt)
-                    if export_full:
-                        cfr = _complex_from_tuple(
-                            paths.cfr(
-                                frequencies=rt["mi"].Float(frequencies),
-                                sampling_frequency=self.radio.effective_sampling_frequency_hz,
-                                num_time_steps=1,
-                                out_type="numpy",
-                            )
+                    cfr = _complex_from_tuple(
+                        paths.cfr(
+                            frequencies=rt["mi"].Float(frequencies),
+                            sampling_frequency=self.radio.effective_sampling_frequency_hz,
+                            num_time_steps=1,
+                            out_type="numpy",
                         )
+                    )
+                    if export_full:
                         cir, tau = paths.cir(
                             sampling_frequency=self.radio.effective_sampling_frequency_hz,
                             num_time_steps=1,
                             out_type="numpy",
                         )
-                    power = self._link_power_from_paths(paths) * (10 ** (self.radio.tx_power_dbm_ue / 10.0) / 1000.0)
+                    power = self._link_power_from_cfr(cfr) * (10 ** (self.radio.tx_power_dbm_ue / 10.0) / 1000.0)
                     np.fill_diagonal(power, 0.0)
                     powers.append(power)
                     if export_full:

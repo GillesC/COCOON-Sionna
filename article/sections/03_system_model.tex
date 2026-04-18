@@ -1,32 +1,32 @@
 \section{System Model}
 \label{sec:system_model}
 
-We consider a downlink \gls{dmimo} system with active \glspl{ap} $\mathcal{A}=\{1,\ldots,M\}$ and scheduled \glspl{ue} $\mathcal{U}=\{1,\ldots,K\}$. Let $N_m$ denote the number of transmit ports at \gls{ap} $m$ and $N_{r,k}$ the number of receive ports at \gls{ue} $k$. The per-\gls{ap} channel block is
+We consider a downlink \gls{dmimo} system with active \glspl{ap} $\mathcal{A}=\{1,\ldots,M\}$ and scheduled \glspl{ue} $\mathcal{U}=\{1,\ldots,K\}$. Let $N_m$ denote the number of transmit ports at \gls{ap} $m$, let $N_{r,k}$ be the number of receive ports at \gls{ue} $k$, and let $f \in \{1,\ldots,F\}$ index the sampled CFR tones over the $100\,\mathrm{MHz}$ band. The per-\gls{ap} channel block on tone $f$ is
 \begin{equation}
-    \mathbf{H}_{k,m} \in \mathbb{C}^{N_{r,k} \times N_m},
+    \mathbf{H}_{k,m}[f] \in \mathbb{C}^{N_{r,k} \times N_m},
 \end{equation}
 and the full distributed channel observed by \gls{ue} $k$ is
 \begin{equation}
-    \mathbf{H}_k = \left[\mathbf{H}_{k,1}\;\mathbf{H}_{k,2}\;\cdots\;\mathbf{H}_{k,M}\right].
+    \mathbf{H}_k[f] = \left[\mathbf{H}_{k,1}[f]\;\mathbf{H}_{k,2}[f]\;\cdots\;\mathbf{H}_{k,M}[f]\right].
 \end{equation}
 
-Given a receive combiner $\mathbf{u}_k$, the effective channel becomes
+Given a receive combiner $\mathbf{u}_k[f]$, the effective channel becomes
 \begin{equation}
-    \mathbf{h}_k^{\mathsf{H}} = \mathbf{u}_k^{\mathsf{H}}\mathbf{H}_k.
+    \mathbf{h}_k^{\mathsf{H}}[f] = \mathbf{u}_k^{\mathsf{H}}[f]\mathbf{H}_k[f].
 \end{equation}
-Stacking all users yields the effective distributed channel matrix $\mathbf{H}_{\mathrm{eff}}$. The current pipeline applies a least-squares pseudo-inverse \gls{zf} precoder on $\mathbf{H}_{\mathrm{eff}}$, followed by per-stream power allocation under a total \gls{ap} power budget.
+Stacking all users yields the effective distributed channel matrix $\mathbf{H}_{\mathrm{eff}}[f]$. The current pipeline applies a least-squares pseudo-inverse \gls{zf} precoder independently on every sampled tone, followed by per-stream power allocation under a total \gls{ap} power budget.
 
-For \gls{ue} $k$, the instantaneous downlink \gls{sinr} is evaluated as
+For \gls{ue} $k$ on tone $f$, the instantaneous downlink \gls{sinr} is evaluated as
 \begin{equation}
-    \mathrm{SINR}^{\mathrm{DL}}_k =
-    \frac{p_k \left|\mathbf{h}_k^{\mathsf{H}}\mathbf{f}_k\right|^2}
-    {\sum_{i \in \mathcal{U},\, i \neq k} p_i \left|\mathbf{h}_k^{\mathsf{H}}\mathbf{f}_i\right|^2 + \sigma^2},
+    \mathrm{SINR}^{\mathrm{DL}}_k[f] =
+    \frac{p_k \left|\mathbf{h}_k^{\mathsf{H}}[f]\mathbf{f}_k[f]\right|^2}
+    {\sum_{i \in \mathcal{U},\, i \neq k} p_i \left|\mathbf{h}_k^{\mathsf{H}}[f]\mathbf{f}_i[f]\right|^2 + \sigma^2},
 \end{equation}
 where $\mathbf{f}_i$ is the precoding vector for stream $i$, $p_i$ its allocated power, and $\sigma^2$ the thermal-noise term. The implementation keeps the interference term explicitly and exports desired-signal, interference, and noise power terms for each evaluated user snapshot.
 
-The \gls{esr} used later in the results section is derived from the same per-snapshot \gls{sinr} values. For snapshot $n$ with scheduled-user set $\mathcal{U}_n$, the postprocessing layer computes
+The implementation evaluates this expression on all sampled tones and stores a scalar wideband \gls{sinr} per user by mapping the tone-averaged spectral efficiency back to a Shannon-equivalent \gls{sinr}. The \gls{esr} used later in the results section is derived from the same full-band per-snapshot \gls{sinr} samples. For snapshot $n$ with scheduled-user set $\mathcal{U}_n$, the postprocessing layer computes
 \begin{equation}
-    \mathrm{ESR}_n = \sum_{k \in \mathcal{U}_n}\log_2\!\left(1+\mathrm{SINR}^{\mathrm{DL}}_{k,n}\right).
+    \mathrm{ESR}_n = \sum_{k \in \mathcal{U}_n}\frac{1}{F}\sum_{f=1}^{F}\log_2\!\left(1+\mathrm{SINR}^{\mathrm{DL}}_{k,n}[f]\right).
 \end{equation}
 These per-snapshot \gls{sinr} values form the basis of the trajectory-level \gls{sinr} and \gls{esr} statistics reported later in the article.
 
@@ -105,22 +105,23 @@ and the validity indicator
         \left\|\mathbf{r}_{\ell(c,n),n}-\mathbf{x}_c\right\|_2 \le d_{\mathrm{th}}
     \right\}.
 \end{equation}
-The dormant candidate-position \gls{ap}-to-\gls{ue} channel is not available before relocation. Therefore, optimization~2 replaces it by a proxy channel extracted from the measured \gls{ue}-to-\gls{ue} \gls{csi}. If $h^{\mathrm{UU}}_{u,v,n}$ denotes the narrowband \gls{ue}-to-\gls{ue} coefficient from transmitter-user $v$ to receiver-user $u$ at snapshot $n$, the proxy coefficient used for candidate $c$ is
+The dormant candidate-position \gls{ap}-to-\gls{ue} channel is not available before relocation. Therefore, optimization~2 replaces it by a proxy channel extracted from the measured \gls{ue}-to-\gls{ue} \gls{csi}. If $h^{\mathrm{UU}}_{u,v,n}[f]$ denotes the sampled \gls{ue}-to-\gls{ue} coefficient from transmitter-user $v$ to receiver-user $u$ at snapshot $n$ and tone $f$, the proxy coefficient used for candidate $c$ is
 \begin{equation}
-    \tilde{h}_{u,c,n}=
+    \tilde{h}_{u,c,n}[f]=
     \begin{cases}
-        h^{\mathrm{UU}}_{u,\ell(c,n),n}, & \delta(c,n)=1,\; u \neq \ell(c,n), \\
-        h^{\mathrm{UU}}_{v^\star,\ell(c,n),n}, & \delta(c,n)=1,\; u = \ell(c,n), \\
+        h^{\mathrm{UU}}_{u,\ell(c,n),n}[f], & \delta(c,n)=1,\; u \neq \ell(c,n), \\
+        h^{\mathrm{UU}}_{v^\star,\ell(c,n),n}[f], & \delta(c,n)=1,\; u = \ell(c,n), \\
         0, & \delta(c,n)=0,
     \end{cases}
 \end{equation}
-where $v^\star=\arg\max_{v \in \mathcal{U}} |h^{\mathrm{UU}}_{v,\ell(c,n),n}|$ supplies a surrogate self-link because the diagonal user-to-itself measurement is not observable. For a candidate subset $\mathcal{S}$, the proxy channel matrix $\tilde{\mathbf{H}}_n(\mathcal{S})$ is formed by stacking the columns $\tilde{h}_{u,c,n}$ for all $c \in \mathcal{S}$. The same \gls{zf} procedure as in the deployed \gls{ap} case is then applied to $\tilde{\mathbf{H}}_n(\mathcal{S})$, yielding a proxy \gls{sinr} $\tilde{\gamma}_{u,n}(\mathcal{S})$ and the current-window proxy-\gls{esr} objective
+where $v^\star=\arg\max_{v \in \mathcal{U}} \max_f |h^{\mathrm{UU}}_{v,\ell(c,n),n}[f]|$ supplies a surrogate self-link because the diagonal user-to-itself measurement is not observable. For a candidate subset $\mathcal{S}$, the proxy channel matrix $\tilde{\mathbf{H}}_n[f](\mathcal{S})$ is formed by stacking the columns $\tilde{h}_{u,c,n}[f]$ for all $c \in \mathcal{S}$. The same \gls{zf} procedure as in the deployed \gls{ap} case is then applied on every sampled tone, yielding a proxy \gls{sinr} $\tilde{\gamma}_{u,n}[f](\mathcal{S})$ and the current-window proxy-\gls{esr} objective
 \begin{equation}
     J_w^{(2)}(\mathcal{S}) =
-    \frac{1}{|\mathcal{W}_w|}
+    \frac{1}{|\mathcal{W}_w|F}
     \sum_{n \in \mathcal{W}_w}
+    \sum_{f=1}^{F}
     \sum_{u \in \mathcal{U}}
-    \log_2\!\left(1+\tilde{\gamma}_{u,n}(\mathcal{S})\right).
+    \log_2\!\left(1+\tilde{\gamma}_{u,n}[f](\mathcal{S})\right).
 \end{equation}
 Consequently, optimization~2 uses measured \gls{ue}-to-\gls{ue} proxy \gls{csi} to rank candidate subsets, while avoiding the unrealistic assumption that dormant candidate-position \gls{ap}-to-\gls{ue} channels are already known.
 
@@ -129,7 +130,7 @@ The third online rule reuses the same nearest-user anchor $\ell(c,n)$ and validi
 \begin{equation}
     \tilde{\rho}_{u,c,n} =
     \frac{P_{\mathrm{AP}}}{P_{\mathrm{UE}}}
-    \left|\tilde{h}_{u,c,n}\right|^2,
+    \frac{1}{F}\sum_{f=1}^{F}\left|\tilde{h}_{u,c,n}[f]\right|^2,
 \end{equation}
 where the factor $P_{\mathrm{AP}}/P_{\mathrm{UE}}$ rescales the measured \gls{ue}-to-\gls{ue} proxy power to the distributed-\gls{ap} transmit-power budget. The optimization-3 objective is then
 \begin{equation}

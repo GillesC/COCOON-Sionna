@@ -404,6 +404,9 @@ def _load_user_sinr_payload(output_dir: Path) -> tuple[np.ndarray, np.ndarray, l
                 else np.power(10.0, sinr_db / 10.0)
             ),
         }
+        spectral_efficiency_key = f"{name}_spectral_efficiency_bps_hz"
+        if spectral_efficiency_key in payload.files:
+            strategy_payload["spectral_efficiency_bps_hz"] = np.asarray(payload[spectral_efficiency_key], dtype=float)
         for suffix in ("desired_power_w", "interference_power_w", "noise_power_w"):
             key = f"{name}_{suffix}"
             if key in payload.files:
@@ -949,6 +952,14 @@ def run_sinr_snapshot_analysis(
     snapshot_index, times_s, ue_ids, strategy_payloads = _load_user_sinr_payload(output_dir)
     sinr = {name: payload["sinr_db"] for name, payload in strategy_payloads.items()}
     sinr_linear = {name: payload["sinr_linear"] for name, payload in strategy_payloads.items()}
+    spectral_efficiency = {
+        name: (
+            np.asarray(payload["spectral_efficiency_bps_hz"], dtype=float)
+            if "spectral_efficiency_bps_hz" in payload
+            else np.log2(1.0 + np.clip(np.asarray(payload["sinr_linear"], dtype=float), 0.0, None))
+        )
+        for name, payload in strategy_payloads.items()
+    }
     thresholds = np.arange(threshold_min_db, threshold_max_db + 0.5 * threshold_step_db, threshold_step_db, dtype=float)
     relocation_times_s = _load_relocation_event_times(output_dir)
     analysis_windows = _analysis_windows(output_dir, times_s)
@@ -971,10 +982,10 @@ def run_sinr_snapshot_analysis(
     esr_step_by_strategy: dict[str, np.ndarray] = {}
     for name in strategy_names:
         values = np.asarray(sinr[name], dtype=float)
-        values_linear = np.asarray(sinr_linear[name], dtype=float)
+        values_rate = np.asarray(spectral_efficiency[name], dtype=float)
         flat = values.reshape(-1)
         worst_user = np.min(values, axis=1)
-        esr = np.sum(np.log2(1.0 + np.clip(values_linear, 0.0, None)), axis=1)
+        esr = np.sum(values_rate, axis=1)
         esr_by_strategy[name] = esr
         summary_rows.append(
             {

@@ -38,7 +38,7 @@ from .scene_builder import OSMSceneBuilder, SceneArtifacts
 from .sionna_rt_adapter import (
     SceneInputs,
     SionnaRtRunner,
-    _zf_sinr_terms_from_mimo_channel,
+    _zf_sinr_terms_from_wideband_mimo_channel,
     load_scene_metadata,
 )
 from .sites import CandidateSite
@@ -1220,6 +1220,11 @@ def _concat_ap_ue_segments(segments: list[dict[str, Any]]) -> dict[str, Any]:
         "noise_power_w": np.concatenate([np.asarray(segment["noise_power_w"], dtype=float) for segment in segments], axis=0),
         "link_power_w": np.concatenate([np.asarray(segment["link_power_w"]) for segment in segments], axis=0),
     }
+    if all("spectral_efficiency_bps_hz" in segment for segment in segments):
+        result["spectral_efficiency_bps_hz"] = np.concatenate(
+            [np.asarray(segment["spectral_efficiency_bps_hz"], dtype=float) for segment in segments],
+            axis=0,
+        )
     if all("cfr" in segment for segment in segments):
         result["cfr"] = np.concatenate([np.asarray(segment["cfr"]) for segment in segments], axis=0)
     if all("cir" in segment for segment in segments):
@@ -1388,6 +1393,9 @@ def _split_prefixed_export(payload: dict[str, Any], prefix: str, base_keys: tupl
         prefixed = f"{prefix}_{optional}"
         if prefixed in payload:
             result[optional] = payload[prefixed]
+    spectral_efficiency_key = f"{prefix}_spectral_efficiency_bps_hz"
+    if spectral_efficiency_key in payload:
+        result["spectral_efficiency_bps_hz"] = payload[spectral_efficiency_key]
     return result
 
 
@@ -1428,6 +1436,7 @@ def _try_load_csi_cache(output_dir: Path, cache_key: str) -> dict[str, Any] | No
                 "interference_power_w",
                 "noise_power_w",
                 "link_power_w",
+                "spectral_efficiency_bps_hz",
             ),
         ),
         "final_ap_ue": _split_prefixed_export(
@@ -1443,6 +1452,7 @@ def _try_load_csi_cache(output_dir: Path, cache_key: str) -> dict[str, Any] | No
                 "interference_power_w",
                 "noise_power_w",
                 "link_power_w",
+                "spectral_efficiency_bps_hz",
             ),
         ),
         "fixed_ap_ap": _split_prefixed_export(
@@ -1540,6 +1550,10 @@ def _write_csi_cache(
         "mobile_ap_ap_rx_site_ids": np.asarray(final_ap_ap["rx_site_ids"], dtype=object),
         "mobile_ap_ap_link_power_w": final_ap_ap["link_power_w"],
     }
+    if "spectral_efficiency_bps_hz" in fixed_ap_ue:
+        infra_export["fixed_ap_ue_spectral_efficiency_bps_hz"] = fixed_ap_ue["spectral_efficiency_bps_hz"]
+    if "spectral_efficiency_bps_hz" in final_ap_ue:
+        infra_export["mobile_ap_ue_spectral_efficiency_bps_hz"] = final_ap_ue["spectral_efficiency_bps_hz"]
     _update_prefixed_export(infra_export, "fixed_ap_ue", fixed_ap_ue, ("cfr", "cir", "tau"))
     _update_prefixed_export(infra_export, "mobile_ap_ue", final_ap_ue, ("cfr", "cir", "tau"))
     _update_prefixed_export(infra_export, "fixed_ap_ap", fixed_ap_ap, ("cfr", "cir", "tau"))
@@ -1778,11 +1792,14 @@ def _local_window_sum_rate(
     if local_mask.size == 0 or not np.any(local_mask):
         return -1e12
 
-    sinr_linear = np.asarray(ap_ue_segment["sinr_linear"], dtype=float)
-    if sinr_linear.shape != local_mask.shape:
-        raise ValueError("distance-threshold mask shape must match AP-UE SINR samples")
-
-    local_rates = np.where(local_mask, np.log2(1.0 + np.clip(sinr_linear, 0.0, None)), 0.0)
+    if "spectral_efficiency_bps_hz" in ap_ue_segment:
+        local_rates = np.asarray(ap_ue_segment["spectral_efficiency_bps_hz"], dtype=float)
+    else:
+        sinr_linear = np.asarray(ap_ue_segment["sinr_linear"], dtype=float)
+        local_rates = np.log2(1.0 + np.clip(sinr_linear, 0.0, None))
+    if local_rates.shape != local_mask.shape:
+        raise ValueError("distance-threshold mask shape must match AP-UE rate samples")
+    local_rates = np.where(local_mask, local_rates, 0.0)
     return float(np.mean(np.sum(local_rates, axis=1)))
 
 
@@ -1892,7 +1909,7 @@ def _proxy_ap_candidate_power_from_peer_csi(
     return proxy_power_w, anchor_indices, valid_mask
 
 
-def _peer_cfr_to_narrowband(peer_cfr: np.ndarray, peer_link_power_w: np.ndarray) -> np.ndarray:
+def _peer_cfr_to_wideband(peer_cfr: np.ndarray, peer_link_power_w: np.ndarray) -> np.ndarray:
     cfr = np.asarray(peer_cfr)
     link_power = np.asarray(peer_link_power_w, dtype=float)
     if cfr.ndim < 4:
@@ -1906,16 +1923,27 @@ def _peer_cfr_to_narrowband(peer_cfr: np.ndarray, peer_link_power_w: np.ndarray)
     best_error = float("inf")
     for rx_axis, tx_axis in itertools.permutations(candidate_axes, 2):
         reoriented = np.moveaxis(cfr, (0, rx_axis, tx_axis), (0, 1, 2))
-        reduce_axes = tuple(range(3, reoriented.ndim))
-        power = np.mean(np.abs(reoriented) ** 2, axis=reduce_axes) if reduce_axes else np.abs(reoriented) ** 2
-        if power.shape != link_power.shape:
-            continue
-        error = float(np.nanmean(np.abs(power - link_power)))
-        if error < best_error:
-            best_error = error
-            best_channel = np.mean(reoriented, axis=reduce_axes) if reduce_axes else reoriented
+        remaining_axes = tuple(range(3, reoriented.ndim))
+        frequency_axes = [axis for axis in remaining_axes if reoriented.shape[axis] > 1]
+        if not frequency_axes:
+            frequency_axes = [remaining_axes[-1]] if remaining_axes else []
+        for frequency_axis in frequency_axes or [None]:
+            if frequency_axis is None:
+                candidate = reoriented[..., None]
+            else:
+                reduce_axes = tuple(axis for axis in remaining_axes if axis != frequency_axis)
+                candidate = np.mean(reoriented, axis=reduce_axes) if reduce_axes else reoriented
+            power = np.mean(np.abs(candidate) ** 2, axis=-1)
+            if power.shape != link_power.shape:
+                continue
+            error = float(np.nanmean(np.abs(power - link_power)))
+            if error < best_error:
+                best_error = error
+                best_channel = candidate
     if best_channel is None:
         raise ValueError("Unable to infer UE-UE CFR user axes from the stored proxy payload")
+    if best_channel.ndim != 4:
+        raise ValueError("UE-UE proxy wideband channel must match [time, user, user, frequency]")
     return np.asarray(best_channel, dtype=np.complex128)
 
 
@@ -1931,25 +1959,29 @@ def _proxy_ap_candidate_channel_from_peer_csi(
 
     local_sites = [candidate_index[site_id] for site_id in selected_candidate_ids]
     anchor_indices, valid_mask = _window_candidate_anchor_users(trajectory, local_sites, distance_threshold_m)
-    narrowband = _peer_cfr_to_narrowband(peer_csi_segment["cfr"], peer_csi_segment["link_power_w"])
-    if narrowband.shape != (len(trajectory.times_s), len(trajectory.ue_ids), len(trajectory.ue_ids)):
-        raise ValueError("UE-UE proxy narrowband channel must match [time, user, user]")
+    wideband = _peer_cfr_to_wideband(peer_csi_segment["cfr"], peer_csi_segment["link_power_w"])
+    if wideband.shape[:3] != (len(trajectory.times_s), len(trajectory.ue_ids), len(trajectory.ue_ids)):
+        raise ValueError("UE-UE proxy wideband channel must match [time, user, user, frequency]")
 
-    proxy_channel = np.zeros((len(trajectory.times_s), len(trajectory.ue_ids), len(local_sites)), dtype=np.complex128)
+    proxy_channel = np.zeros(
+        (len(trajectory.times_s), len(trajectory.ue_ids), len(local_sites), wideband.shape[-1]),
+        dtype=np.complex128,
+    )
     snapshot_indices = np.arange(len(trajectory.times_s), dtype=int)
     for site_index in range(len(local_sites)):
-        anchor_columns = np.asarray(narrowband[snapshot_indices, :, anchor_indices[:, site_index]], dtype=np.complex128)
+        anchor_columns = np.asarray(wideband[snapshot_indices, :, anchor_indices[:, site_index], :], dtype=np.complex128)
         nonself_magnitudes = np.abs(anchor_columns)
-        nonself_magnitudes[snapshot_indices, anchor_indices[:, site_index]] = -1.0
-        strongest_peer_indices = np.argmax(nonself_magnitudes, axis=1)
-        strongest_peer_values = anchor_columns[snapshot_indices, strongest_peer_indices]
-        anchor_columns[snapshot_indices, anchor_indices[:, site_index]] = 0.0 + 0.0j
-        valid_self_fill = np.max(nonself_magnitudes, axis=1) >= 0.0
+        nonself_magnitudes[snapshot_indices, anchor_indices[:, site_index], :] = -1.0
+        strongest_peer_indices = np.argmax(np.max(nonself_magnitudes, axis=2), axis=1)
+        strongest_peer_values = anchor_columns[snapshot_indices, strongest_peer_indices, :]
+        anchor_columns[snapshot_indices, anchor_indices[:, site_index], :] = 0.0 + 0.0j
+        valid_self_fill = np.max(nonself_magnitudes, axis=(1, 2)) >= 0.0
         anchor_columns[
             snapshot_indices[valid_self_fill],
             anchor_indices[valid_self_fill, site_index],
+            :,
         ] = strongest_peer_values[valid_self_fill]
-        anchor_columns[~valid_mask[:, site_index], :] = 0.0 + 0.0j
+        anchor_columns[~valid_mask[:, site_index], :, :] = 0.0 + 0.0j
         proxy_channel[:, :, site_index] = anchor_columns
     return proxy_channel, anchor_indices, valid_mask
 
@@ -1987,13 +2019,13 @@ def _proxy_window_sum_rate_from_peer_csi(
 
             esr_samples: list[float] = []
             for snapshot_index in range(proxy_channel.shape[0]):
-                channel = proxy_channel[snapshot_index][:, None, :, None]
-                sinr_terms = _zf_sinr_terms_from_mimo_channel(
+                channel = proxy_channel[snapshot_index][:, None, :, None, :]
+                sinr_terms = _zf_sinr_terms_from_wideband_mimo_channel(
                     channel,
                     total_tx_power_w=max(float(total_tx_power_w), 0.0),
                     noise_power_w=max(float(noise_power_w), 1e-12),
                 )
-                esr_samples.append(float(np.sum(np.log2(1.0 + np.clip(sinr_terms["sinr"], 0.0, None)))))
+                esr_samples.append(float(np.sum(np.asarray(sinr_terms["spectral_efficiency_bps_hz"], dtype=float))))
             return float(np.mean(esr_samples)) if esr_samples else -1e12
 
     proxy_power_w, _anchor_indices, valid_mask = _proxy_ap_candidate_power_from_peer_csi(
@@ -2149,6 +2181,11 @@ def _write_user_sinr_artifacts(
             if "sinr_linear" in payload:
                 npz_payload[f"{name}_sinr_linear"] = np.asarray(payload["sinr_linear"], dtype=float)
             npz_payload[f"{name}_sinr_db"] = np.asarray(payload["best_sinr_db"], dtype=float)
+            if "spectral_efficiency_bps_hz" in payload:
+                npz_payload[f"{name}_spectral_efficiency_bps_hz"] = np.asarray(
+                    payload["spectral_efficiency_bps_hz"],
+                    dtype=float,
+                )
             if "desired_power_w" in payload:
                 npz_payload[f"{name}_desired_power_w"] = np.asarray(payload["desired_power_w"], dtype=float)
             if "interference_power_w" in payload:
@@ -2873,6 +2910,8 @@ def run_scenario(config_or_path: ScenarioConfig | str | Path) -> dict[str, Any]:
             infra_export[f"{prefix_ap_ue}_interference_power_w"] = ap_ue["interference_power_w"]
             infra_export[f"{prefix_ap_ue}_noise_power_w"] = ap_ue["noise_power_w"]
             infra_export[f"{prefix_ap_ue}_link_power_w"] = ap_ue["link_power_w"]
+            if "spectral_efficiency_bps_hz" in ap_ue:
+                infra_export[f"{prefix_ap_ue}_spectral_efficiency_bps_hz"] = ap_ue["spectral_efficiency_bps_hz"]
             infra_export[f"{prefix_ap_ap}_tx_site_ids"] = np.asarray(ap_ap["tx_site_ids"], dtype=object)
             infra_export[f"{prefix_ap_ap}_rx_site_ids"] = np.asarray(ap_ap["rx_site_ids"], dtype=object)
             infra_export[f"{prefix_ap_ap}_link_power_w"] = ap_ap["link_power_w"]

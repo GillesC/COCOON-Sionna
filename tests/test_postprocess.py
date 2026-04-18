@@ -135,6 +135,7 @@ def _build_fake_output_dir(tmp_path: Path) -> Path:
         central_massive_mimo_sinr_db=np.array([[-2.0, 0.0], [-1.0, 1.0], [0.0, 2.0]], dtype=float),
         distributed_fixed_sinr_linear=np.power(10.0, np.array([[0.0, 2.0], [1.0, 3.0], [2.0, 4.0]], dtype=float) / 10.0),
         distributed_fixed_sinr_db=np.array([[0.0, 2.0], [1.0, 3.0], [2.0, 4.0]], dtype=float),
+        distributed_fixed_spectral_efficiency_bps_hz=2.0 * np.ones((3, 2), dtype=float),
         distributed_movable_sinr_linear=np.power(10.0, np.array([[3.0, 5.0], [4.0, 6.0], [5.0, 7.0]], dtype=float) / 10.0),
         distributed_movable_sinr_db=np.array([[3.0, 5.0], [4.0, 6.0], [5.0, 7.0]], dtype=float),
     )
@@ -320,6 +321,8 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     assert rows[1]["strategy"] == "distributed_fixed"
     assert rows[2]["strategy"] == "distributed_movable"
     assert "outage_at_3db" in rows[0]
+    esr_rows = {row["strategy"]: row for row in csv.DictReader(artifacts["esr_summary_csv"].open("r", encoding="utf-8", newline=""))}
+    assert float(esr_rows["distributed_fixed"]["mean_esr_bps_hz"]) == 4.0
 
 
 def test_run_scene_visualization_postprocess_rebuilds_visuals(tmp_path: Path, monkeypatch):

@@ -113,23 +113,26 @@ with `n_k \sim \mathcal{CN}(0,\sigma^2)`, where
 \sigma^2 = k_{\mathrm{B}} T B.
 ```
 
-The downlink SINR of UE `k` is therefore
+The downlink SINR of UE `k` on CFR bin `f` is therefore
 
 ```math
-\mathrm{SINR}^{\mathrm{DL}}_k
+\mathrm{SINR}^{\mathrm{DL}}_k[f]
 =
 \frac{
-    p_k \left|\mathbf{h}_k^{\mathsf{H}}\mathbf{f}_k\right|^2
+    p_k \left|\mathbf{h}_k^{\mathsf{H}}[f]\mathbf{f}_k[f]\right|^2
 }{
     \sum_{i \in \mathcal{U},\, i \neq k}
-    p_i \left|\mathbf{h}_k^{\mathsf{H}}\mathbf{f}_i\right|^2
+    p_i \left|\mathbf{h}_k^{\mathsf{H}}[f]\mathbf{f}_i[f]\right|^2
     + \sigma^2
 }.
 ```
 
 The implementation keeps the interference term explicitly and exports
 `desired_power_w`, `interference_power_w`, `noise_power_w`, linear SINR, and
-SINR in dB for every evaluated UE snapshot. It does not rely on the
+SINR in dB for every evaluated UE snapshot. These stored scalar SINR values are
+wideband Shannon-equivalent SINR values obtained from the full set of sampled
+CFR bins across the configured bandwidth. The postprocessor uses the stored
+per-user spectral-efficiency samples to compute ESR. It does not rely on the
 interference-free simplification.
 
 The total AP power budget is the sum of all AP transmit powers and is split
@@ -251,8 +254,9 @@ down-weighted by `exp(-\lambda \Delta t)`.
 every dormant candidate. Instead, for each candidate site and snapshot, it
 binds the site to the closest user within
 `optimization_2_distance_threshold_m`, uses that user's measured `UE-UE` proxy
-CSI to all receivers as a surrogate candidate-to-UE channel, and ranks
-candidates by the resulting proxy ESR `\sum \log_2(1+\mathrm{SINR})`.
+CSI to all receivers as a surrogate candidate-to-UE channel on all sampled CFR
+bins, and ranks candidates by the resulting proxy ESR
+`\frac{1}{F}\sum_f \sum_u \log_2(1+\mathrm{SINR}_u[f])`.
 
 `distributed_movable_optimization_3` is optimization 3. It uses the same
 candidate-to-nearest-user proxy association as optimization 2, but discards the
