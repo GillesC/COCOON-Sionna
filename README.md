@@ -361,6 +361,12 @@ Rebuild all figures and analyses from the stored outputs:
 .venv\Scripts\python.exe -m cocoon_sionna.cli postprocess scenarios/rabot.yaml
 ```
 
+Run the full scenario and immediately postprocess the stored outputs:
+
+```powershell
+.venv\Scripts\python.exe -m cocoon_sionna.cli all scenarios/rabot.yaml
+```
+
 For faster placement-comparison runs with less disk I/O, you can disable CSI
 artifact writes in the scenario YAML:
 

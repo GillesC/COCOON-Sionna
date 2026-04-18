@@ -61,6 +61,23 @@ def _stack_padded(arrays: list[np.ndarray], fill_value: complex | float) -> np.n
     return np.stack(padded, axis=0)
 
 
+def _cfr_from_cir(cir: np.ndarray, tau: np.ndarray, frequencies: np.ndarray) -> np.ndarray:
+    cir_array = np.asarray(cir, dtype=np.complex128)
+    tau_array = np.asarray(tau, dtype=float)
+    freq_array = np.asarray(frequencies, dtype=float)
+    if cir_array.ndim == 5:
+        cir_array = cir_array[..., None]
+    if cir_array.ndim != 6:
+        raise ValueError(f"Unsupported CIR rank for CFR synthesis: {cir_array.ndim}")
+    if tau_array.shape != cir_array.shape[:-1]:
+        raise ValueError(
+            "CIR delays must match CIR coefficient axes except time: "
+            f"tau_shape={tau_array.shape}, cir_shape={cir_array.shape}"
+        )
+    phase = np.exp(-1j * 2.0 * np.pi * tau_array[..., None] * freq_array)
+    return np.einsum("...pt,...pf->...tf", cir_array, phase, optimize=True)
+
+
 @dataclass(slots=True, frozen=True)
 class BackendSelection:
     device: str
@@ -782,21 +799,14 @@ class SionnaRtRunner:
                     rx_names = [f"ue_rx_{ue_id}" for ue_id in trajectory.ue_ids]
                     self._add_receivers(scene, rt, rx_names, trajectory.positions_m[t_idx], trajectory.velocities_mps[t_idx])
                     paths = self._solve_paths(scene, rt)
-                    cfr = _complex_from_tuple(
-                        paths.cfr(
-                            frequencies=rt["mi"].Float(frequencies),
-                            sampling_frequency=self.radio.effective_sampling_frequency_hz,
-                            num_time_steps=1,
-                            out_type="numpy",
-                        )
+                    cir, tau = paths.cir(
+                        sampling_frequency=self.radio.effective_sampling_frequency_hz,
+                        num_time_steps=1,
+                        out_type="numpy",
                     )
+                    cir_complex = _complex_from_tuple(cir)
+                    cfr = _cfr_from_cir(cir_complex, np.asarray(tau), frequencies)
                     if export_full:
-                        cir, tau = paths.cir(
-                            sampling_frequency=self.radio.effective_sampling_frequency_hz,
-                            num_time_steps=1,
-                            out_type="numpy",
-                        )
-                        cir_complex = _complex_from_tuple(cir)
                         cfr_snapshots.append(cfr)
                         cir_snapshots.append(cir_complex)
                         tau_snapshots.append(np.asarray(tau))
@@ -921,27 +931,20 @@ class SionnaRtRunner:
                     )
                     self._add_receivers(scene, rt, rx_names, trajectory.positions_m[t_idx], trajectory.velocities_mps[t_idx])
                     paths = self._solve_paths(scene, rt)
-                    cfr = _complex_from_tuple(
-                        paths.cfr(
-                            frequencies=rt["mi"].Float(frequencies),
-                            sampling_frequency=self.radio.effective_sampling_frequency_hz,
-                            num_time_steps=1,
-                            out_type="numpy",
-                        )
+                    cir, tau = paths.cir(
+                        sampling_frequency=self.radio.effective_sampling_frequency_hz,
+                        num_time_steps=1,
+                        out_type="numpy",
                     )
+                    cir_complex = _complex_from_tuple(cir)
+                    cfr = _cfr_from_cir(cir_complex, np.asarray(tau), frequencies)
                     if export_full:
-                        cir, tau = paths.cir(
-                            sampling_frequency=self.radio.effective_sampling_frequency_hz,
-                            num_time_steps=1,
-                            out_type="numpy",
-                        )
+                        cfr_snapshots.append(cfr)
+                        cir_snapshots.append(cir_complex)
+                        tau_snapshots.append(np.asarray(tau))
                     power = self._link_power_from_paths(paths) * (10 ** (self.radio.tx_power_dbm_ue / 10.0) / 1000.0)
                     np.fill_diagonal(power, 0.0)
                     powers.append(power)
-                    if export_full:
-                        cfr_snapshots.append(cfr)
-                        cir_snapshots.append(_complex_from_tuple(cir))
-                        tau_snapshots.append(np.asarray(tau))
                     progress.update(1)
             link_power = np.stack(powers, axis=0)
             mean_peer_power = np.mean(np.where(link_power > 0.0, link_power, np.nan), axis=-1)
