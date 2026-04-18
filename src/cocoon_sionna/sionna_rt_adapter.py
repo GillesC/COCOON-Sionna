@@ -41,6 +41,10 @@ def _tx_power_w(power_dbm: float) -> float:
     return float(10 ** (power_dbm / 10.0) / 1000.0)
 
 
+def _polarization_port_factor(polarization: str) -> int:
+    return max(1, sum(1 for axis in "VH" if axis in str(polarization).upper()))
+
+
 def _stack_padded(arrays: list[np.ndarray], fill_value: complex | float) -> np.ndarray:
     if not arrays:
         raise ValueError("arrays must not be empty")
@@ -262,20 +266,108 @@ def _zf_sinr_terms_from_paths(paths, total_tx_power_w: float, noise_power_w: flo
     )
 
 
-def _mimo_channel_from_cfr(cfr: np.ndarray) -> np.ndarray:
+def _mimo_channel_from_cfr(
+    cfr: np.ndarray,
+    *,
+    num_receivers: int,
+    num_transmitters: int,
+    num_rx_ports: int,
+    num_tx_ports: int,
+    num_frequencies: int | None = None,
+) -> np.ndarray:
     channel = np.asarray(cfr, dtype=np.complex128)
-    if channel.ndim == 6:
-        channel = channel[..., 0, :] if channel.shape[4] == 1 else np.mean(channel, axis=4)
-    if channel.ndim == 4:
-        channel = channel[:, :, :, None, :]
-    if channel.ndim != 5:
+    if channel.ndim not in (5, 6):
         raise ValueError(f"Unsupported CFR rank for wideband MIMO conversion: {channel.ndim}")
-    return channel
+    axes = tuple(range(channel.ndim))
+    rx_axes = [axis for axis in axes if channel.shape[axis] == num_receivers]
+    tx_axes = [axis for axis in axes if channel.shape[axis] == num_transmitters]
+    if not rx_axes or not tx_axes:
+        raise ValueError(
+            "Unable to infer AP-UE CFR receiver/transmitter axes from shape "
+            f"{channel.shape} for num_receivers={num_receivers}, num_transmitters={num_transmitters}"
+        )
+
+    best_candidate = None
+    best_score = None
+    for rx_axis in rx_axes:
+        for tx_axis in tx_axes:
+            if tx_axis == rx_axis:
+                continue
+            remaining_axes = [axis for axis in axes if axis not in (rx_axis, tx_axis)]
+            freq_candidates = [axis for axis in remaining_axes if num_frequencies is not None and channel.shape[axis] == num_frequencies]
+            if not freq_candidates:
+                freq_candidates = [
+                    axis
+                    for axis in remaining_axes
+                    if channel.shape[axis] not in (1, num_rx_ports, num_tx_ports)
+                ]
+            if not freq_candidates:
+                freq_candidates = [max(remaining_axes, key=lambda axis: channel.shape[axis])]
+            rx_port_candidates = [
+                axis for axis in remaining_axes if axis not in freq_candidates and channel.shape[axis] == num_rx_ports
+            ]
+            tx_port_candidates = [
+                axis for axis in remaining_axes if axis not in freq_candidates and channel.shape[axis] == num_tx_ports
+            ]
+            if not rx_port_candidates:
+                rx_port_candidates = [axis for axis in remaining_axes if axis not in freq_candidates]
+            if not tx_port_candidates:
+                tx_port_candidates = [axis for axis in remaining_axes if axis not in freq_candidates]
+
+            for freq_axis in freq_candidates:
+                for rx_port_axis in rx_port_candidates:
+                    if rx_port_axis == freq_axis:
+                        continue
+                    for tx_port_axis in tx_port_candidates:
+                        if tx_port_axis in (freq_axis, rx_port_axis):
+                            continue
+                        permuted = np.moveaxis(
+                            channel,
+                            (rx_axis, rx_port_axis, tx_axis, tx_port_axis, freq_axis),
+                            (0, 1, 2, 3, 4),
+                        )
+                        if permuted.ndim > 5:
+                            permuted = np.mean(permuted, axis=tuple(range(5, permuted.ndim)))
+                        if permuted.ndim != 5:
+                            continue
+                        if permuted.shape[0] != num_receivers or permuted.shape[2] != num_transmitters:
+                            continue
+                        score = (
+                            abs(permuted.shape[1] - num_rx_ports),
+                            abs(permuted.shape[3] - num_tx_ports),
+                            0 if num_frequencies is None else abs(permuted.shape[4] - num_frequencies),
+                        )
+                        if best_score is None or score < best_score:
+                            best_score = score
+                            best_candidate = permuted
+    if best_candidate is None:
+        raise ValueError(
+            "Unable to infer AP-UE CFR port/frequency axes from shape "
+            f"{channel.shape} for num_receivers={num_receivers}, num_transmitters={num_transmitters}"
+        )
+    return np.asarray(best_candidate, dtype=np.complex128)
 
 
-def _zf_sinr_terms_from_cfr(cfr: np.ndarray, total_tx_power_w: float, noise_power_w: float) -> dict[str, np.ndarray]:
+def _zf_sinr_terms_from_cfr(
+    cfr: np.ndarray,
+    total_tx_power_w: float,
+    noise_power_w: float,
+    *,
+    num_receivers: int,
+    num_transmitters: int,
+    num_rx_ports: int,
+    num_tx_ports: int,
+    num_frequencies: int | None = None,
+) -> dict[str, np.ndarray]:
     return _zf_sinr_terms_from_wideband_mimo_channel(
-        _mimo_channel_from_cfr(cfr),
+        _mimo_channel_from_cfr(
+            cfr,
+            num_receivers=num_receivers,
+            num_transmitters=num_transmitters,
+            num_rx_ports=num_rx_ports,
+            num_tx_ports=num_tx_ports,
+            num_frequencies=num_frequencies,
+        ),
         total_tx_power_w=total_tx_power_w,
         noise_power_w=noise_power_w,
     )
@@ -657,6 +749,16 @@ class SionnaRtRunner:
         try:
             export_full = self._should_export_full_csi(export_full, "AP-UE CSI")
             frequencies = _cfr_frequencies(self.radio)
+            ue_port_count = (
+                self.radio.ue_num_rows
+                * self.radio.ue_num_cols
+                * _polarization_port_factor(self.radio.array_polarization)
+            )
+            ap_port_count = (
+                self.radio.ap_num_rows
+                * self.radio.ap_num_cols
+                * _polarization_port_factor(self.radio.array_polarization)
+            )
             cfr_snapshots = []
             cir_snapshots = []
             tau_snapshots = []
@@ -698,11 +800,16 @@ class SionnaRtRunner:
                         cfr_snapshots.append(cfr)
                         cir_snapshots.append(cir_complex)
                         tau_snapshots.append(np.asarray(tau))
-                    link_powers.append(self._link_power_from_cfr(cfr))
+                    link_powers.append(self._link_power_from_paths(paths))
                     sinr_terms = _zf_sinr_terms_from_cfr(
                         cfr,
                         total_tx_power_w=total_tx_power_w,
                         noise_power_w=noise_power_w,
+                        num_receivers=len(trajectory.ue_ids),
+                        num_transmitters=len(sites),
+                        num_rx_ports=ue_port_count,
+                        num_tx_ports=ap_port_count,
+                        num_frequencies=len(frequencies),
                     )
                     desired_power_snapshots.append(sinr_terms["desired_power_w"])
                     interference_power_snapshots.append(sinr_terms["interference_power_w"])
@@ -828,7 +935,7 @@ class SionnaRtRunner:
                             num_time_steps=1,
                             out_type="numpy",
                         )
-                    power = self._link_power_from_cfr(cfr) * (10 ** (self.radio.tx_power_dbm_ue / 10.0) / 1000.0)
+                    power = self._link_power_from_paths(paths) * (10 ** (self.radio.tx_power_dbm_ue / 10.0) / 1000.0)
                     np.fill_diagonal(power, 0.0)
                     powers.append(power)
                     if export_full:
