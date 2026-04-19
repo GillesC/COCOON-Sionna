@@ -1,4 +1,6 @@
 strategy,strategy_label,num_windows,num_movable_aps,num_transitions,num_moves,move_fraction,total_distance_m,mean_move_distance_m,median_move_distance_m,max_move_distance_m,unique_positions_used
-central_massive_mimo,Central massive MIMO,7,1,6,0,0.0,0.0,0.0,0.0,0.0,1
-distributed_fixed,Distributed fixed,7,6,36,0,0.0,0.0,0.0,0.0,0.0,6
-distributed_movable,Distributed movable,7,6,36,32,0.8888888888888888,2097.6896102887154,65.55280032152235,58.65717093143993,156.80758764005543,37
+central_massive_mimo,Central massive MIMO,61,1,60,0,0.0,0.0,0.0,0.0,0.0,1
+distributed_fixed,Distributed fixed,61,6,360,0,0.0,0.0,0.0,0.0,0.0,6
+distributed_movable,Distributed movable (Opt. 1),61,6,360,228,0.6333333333333333,10611.979874039422,46.543771377365886,27.750926636642948,184.67234591813204,131
+distributed_movable_optimization_2,Distributed movable (Opt. 2),61,6,360,288,0.8,14164.655289940958,49.18283086785055,49.812062369565766,138.05842857074447,140
+distributed_movable_optimization_3,Distributed movable (Opt. 3),61,6,360,311,0.8638888888888889,18633.57349742133,59.91502732289817,56.60590076413589,167.21567258286652,162

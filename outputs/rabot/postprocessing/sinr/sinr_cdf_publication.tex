@@ -10,17 +10,21 @@
   \begin{axis}[
     width=\postprocessfigurewidth,
     height=0.62\postprocessfigurewidth,
-    title={SINR CDF},
     xlabel={SINR per user snapshot [dB]},
     ylabel={CDF},
     grid=major,
     legend pos=south east,
+    xmin=-20,
   ]
-    \addplot[const plot mark right, no markers, line width=1.2pt, color=CentralMassiveMimoColor] table[x=value_db,y=cdf,col sep=comma] {tikz_data/sinr_cdf_central_massive_mimo.csv};
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=CentralMassiveMimoColor, dash dot,each nth point=5] table[x=value_db,y=cdf,col sep=comma] {tikz_data/sinr_cdf_central_massive_mimo.csv};
     \addlegendentry{Central massive MIMO}
-    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedFixedColor] table[x=value_db,y=cdf,col sep=comma] {tikz_data/sinr_cdf_distributed_fixed.csv};
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedFixedColor, solid,each nth point=5] table[x=value_db,y=cdf,col sep=comma] {tikz_data/sinr_cdf_distributed_fixed.csv};
     \addlegendentry{Distributed fixed}
-    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor] table[x=value_db,y=cdf,col sep=comma] {tikz_data/sinr_cdf_distributed_movable.csv};
-    \addlegendentry{Distributed movable}
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, dashed,each nth point=5] table[x=value_db,y=cdf,col sep=comma] {tikz_data/sinr_cdf_distributed_movable.csv};
+    \addlegendentry{Distributed movable (Opt. 1)}
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, solid,each nth point=5] table[x=value_db,y=cdf,col sep=comma] {tikz_data/sinr_cdf_distributed_movable_optimization_2.csv};
+    \addlegendentry{Distributed movable (Opt. 2)}
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, dotted,each nth point=5] table[x=value_db,y=cdf,col sep=comma] {tikz_data/sinr_cdf_distributed_movable_optimization_3.csv};
+    \addlegendentry{Distributed movable (Opt. 3)}
   \end{axis}
 \end{tikzpicture}

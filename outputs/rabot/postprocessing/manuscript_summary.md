@@ -1,12 +1,12 @@
 # Manuscript Analysis Summary
 
 - Output directory: `/home/dramco_spark/COCOON-Sionna/outputs/rabot`
-- Best strategy: `distributed_movable` (Distributed movable)
-- Best strategy score: 0.717
-- Best strategy outage: 0.043
-- Best strategy trajectory P10 SINR: 9.101 dB
-- P10 SINR gain over baseline: 3.454 dB
-- Mean SINR gain over baseline: 9.969 dB
+- Best strategy: `distributed_movable_optimization_2` (Distributed movable (Opt. 2))
+- Best strategy score: 1.603
+- Best strategy outage: 0.019
+- Best strategy trajectory P10 SINR: 24.493 dB
+- P10 SINR gain over baseline: 16.998 dB
+- Mean SINR gain over baseline: 18.381 dB
 
 ## Produced Artifacts
 
@@ -53,5 +53,5 @@
 
 ## Mobility Notes
 
-- Best strategy move fraction: 0.889
-- Best strategy total relocation distance: 2097.690 m
+- Best strategy move fraction: 0.800
+- Best strategy total relocation distance: 14164.655 m

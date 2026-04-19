@@ -1,0 +1,7 @@
+site_id,x_m,y_m,z_m,yaw_deg,pitch_deg,mount_type,enabled,source,selected
+movable_ap_01,32.19266995174738,62.415640891581276,1.5,-137.19010763989937,-10.0,facade,True,relocated:wall_Blok_E_07_01,True
+movable_ap_02,2.4780185059512108,-12.270289711090665,1.5,23.248646555725294,-10.0,facade,True,relocated:wall_Blok_A_03_01,True
+movable_ap_03,-10.113821685965434,8.789319062473375,1.5,115.17004144267398,-10.0,facade,True,relocated:wall_Blok_A_02_01,True
+movable_ap_04,95.70809990996455,-12.926250545613614,1.5,-136.70150989672175,-10.0,facade,True,relocated:wall_Blok_L_1_00_00,True
+movable_ap_05,-24.429050224416986,-1.4027431082466633,1.5,-166.59728817934854,-10.0,facade,True,relocated:wall_Blok_A_01_01,True
+movable_ap_06,5.756071545601453,81.83956379649034,1.5,-136.97793291876712,-10.0,facade,True,relocated:wall_Blok_D_02_00,True

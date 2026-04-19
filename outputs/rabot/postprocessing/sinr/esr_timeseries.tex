@@ -10,28 +10,78 @@
   \begin{axis}[
     width=\postprocessfigurewidth,
     height=0.58\postprocessfigurewidth,
-    title={ESR evolution},
     xlabel={Time [s]},
     ylabel={ESR [bit/s/Hz]},
     grid=major,
     legend pos=south east,
-    ymin=15.60696462,
-    ymax=171.67122062,
+    ymin=5.30650825,
+    ymax=200.46360967,
   ]
-    \addplot[gray, densely dotted, no markers] coordinates {(600.00000000,15.60696462) (600.00000000,171.67122062)};
-    \addplot[gray, densely dotted, no markers] coordinates {(1200.00000000,15.60696462) (1200.00000000,171.67122062)};
-    \addplot[gray, densely dotted, no markers] coordinates {(1800.00000000,15.60696462) (1800.00000000,171.67122062)};
-    \addplot[gray, densely dotted, no markers] coordinates {(2400.00000000,15.60696462) (2400.00000000,171.67122062)};
-    \addplot[gray, densely dotted, no markers] coordinates {(3000.00000000,15.60696462) (3000.00000000,171.67122062)};
-    \addplot[gray, densely dotted, no markers] coordinates {(3600.00000000,15.60696462) (3600.00000000,171.67122062)};
-    \addplot[no markers, line width=0.5pt, opacity=0.35, color=CentralMassiveMimoColor] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_central_massive_mimo.csv};
-    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedFixedColor] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_fixed.csv};
-    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedMovableColor] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable.csv};
-    \addplot[const plot mark right, line width=1.2pt, color=CentralMassiveMimoColor] table[x=time_s,y=window_mean_esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_central_massive_mimo.csv};
-    \addlegendentry{Central massive MIMO}
-    \addplot[const plot mark right, line width=1.2pt, color=DistributedFixedColor] table[x=time_s,y=window_mean_esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_fixed.csv};
-    \addlegendentry{Distributed fixed}
-    \addplot[const plot mark right, line width=1.2pt, color=DistributedMovableColor] table[x=time_s,y=window_mean_esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable.csv};
-    \addlegendentry{Distributed movable}
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(60.00000000,5.30650825) (60.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(120.00000000,5.30650825) (120.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(180.00000000,5.30650825) (180.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(240.00000000,5.30650825) (240.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(300.00000000,5.30650825) (300.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(360.00000000,5.30650825) (360.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(420.00000000,5.30650825) (420.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(480.00000000,5.30650825) (480.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(540.00000000,5.30650825) (540.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(600.00000000,5.30650825) (600.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(660.00000000,5.30650825) (660.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(720.00000000,5.30650825) (720.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(780.00000000,5.30650825) (780.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(840.00000000,5.30650825) (840.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(900.00000000,5.30650825) (900.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(960.00000000,5.30650825) (960.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1020.00000000,5.30650825) (1020.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1080.00000000,5.30650825) (1080.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1140.00000000,5.30650825) (1140.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1200.00000000,5.30650825) (1200.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1260.00000000,5.30650825) (1260.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1320.00000000,5.30650825) (1320.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1380.00000000,5.30650825) (1380.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1440.00000000,5.30650825) (1440.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1500.00000000,5.30650825) (1500.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1560.00000000,5.30650825) (1560.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1620.00000000,5.30650825) (1620.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1680.00000000,5.30650825) (1680.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1740.00000000,5.30650825) (1740.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1800.00000000,5.30650825) (1800.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1860.00000000,5.30650825) (1860.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1920.00000000,5.30650825) (1920.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(1980.00000000,5.30650825) (1980.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2040.00000000,5.30650825) (2040.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2100.00000000,5.30650825) (2100.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2160.00000000,5.30650825) (2160.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2220.00000000,5.30650825) (2220.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2280.00000000,5.30650825) (2280.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2340.00000000,5.30650825) (2340.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2400.00000000,5.30650825) (2400.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2460.00000000,5.30650825) (2460.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2520.00000000,5.30650825) (2520.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2580.00000000,5.30650825) (2580.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2640.00000000,5.30650825) (2640.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2700.00000000,5.30650825) (2700.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2760.00000000,5.30650825) (2760.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2820.00000000,5.30650825) (2820.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2880.00000000,5.30650825) (2880.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(2940.00000000,5.30650825) (2940.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3000.00000000,5.30650825) (3000.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3060.00000000,5.30650825) (3060.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3120.00000000,5.30650825) (3120.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3180.00000000,5.30650825) (3180.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3240.00000000,5.30650825) (3240.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3300.00000000,5.30650825) (3300.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3360.00000000,5.30650825) (3360.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3420.00000000,5.30650825) (3420.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3480.00000000,5.30650825) (3480.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3540.00000000,5.30650825) (3540.00000000,200.46360967)};
+    \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3600.00000000,5.30650825) (3600.00000000,200.46360967)};
+
+    \addplot[no markers, line width=0.5pt, opacity=0.35, color=CentralMassiveMimoColor, dash dot] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_central_massive_mimo.csv};
+    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedFixedColor, solid] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_fixed.csv};
+    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedMovableColor, dashed] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable.csv};
+    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedMovableColor, solid] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable_optimization_2.csv};
+    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedMovableColor, dotted] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable_optimization_3.csv};
   \end{axis}
 \end{tikzpicture}

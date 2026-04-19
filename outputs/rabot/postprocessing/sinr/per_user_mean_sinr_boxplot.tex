@@ -10,15 +10,18 @@
   \begin{axis}[
     width=\postprocessfigurewidth,
     height=0.62\postprocessfigurewidth,
-    title={Per-user mean SINR},
-    ylabel={Per-user mean SINR [dB]},
+    xlabel={Per-user mean SINR [dB]},
+    ylabel={Deployment Strategy},
     grid=major,
-    xtick={1,2,3},
-    xticklabels={{Central massive MIMO},{Distributed fixed},{Distributed movable}},
+    xtick={1,2,3,4,5},
+    xticklabels={{Central massive MIMO},{Distributed fixed},{Distributed movable (Opt. 1)},{Distributed movable (Opt. 2)},{Distributed movable (Opt. 3)}},
     xticklabel style={rotate=15,anchor=east},
+    xmin=0,
   ]
-    \addplot+[boxplot, boxplot/draw position=1, draw=CentralMassiveMimoColor, fill=CentralMassiveMimoColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_central_massive_mimo.csv};
-    \addplot+[boxplot, boxplot/draw position=2, draw=DistributedFixedColor, fill=DistributedFixedColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_fixed.csv};
-    \addplot+[boxplot, boxplot/draw position=3, draw=DistributedMovableColor, fill=DistributedMovableColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable.csv};
+    \addplot[boxplot, boxplot/draw position=1, draw=CentralMassiveMimoColor, fill=CentralMassiveMimoColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_central_massive_mimo.csv};
+    \addplot[boxplot, boxplot/draw position=2, draw=DistributedFixedColor, fill=DistributedFixedColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_fixed.csv};
+    \addplot[boxplot, boxplot/draw position=3, draw=DistributedMovableColor, fill=DistributedMovableColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable.csv};
+    \addplot[boxplot, boxplot/draw position=4, draw=DistributedMovableColor, fill=DistributedMovableColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable_optimization_2.csv};
+    \addplot[boxplot, boxplot/draw position=5, draw=DistributedMovableColor, fill=DistributedMovableColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable_optimization_3.csv};
   \end{axis}
 \end{tikzpicture}

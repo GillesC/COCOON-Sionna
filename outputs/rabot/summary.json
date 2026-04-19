@@ -6,16 +6,16 @@
   "csi_exports_enabled": false,
   "csi_cache_enabled": false,
   "baseline_strategy": "distributed_fixed",
-  "best_strategy": "distributed_movable",
-  "scene_animation_strategy": "distributed_movable",
+  "best_strategy": "distributed_movable_optimization_2",
+  "scene_animation_strategy": "distributed_movable_optimization_2",
   "scene_animation_with_central_massive_mimo": "",
-  "scene_animation_speedup": 10.0,
+  "scene_animation_speedup": 200.0,
   "scene_context": {
     "scene_xml_path": "/home/dramco_spark/COCOON-Sionna/generated/rabot_scene/scene.xml",
     "scene_metadata_path": "/home/dramco_spark/COCOON-Sionna/outputs/rabot/scene_metadata.json",
     "walk_graph_path": "/home/dramco_spark/COCOON-Sionna/outputs/rabot/walk_graph.json"
   },
-  "window_interval_s": 600.0,
+  "window_interval_s": 60.0,
   "candidate_site_ids": [
     "wall_Blok_A_00_01",
     "wall_Blok_A_01_01",
@@ -141,13 +141,35 @@
         "wall_building_452650244_00_00",
         "wall_building_452653890_01_01"
       ],
-      "score": 0.43541245098625375,
-      "outage": 0.05228848821081831,
-      "percentile_10_db": 5.647331170174962,
-      "peer_tiebreak": 20.533438068832396,
+      "score": 0.5440930818692519,
+      "outage": 0.04410540915395284,
+      "percentile_10_db": 7.495156305529935,
+      "peer_tiebreak": 21.344067574670795,
       "capped": false,
       "evaluated_combinations": 0,
       "selection_mode": "seed_constellation"
+    },
+    "central_massive_mimo": {
+      "selected_site_ids": [
+        "central_ap_01"
+      ],
+      "movable_site_ids": [
+        "central_ap_01"
+      ],
+      "final_candidate_ids": [
+        "roof_Blok_A"
+      ],
+      "score": -1.1919250825038596,
+      "outage": 0.18391123439667129,
+      "percentile_10_db": -22.127264980574303,
+      "peer_tiebreak": 9.834940092152696,
+      "capped": false,
+      "evaluated_combinations": 0,
+      "selection_mode": "fixed_center_rooftop",
+      "rooftop_candidate_id": "roof_Blok_A",
+      "central_ap_num_rows": 6,
+      "central_ap_num_cols": 6,
+      "central_ap_tx_power_dbm": 35.78151250383644
     },
     "distributed_movable": {
       "selected_site_ids": [
@@ -167,43 +189,92 @@
         "movable_ap_06"
       ],
       "final_candidate_ids": [
+        "wall_Blok_F_02_01",
+        "wall_Blok_L_1_00_00",
+        "wall_building_452653879_12_01",
+        "wall_building_452653880_00_00",
+        "wall_building_452653890_01_01",
+        "wall_building_452653892_00_00"
+      ],
+      "score": -0.3068020484838217,
+      "outage": 0.14674063800277393,
+      "percentile_10_db": -7.7622771830967645,
+      "peer_tiebreak": 22.80524486737904,
+      "capped": false,
+      "evaluated_combinations": 30561,
+      "selection_mode": "windowed_local_csi_history",
+      "historical_csi_decay_rate_per_s": 0.0011552453009332421,
+      "heuristic_k_nearest": 10
+    },
+    "distributed_movable_optimization_2": {
+      "selected_site_ids": [
+        "movable_ap_01",
+        "movable_ap_02",
+        "movable_ap_03",
+        "movable_ap_04",
+        "movable_ap_05",
+        "movable_ap_06"
+      ],
+      "movable_site_ids": [
+        "movable_ap_01",
+        "movable_ap_02",
+        "movable_ap_03",
+        "movable_ap_04",
+        "movable_ap_05",
+        "movable_ap_06"
+      ],
+      "final_candidate_ids": [
+        "wall_Blok_A_01_01",
+        "wall_Blok_A_02_01",
+        "wall_Blok_A_03_01",
+        "wall_Blok_D_02_00",
+        "wall_Blok_E_07_01",
+        "wall_Blok_L_1_00_00"
+      ],
+      "score": 1.603190899274449,
+      "outage": 0.01872399445214979,
+      "percentile_10_db": 24.49319790655444,
+      "peer_tiebreak": 39.72549983988766,
+      "capped": false,
+      "evaluated_combinations": 30561,
+      "selection_mode": "windowed_ue_proxy_esr",
+      "selection_proxy": "ue_ue_csi",
+      "optimization_2_distance_threshold_m": 25.0
+    },
+    "distributed_movable_optimization_3": {
+      "selected_site_ids": [
+        "movable_ap_01",
+        "movable_ap_02",
+        "movable_ap_03",
+        "movable_ap_04",
+        "movable_ap_05",
+        "movable_ap_06"
+      ],
+      "movable_site_ids": [
+        "movable_ap_01",
+        "movable_ap_02",
+        "movable_ap_03",
+        "movable_ap_04",
+        "movable_ap_05",
+        "movable_ap_06"
+      ],
+      "final_candidate_ids": [
+        "wall_Blok_A_01_01",
+        "wall_Blok_A_02_01",
         "wall_Blok_D_02_00",
         "wall_Blok_E_07_01",
         "wall_Blok_E_07_02",
-        "wall_Blok_G_02_01",
-        "wall_Blok_H_02_01",
-        "wall_Blok_L_1_00_00"
+        "wall_Blok_H_00_00"
       ],
-      "score": 0.7169597959852907,
-      "outage": 0.04313453536754508,
-      "percentile_10_db": 9.101473910814983,
-      "peer_tiebreak": 30.502063581208656,
+      "score": 1.1294849610788593,
+      "outage": 0.04424410540915395,
+      "percentile_10_db": 16.330518387665943,
+      "peer_tiebreak": 35.7203147104716,
       "capped": false,
-      "evaluated_combinations": 3507,
-      "selection_mode": "windowed_local_csi_history",
-      "historical_csi_decay_rate_per_s": 0.011552453009332421
-    },
-    "central_massive_mimo": {
-      "selected_site_ids": [
-        "central_ap_01"
-      ],
-      "movable_site_ids": [
-        "central_ap_01"
-      ],
-      "final_candidate_ids": [
-        "roof_Blok_A"
-      ],
-      "score": -1.2701641232092291,
-      "outage": 0.20083217753120666,
-      "percentile_10_db": -23.208172102567527,
-      "peer_tiebreak": 9.107665945035412,
-      "capped": false,
-      "evaluated_combinations": 0,
-      "selection_mode": "fixed_center_rooftop",
-      "rooftop_candidate_id": "roof_Blok_A",
-      "central_ap_num_rows": 6,
-      "central_ap_num_cols": 6,
-      "central_ap_tx_power_dbm": 35.78151250383644
+      "evaluated_combinations": 30561,
+      "selection_mode": "windowed_ue_proxy_average_power",
+      "selection_proxy": "ue_ue_power",
+      "optimization_2_distance_threshold_m": 25.0
     }
   }
 }

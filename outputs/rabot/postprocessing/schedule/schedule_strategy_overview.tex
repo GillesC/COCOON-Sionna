@@ -11,18 +11,19 @@
     name=leftplot,
     width=0.48\postprocessfigurewidth,
     height=0.44\postprocessfigurewidth,
-    title={Schedule overview},
     ylabel={Total relocation distance [m]},
     grid=major,
     ybar,
     bar width=12pt,
-    xtick={0,1,2},
-    xticklabels={{Central massive MIMO},{Distributed fixed},{Distributed movable}},
+    xtick={0,1,2,3,4},
+    xticklabels={{Central massive MIMO},{Distributed fixed},{Distributed movable (Opt. 1)},{Distributed movable (Opt. 2)},{Distributed movable (Opt. 3)}},
     xticklabel style={rotate=15,anchor=east},
   ]
     \addplot[draw=none, fill=CentralMassiveMimoColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_central_massive_mimo.csv};
     \addplot[draw=none, fill=DistributedFixedColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_fixed.csv};
     \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_movable.csv};
+    \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_2.csv};
+    \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_3.csv};
   \end{axis}
   \begin{axis}[
     at={(leftplot.outer north east)},
@@ -36,12 +37,14 @@
     grid=major,
     ybar,
     bar width=12pt,
-    xtick={0,1,2},
-    xticklabels={{Central massive MIMO},{Distributed fixed},{Distributed movable}},
+    xtick={0,1,2,3,4},
+    xticklabels={{Central massive MIMO},{Distributed fixed},{Distributed movable (Opt. 1)},{Distributed movable (Opt. 2)},{Distributed movable (Opt. 3)}},
     xticklabel style={rotate=15,anchor=east},
   ]
     \addplot[draw=none, fill=CentralMassiveMimoColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_central_massive_mimo.csv};
     \addplot[draw=none, fill=DistributedFixedColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_fixed.csv};
     \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_movable.csv};
+    \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_2.csv};
+    \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_3.csv};
   \end{axis}
 \end{tikzpicture}
