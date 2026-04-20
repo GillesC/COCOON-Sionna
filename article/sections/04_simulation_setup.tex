@@ -13,7 +13,7 @@ The simulation workflow used by the paper matches the repository workflow:
     \item generate analysis figures in a separate postprocessing step.
 \end{enumerate}
 
-This section documents the reproducible processing chain from scene generation to postprocessed figure export.
+This section documents the reproducible processing chain from scene generation to postprocessed figure export. The antenna configuration is kept fixed across all placement strategies at the element-model level: the simulator instantiates \gls{upa}-based node arrays with the \gls{3gpp} \texttt{tr38901} element pattern, half-wavelength spacing in both planar dimensions, and \texttt{VH} dual polarization. The distributed strategies use identical $2\times 3$ wall-mounted \glspl{ap}, whereas the central reference aggregates that same element budget into one normalized co-located rooftop $6\times 6$ array with summed transmit power. Consequently, the comparison isolates the effect of geometry, relocation, and distributed-versus-co-located topology while keeping the underlying element directivity model unchanged.
 
 \begin{table}[t]
     \centering
@@ -25,6 +25,11 @@ This section documents the reproducible processing chain from scene generation t
         \midrule
         Carrier frequency & \SI{3.5}{\giga\hertz} \\
         Bandwidth & \SI{100}{\mega\hertz} \\
+        AP array topology & $2 \times 3$ \gls{upa}, dual-polarized \texttt{VH} \\
+        Central proxy topology & normalized co-located $6 \times 6$ \gls{upa}, dual-polarized \texttt{VH} \\
+        UE array topology & $1 \times 1$ planar array, dual-polarized \texttt{VH} \\
+        Element spacing & $0.5\lambda$ vertical, $0.5\lambda$ horizontal \\
+        Element radiation pattern & \gls{3gpp} \texttt{tr38901} \\
         User height & \SI{1.5}{\meter} \\
         Number of users & 10 \\
         Simulation horizon & \SI{3600}{\second} \\
@@ -35,7 +40,7 @@ This section documents the reproducible processing chain from scene generation t
         Candidate wall spacing & \SI{18}{\meter} \\
         Minimum candidate spacing & \SI{12}{\meter} \\
         Candidate wall offset & \SI{0.25}{\meter} \\
-        Relocation window & \SI{600}{\second} \\
+        Relocation window & \SI{60}{\second} \\
         Historical \gls{csi} decay rate & \num{0.00116}~\si{\per\second} \\
         Optimization-1 neighborhood size & $K=10$ nearest \gls{ue} snapshots per candidate \\
         Optimization-2 distance threshold & \SI{25}{\meter} \\
@@ -54,15 +59,15 @@ This section documents the reproducible processing chain from scene generation t
         \toprule
         Strategy & Description \\
         \midrule
-        \texttt{central\_massive\_mimo} & Single rooftop proxy on the building nearest the area center, oriented toward the center. Use as central reference only. \\
+        \texttt{central\_massive\_mimo} & Single rooftop proxy on the building nearest the area center, oriented toward the center, with a normalized co-located $6\times 6$ \gls{upa} obtained by aggregating the distributed element budget into one rooftop site. Use as central reference only. \\
         \texttt{distributed\_fixed} & One distributed subset is selected from wall candidates and kept unchanged for the full run. \\
-        \texttt{distributed\_movable} & Optimization~1. The distributed subset is reselected every relocation window from the local historical-\gls{csi} objective based on the configured $K=10$ nearest \gls{ue} snapshots per candidate and exponential aging of older samples. \\
-        \texttt{distributed\_movable\_optimization\_2} & Optimization~2. The distributed subset is reselected every relocation window from a nearest-user \gls{ue}-to-\gls{ue} proxy-\gls{csi} model: each candidate site binds to the closest user within the configured distance threshold, and the subset is ranked by proxy \gls{esr}. \\
-        \texttt{distributed\_movable\_optimization\_3} & Optimization~3. The distributed subset is reselected every relocation window from the same nearest-user distance-threshold proxy model as optimization~2, but using proxy average received power $|\mathrm{CSI}|^2$ as the local objective. \\
+        \texttt{distributed\_movable} & Optimization~1. The distributed subset is reselected every relocation window from the weighted 10th percentile of the stored best-user deployed-\gls{ap}-to-\gls{ue} \gls{sinr} samples in the union of the configured $K=10$ nearest \gls{ue}-snapshot neighborhoods per candidate, with exponential aging of older window segments. \\
+        \texttt{distributed\_movable\_optimization\_2} & Optimization~2. The distributed subset is reselected every relocation window from a nearest-user \gls{ue}-to-\gls{ue} proxy-\gls{csi} model: each candidate site binds to the closest user within the configured distance threshold, the code forms a wideband proxy channel from that user's measured \gls{ue}-to-\gls{ue} CFR, and the subset is ranked by proxy \gls{esr}. \\
+        \texttt{distributed\_movable\_optimization\_3} & Optimization~3. The distributed subset is reselected every relocation window from the same nearest-user distance-threshold proxy model as optimization~2, but the code uses the stored \gls{ue}-to-\gls{ue} link-power row of the anchor user, replaces the diagonal entry by the strongest non-self value, rescales by $P_{\mathrm{AP}}/P_{\mathrm{UE}}$, and ranks the subset by proxy average power. \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-The figure set in \cref{sec:results_geometry,sec:results_sinr,sec:results_relocation} is bundled locally under \texttt{article/figures/rabot/} so the manuscript carries its own buildable asset set. These files are mirrored from the generated Rabot outputs in \texttt{outputs/rabot/} and \texttt{outputs/rabot/postprocessing/}, which remain the regeneration source for the reported figures.
+The figure set in \cref{sec:results_geometry,sec:results_sinr,sec:results_relocation} is read directly from the generated Rabot outputs under \texttt{outputs/rabot/} and \texttt{outputs/rabot/postprocessing/}. This keeps the manuscript synchronized with the latest postprocessed result files in the repository.
 
-For the current Rabot instantiation, the relocation controller starts from a single seed constellation drawn from the wall-mounted candidate pool using the configured random seed. That seed constellation is frozen for the \texttt{distributed\_fixed} baseline and also provides the initial labeled movable-\gls{ap} positions for \texttt{distributed\_movable}, \texttt{distributed\_movable\_optimization\_2}, and \texttt{distributed\_movable\_optimization\_3}. Thereafter, every relocation window applies the greedy subset search from \cref{sec:system_model} with the selected optimization objective and then solves a minimum-displacement assignment so that schedule traces, relocation distances, and move fractions correspond to the motion of persistent AP identities rather than to arbitrary reordering of candidate sites. For optimization~2 and optimization~3, the dormant candidate-position \gls{ap}-to-\gls{ue} channel is never queried during this search; only the measured \gls{ue}-to-\gls{ue} proxy channel or its power is used, and the actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed only after the new candidate subset has been selected.
+For the current Rabot instantiation, the relocation controller starts from a single seed constellation drawn from the wall-mounted candidate pool using the configured random seed. That seed constellation is frozen for the \texttt{distributed\_fixed} baseline and also provides the initial labeled movable-\gls{ap} positions for \texttt{distributed\_movable}, \texttt{distributed\_movable\_optimization\_2}, and \texttt{distributed\_movable\_optimization\_3}. Thereafter, every relocation window applies the greedy subset search from \cref{sec:system_model} with the selected optimization objective and then solves a minimum-displacement assignment so that schedule traces, relocation distances, and move fractions correspond to the motion of persistent AP identities rather than to arbitrary reordering of candidate sites. For optimization~2 and optimization~3, the dormant candidate-position \gls{ap}-to-\gls{ue} channel is never queried during this search; only measured \gls{ue}-to-\gls{ue} proxy information is used. Optimization~2 prefers the full complex wideband proxy channel and falls back to a power-based proxy-\gls{esr} computation when that proxy channel cannot be decoded robustly from the exported tensor. Optimization~3 always uses the stored proxy link-power tensor. In all cases, the actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed only after the new candidate subset has been selected.

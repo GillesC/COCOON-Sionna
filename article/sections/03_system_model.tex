@@ -10,6 +10,21 @@ and the full distributed channel observed by \gls{ue} $k$ is
     \mathbf{H}_k[f] = \left[\mathbf{H}_{k,1}[f]\;\mathbf{H}_{k,2}[f]\;\cdots\;\mathbf{H}_{k,M}[f]\right].
 \end{equation}
 
+The antenna topology follows the \texttt{PlanarArray} abstraction used by the simulator. Each node is modeled as a \gls{upa} with $N^{\mathrm{row}}$ rows and $N^{\mathrm{col}}$ columns, so that the number of polarization-agnostic elements is $N^{\mathrm{row}}N^{\mathrm{col}}$. The implementation uses the same element radiation pattern, polarization setting, and inter-element spacing on transmit and receive arrays. More precisely, the number of ports is
+\begin{equation}
+    N = N^{\mathrm{row}} N^{\mathrm{col}} N^{\mathrm{pol}},
+\end{equation}
+where $N^{\mathrm{pol}}$ is the number of active polarization ports implied by the configured polarization string. In the Rabot configuration, the \glspl{ap} use a $2 \times 3$ \gls{upa} with \texttt{VH} dual polarization, which yields $N_m=2 \cdot 3 \cdot 2=12$ transmit ports per \gls{ap}. The \glspl{ue} use a $1 \times 1$ planar array with the same \texttt{VH} dual-polarized element model, which yields $N_{r,k}=1 \cdot 1 \cdot 2=2$ receive ports per user device. The vertical and horizontal element spacings are both set to $0.5\lambda$, so the array factor corresponds to half-wavelength sampling in both planar directions.
+
+The element radiation pattern is the \gls{3gpp} \texttt{tr38901} pattern provided by Sionna. Thus, the simulated channel is not isotropic at the element level: every array response combines the \texttt{tr38901} element directivity with the \gls{upa} array factor determined by the node orientation, row-column topology, and the propagation geometry. This matters for the present study because the wall-mounted distributed \glspl{ap} and the rooftop central proxy are evaluated with the same underlying element pattern while differing in their locations, orientations, and distributed versus centralized array geometry.
+
+For the central reference, the implementation collapses the distributed element budget into one normalized co-located rooftop array. If each distributed \gls{ap} has $N_{\mathrm{AP}}^{\mathrm{row}}N_{\mathrm{AP}}^{\mathrm{col}}$ physical element locations and the distributed budget contains $M_{\mathrm{dist}}$ \glspl{ap}, then the central proxy uses
+\begin{equation}
+    N_{\mathrm{cent}}^{\mathrm{elem}} =
+    M_{\mathrm{dist}} N_{\mathrm{AP}}^{\mathrm{row}} N_{\mathrm{AP}}^{\mathrm{col}}
+\end{equation}
+element locations, reshaped into a factorized \gls{upa} with integer row and column counts. In the Rabot configuration, $M_{\mathrm{dist}}=6$ and the distributed hardware uses $2\times 3$ elements per \gls{ap}, so the normalized co-located rooftop proxy becomes a $6\times 6$ \gls{upa}. With the same \texttt{VH} dual polarization, this yields $6 \cdot 6 \cdot 2 = 72$ transmit ports. The central transmit-power budget is scaled to the sum power of the six distributed \glspl{ap}. This keeps the central reference aligned with the distributed element and power budgets, while still remaining a rooftop proxy rather than a full placement model for a true co-located base-station site.
+
 Given a receive combiner $\mathbf{u}_k[f]$, the effective channel becomes
 \begin{equation}
     \mathbf{h}_k^{\mathsf{H}}[f] = \mathbf{u}_k^{\mathsf{H}}[f]\mathbf{H}_k[f].
@@ -34,7 +49,7 @@ These per-snapshot \gls{sinr} values form the basis of the trajectory-level \gls
 
 The placement layer compares five strategies under a common \gls{ap} budget:
 \begin{itemize}
-    \item \texttt{central\_massive\_mimo}: one rooftop proxy \gls{ap} is placed on the building whose rooftop representative point is nearest the area center; the proxy is oriented toward the area center. This is a normalized central reference, not a full single co-located-array placement model.
+    \item \texttt{central\_massive\_mimo}: one rooftop proxy \gls{ap} is placed on the building whose rooftop representative point is nearest the area center; the proxy is oriented toward the area center. Its antenna topology is the normalized co-located array obtained by aggregating the distributed element budget into one rooftop \gls{upa}. This is a normalized central reference, not a full single co-located-array placement model.
     \item \texttt{distributed\_fixed}: a distributed set of wall-mounted candidate positions is sampled once and kept fixed over the full trajectory.
     \item \texttt{distributed\_movable}: optimization 1. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with a history-aware local-\gls{csi} rule.
     \item \texttt{distributed\_movable\_optimization\_2}: optimization 2. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with a current-window nearest-user \gls{ue}-to-\gls{ue} proxy-\gls{csi} rule and a proxy-\gls{esr} objective.
@@ -45,7 +60,7 @@ Let $\mathcal{C}$ denote the wall-mounted candidate pool and let $\mathcal{S}_w 
 
 \subsection{Relocation Heuristic}
 
-At an intuitive level, the relocation mechanism repeats the same observe-score-relocate loop at every relocation instant. Optimization~1 uses simulated \gls{ap}-to-\gls{ue} channel observations from previously evaluated subsets and discounts older samples exponentially. Optimization~2 and optimization~3 follow a different practical assumption: the \gls{ap}-to-\gls{ue} channel of a dormant candidate position is not known before an \gls{ap} is actually moved there. Consequently, these two rules do not optimize directly over candidate-position \gls{ap}-to-\gls{ue} \gls{csi}. Instead, each candidate site is associated with the closest user within a distance threshold, the measured \gls{ue}-to-\gls{ue} channel of that nearby user is reused as a proxy for the dormant candidate site, and the subset is ranked either by proxy \gls{esr} (optimization~2) or by proxy average received power (optimization~3). Once the best subset has been chosen, the movable \glspl{ap} are relocated to those candidate positions and the actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed for storage, postprocessing, and final reporting.
+At an intuitive level, the relocation mechanism repeats the same observe-score-relocate loop at every relocation instant. Optimization~1 evaluates already simulated deployed-\gls{ap}-to-\gls{ue} samples for the subsets that have been queried so far and discounts older window segments exponentially. Optimization~2 and optimization~3 follow a different practical assumption: the \gls{ap}-to-\gls{ue} channel of a dormant candidate position is not known before an \gls{ap} is actually moved there. Consequently, these two rules do not optimize directly over candidate-position \gls{ap}-to-\gls{ue} \gls{csi}. Instead, each candidate site is associated with the closest user within a distance threshold. Optimization~2 reuses the measured \gls{ue}-to-\gls{ue} wideband channel of that nearby user as a proxy and ranks the subset by proxy \gls{esr}. Optimization~3 uses the corresponding stored \gls{ue}-to-\gls{ue} link-power samples, scaled to the \gls{ap} transmit-power budget, and ranks the subset by proxy average power. Once the best subset has been chosen, the movable \glspl{ap} are relocated to those candidate positions and the actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed for storage, postprocessing, and final reporting.
 
 The movable distributed strategy is implemented as a windowed receding-horizon controller. Let $\{t_n\}_{n=0}^{N_t-1}$ denote the simulated snapshot times and let $T_{\mathrm{rel}}$ denote the relocation interval. The trajectory is partitioned into disjoint decision windows
 \begin{equation}
@@ -69,13 +84,13 @@ where $\mathbf{r}_{u,n}$ denotes the horizontal position of \gls{ue} $u$ at time
 \end{equation}
 In the Rabot configuration, $K=10$, so each candidate contributes at most ten local \gls{ue}-snapshot pairs per window. This restriction makes the relocation rule sensitive to the \gls{csi} observed near the candidate sites rather than to globally averaged scene statistics. In other words, user positions are used to construct the local sampling mask, but they do not enter the score directly.
 
-For every queried subset $\mathcal{S}$, the implementation computes the corresponding \gls{ap}-to-\gls{ue} \gls{csi}/\gls{sinr} segment over the current window and stores it in a per-subset cache. Thus, the relocation heuristic is driven by channel-response information associated with the candidate subset under evaluation, not by geometry alone. If $\gamma_{u,n}(\mathcal{S})$ denotes the best-link \gls{sinr} sample produced when subset $\mathcal{S}$ is active, the historical record available when deciding window $w$ is
+For every queried subset $\mathcal{S}$, the implementation computes the corresponding deployed \gls{ap}-to-\gls{ue} \gls{csi}/\gls{sinr} segment over the current window and stores it in a per-subset cache. Thus, the relocation heuristic is driven by channel-response information associated with the candidate subset under evaluation, not by geometry alone. If $\gamma_{u,n}^{\mathrm{dB}}(\mathcal{S})$ denotes the stored best-link \gls{sinr} sample in \si{\decibel} produced when subset $\mathcal{S}$ is active, the historical record available when deciding window $w$ is
 \begin{equation}
     \mathcal{H}_w(\mathcal{S}) =
-    \left\{(t_n,\gamma_{u,n}(\mathcal{S})) :
+    \left\{(t_n,\gamma_{u,n}^{\mathrm{dB}}(\mathcal{S})) :
     u \in \mathcal{U}, n \in \mathcal{W}_j, j = 0,\ldots,w\right\}.
 \end{equation}
-When the same subset is revisited later, previously computed window segments are reused and only the new current-window segment is appended. Thus, the historical objective remains consistent while avoiding repeated ray-tracing evaluations for past windows. In the present implementation, the relocation score is formed from these \gls{ap}-to-\gls{ue} channel samples only; \gls{ue}-to-\gls{ue} \gls{csi} is reserved for the final trajectory-level comparison score, and \gls{ap}-to-\gls{ap} \gls{csi} is exported for analysis rather than for online relocation control.
+When the same subset is revisited later, previously computed window segments are reused and only the new current-window segment is appended. Thus, the historical objective remains consistent while avoiding repeated ray-tracing evaluations for past windows. Within optimization~1, the relocation score is formed from these deployed \gls{ap}-to-\gls{ue} samples only; \gls{ue}-to-\gls{ue} \gls{csi} does not enter this objective, and \gls{ap}-to-\gls{ap} \gls{csi} is exported for analysis rather than for online relocation control.
 
 Historical CSI is discounted through exponential aging. If a sample was observed at time $t_n$ and the relocation decision for window $w$ is taken at $t_w^{\mathrm{end}}$, the associated weight is
 \begin{equation}
@@ -85,7 +100,7 @@ with $\lambda$ the configured decay rate. Hence, newer samples always dominate o
 \begin{equation}
     J_w^{(1)}(\mathcal{S}) =
     Q_{0.1}^{\omega}\!\left(
-        \left\{\gamma_{u,n}(\mathcal{S}) :
+        \left\{\gamma_{u,n}^{\mathrm{dB}}(\mathcal{S}) :
         (u,n) \in \bigcup_{j=0}^{w} \mathcal{N}_K(\mathcal{S},j)\right\}
     \right),
 \end{equation}
@@ -124,24 +139,34 @@ where $v^\star=\arg\max_{v \in \mathcal{U}} \max_f |h^{\mathrm{UU}}_{v,\ell(c,n)
     \log_2\!\left(1+\tilde{\gamma}_{u,n}[f](\mathcal{S})\right).
 \end{equation}
 Consequently, optimization~2 uses measured \gls{ue}-to-\gls{ue} proxy \gls{csi} to rank candidate subsets, while avoiding the unrealistic assumption that dormant candidate-position \gls{ap}-to-\gls{ue} channels are already known.
+In the software implementation, this is the preferred path whenever a consistent wideband \gls{ue}-to-\gls{ue} CFR export is available. If the full complex proxy tensor is unavailable or cannot be decoded reliably, the code falls back to a power-based proxy-\gls{esr} computation built from the stored \gls{ue}-to-\gls{ue} link-power tensor so that the optimization can still be executed.
 
 \paragraph{Optimization 3: current-window nearest-user proxy-power controller.}
-The third online rule reuses the same nearest-user anchor $\ell(c,n)$ and validity indicator $\delta(c,n)$ as optimization~2, but it does not use the complex proxy coefficient directly. Instead, it works with the proxy received-power quantity
+The third online rule reuses the same nearest-user anchor $\ell(c,n)$ and validity indicator $\delta(c,n)$ as optimization~2, but it does not use the complex proxy coefficient directly. Instead, it operates on the stored \gls{ue}-to-\gls{ue} link-power tensor. Let $\rho^{\mathrm{UU}}_{a,u,n}$ denote the ordered link-power entry returned by the simulator between anchor-user index $a$ and user index $u$ at snapshot $n$. The implementation forms the per-candidate proxy-power row
+\begin{equation}
+    \bar{\rho}_{u,c,n} =
+    \begin{cases}
+        \rho^{\mathrm{UU}}_{\ell(c,n),u,n}, & \delta(c,n)=1,\; u \neq \ell(c,n), \\
+        \max_{v \in \mathcal{U},\, v\neq \ell(c,n)} \rho^{\mathrm{UU}}_{\ell(c,n),v,n}, & \delta(c,n)=1,\; u = \ell(c,n), \\
+        0, & \delta(c,n)=0,
+    \end{cases}
+\end{equation}
+and then rescales that row to the distributed-\gls{ap} transmit-power budget according to
 \begin{equation}
     \tilde{\rho}_{u,c,n} =
-    \frac{P_{\mathrm{AP}}}{P_{\mathrm{UE}}}
-    \frac{1}{F}\sum_{f=1}^{F}\left|\tilde{h}_{u,c,n}[f]\right|^2,
+    \frac{P_{\mathrm{AP}}}{P_{\mathrm{UE}}}\bar{\rho}_{u,c,n}.
 \end{equation}
-where the factor $P_{\mathrm{AP}}/P_{\mathrm{UE}}$ rescales the measured \gls{ue}-to-\gls{ue} proxy power to the distributed-\gls{ap} transmit-power budget. The optimization-3 objective is then
+The optimization-3 objective is then
 \begin{equation}
     J_w^{(3)}(\mathcal{S}) =
-    \frac{1}{|\mathcal{W}_w|\,|\mathcal{U}|}
+    \frac{1}{|\mathcal{W}_w|}
     \sum_{n \in \mathcal{W}_w}
+    \frac{1}{|\mathcal{U}|}
     \sum_{u \in \mathcal{U}}
     \sum_{c \in \mathcal{S}}
     \tilde{\rho}_{u,c,n}.
 \end{equation}
-Optimization~3 is therefore the power-only counterpart of optimization~2: it uses the same nearest-user proxy association, but it requires only $|\mathrm{CSI}|^2$ rather than the complex proxy channel.
+Optimization~3 is therefore the power-only counterpart of optimization~2: it uses the same nearest-user proxy association and the same self-link substitution rule, but it requires only stored proxy link power rather than the complex proxy channel.
 
 \paragraph{Greedy subset construction.}
 All three optimization rules use the same forward-selection search. Starting from $\mathcal{S}_w^{(0)}=\varnothing$, the controller adds one candidate at a time according to

@@ -25,9 +25,13 @@ The relocation figures complement the radio-performance results by quantifying t
         \caption{Distribution of relocation distances across observed \gls{ap} moves.}
         \label{fig:schedule_histogram}
     \end{subfigure}
-    \caption{Relocation-cost figures used to interpret how much physical infrastructure movement is required by the compared placement strategies.}
+    \caption{Relocation-cost figures used to interpret how much physical infrastructure movement is required by the compared placement strategies. Optimization~2 achieves the strongest radio performance with a lower movement burden than optimization~3, whereas the fixed and central references remain static.}
     \label{fig:schedule_pair}
 \end{figure*}
 
-Together, the panels in \cref{fig:schedule_pair} characterize the relocation activity associated with the evaluated placement strategies through aggregate movement summaries and relocation-distance distributions.
+Together, the panels in \cref{fig:schedule_pair} quantify the price paid for movable infrastructure. As expected, \texttt{central\_massive\_mimo} and \texttt{distributed\_fixed} induce no physical motion. Among the movable controllers, optimization~1 is the least mobile: 228 of the 360 \gls{ap}-transition events correspond to actual moves, for a move fraction of \SI{63.3}{\percent}, a total traveled distance of \SI{10.6}{km}, and a mean move distance of \SI{46.5}{m}. Optimization~2 raises the move fraction to \SI{80.0}{\percent} and the total traveled distance to \SI{14.2}{km}, with a similar mean per-move distance of \SI{49.2}{m}. Optimization~3 is the most aggressive controller, with 311 moves, a move fraction of \SI{86.4}{\percent}, a total traveled distance of \SI{18.6}{km}, and a mean move distance of \SI{59.9}{m}.
+
+This ranking is important when combined with the radio metrics from \cref{sec:results_sinr}. Optimization~2 not only outperforms optimization~3 in mean and lower-tail \gls{sinr}/\gls{esr}, it also requires less motion: about \SI{24}{\percent} less total relocation distance and a smaller move fraction. Thus, within the two nearest-user proxy controllers, the phase-aware proxy-\gls{esr} rule is strictly preferable to the power-only proxy rule in the present scenario. Compared with optimization~2, optimization~1 reduces movement but gives up most of the radio-performance gain and substantially worsens the lower-tail robustness. The fixed distributed baseline therefore remains the practical zero-mobility reference, while optimization~2 defines the best radio-performance point among the movable strategies.
+
+The histogram panel adds one further observation: the movable controllers do not differ only in how often they move, but also in how broadly they explore the candidate pool. Optimization~1 uses 131 distinct positions over the run, optimization~2 uses 140, and optimization~3 uses 162. Hence, the power-only rule is not merely more active; it is also spatially less conservative. In this dataset, that additional exploration does not translate into better radio performance.
 \FloatBarrier
