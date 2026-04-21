@@ -8,6 +8,7 @@
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
 \definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}
 \definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
+
 \begin{tikzpicture}
   \begin{axis}[
     width=\postprocessfigurewidth,
@@ -19,20 +20,20 @@
     yticklabels={{\strategy1[short]},{\strategy2[short]},{\strategy3[short]},{\strategy4[short]},{\strategy5[short]}},
     xmin=0,
   ]
-    \ifShowStrategyOne
-    \addplot[boxplot, boxplot/draw direction=x, boxplot/draw position=1, draw=CentralMassiveMimoColor, fill=CentralMassiveMimoColor!35] table[x=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_central_massive_mimo.csv};
-    \fi
-    \ifShowStrategyTwo
-    \addplot[boxplot, boxplot/draw direction=x, boxplot/draw position=2, draw=DistributedFixedColor, fill=DistributedFixedColor!35] table[x=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_fixed.csv};
-    \fi
-    \ifShowStrategyThree
-    \addplot[boxplot, boxplot/draw direction=x, boxplot/draw position=3, draw=DistributedMovableColor, fill=DistributedMovableColor!35] table[x=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable.csv};
-    \fi
-    \ifShowStrategyFour
-    \addplot[boxplot, boxplot/draw direction=x, boxplot/draw position=4, draw=DistributedMovableOptTwoColor, fill=DistributedMovableOptTwoColor!35] table[x=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable_optimization_2.csv};
-    \fi
-    \ifShowStrategyFive
-    \addplot[boxplot, boxplot/draw direction=x, boxplot/draw position=5, draw=DistributedMovableOptThreeColor, fill=DistributedMovableOptThreeColor!35] table[x=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable_optimization_3.csv};
-    \fi
+    % \ifShowStrategyOne
+    \addplot[boxplot] table[x=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_central_massive_mimo.csv}; % , boxplot/draw direction=x, boxplot/draw position=1, draw=CentralMassiveMimoColor, fill=CentralMassiveMimoColor!35
+    % % \fi
+    % % \ifShowStrategyTwo
+    % \addplot[boxplot, boxplot/draw direction=x, boxplot/draw position=2, draw=DistributedFixedColor, fill=DistributedFixedColor!35] table[x=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_fixed.csv};
+    % % \fi
+    % % \ifShowStrategyThree
+    % \addplot[boxplot, boxplot/draw direction=x, boxplot/draw position=3, draw=DistributedMovableColor, fill=DistributedMovableColor!35] table[x=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable.csv};
+    % % \fi
+    % % \ifShowStrategyFour
+    % \addplot[boxplot, boxplot/draw direction=x, boxplot/draw position=4, draw=DistributedMovableOptTwoColor, fill=DistributedMovableOptTwoColor!35] table[x=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable_optimization_2.csv};
+    % % \fi
+    % % \ifShowStrategyFive
+    % \addplot[boxplot, boxplot/draw direction=x, boxplot/draw position=5, draw=DistributedMovableOptThreeColor, fill=DistributedMovableOptThreeColor!35] table[x=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable_optimization_3.csv};
+    % \fi
   \end{axis}
 \end{tikzpicture}
