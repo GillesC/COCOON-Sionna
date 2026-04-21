@@ -114,7 +114,7 @@ def _validate_three_mode_config(config: ScenarioConfig) -> None:
 
 def _strategy_linestyle(strategy_name: str) -> str:
     styles = {
-        "central_massive_mimo": "-.",
+        "central_massive_mimo": "-",
         "distributed_fixed": "-",
         "distributed_movable": "--",
         "distributed_movable_optimization_2": "-",
@@ -2115,7 +2115,7 @@ def _plot_user_sinr_cdf(strategy_ap_ue: dict[str, dict[str, Any]], output_path: 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.figure(figsize=(8, 6))
     styles = {
-        "central_massive_mimo": ("#2ca02c", "-."),
+        "central_massive_mimo": ("#2ca02c", "-"),
         "distributed_fixed": ("#1f77b4", "-"),
         "distributed_movable": ("#ff7f0e", "--"),
         "distributed_movable_optimization_2": ("#ff7f0e", "-"),

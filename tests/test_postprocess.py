@@ -307,6 +307,9 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     assert "title={" not in tikz_text
     assert "\\definecolor{DistributedFixedColor}{HTML}{2F5D8A}" in tikz_text
     assert "\\definecolor{DistributedMovableColor}{HTML}{CB3A2A}" in tikz_text
+    assert "\\definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}" in tikz_text
+    assert "\\definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}" in tikz_text
+    assert "color=CentralMassiveMimoColor, solid" in tikz_text
     assert "each nth point=5" in tikz_text
     assert "xmin=-20" in tikz_text
     esr_tikz_text = artifacts["esr_timeseries_plot_tikz"].read_text(encoding="utf-8")

@@ -6,6 +6,8 @@
 \definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
 \definecolor{DistributedFixedColor}{HTML}{2F5D8A}
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
+\definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}
+\definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
 \begin{tikzpicture}
   \begin{axis}[
     width=\postprocessfigurewidth,
@@ -21,7 +23,7 @@
     \addplot[boxplot, boxplot/draw position=1, draw=CentralMassiveMimoColor, fill=CentralMassiveMimoColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_central_massive_mimo.csv};
     \addplot[boxplot, boxplot/draw position=2, draw=DistributedFixedColor, fill=DistributedFixedColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_fixed.csv};
     \addplot[boxplot, boxplot/draw position=3, draw=DistributedMovableColor, fill=DistributedMovableColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable.csv};
-    \addplot[boxplot, boxplot/draw position=4, draw=DistributedMovableColor, fill=DistributedMovableColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable_optimization_2.csv};
-    \addplot[boxplot, boxplot/draw position=5, draw=DistributedMovableColor, fill=DistributedMovableColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable_optimization_3.csv};
+    \addplot[boxplot, boxplot/draw position=4, draw=DistributedMovableOptTwoColor, fill=DistributedMovableOptTwoColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable_optimization_2.csv};
+    \addplot[boxplot, boxplot/draw position=5, draw=DistributedMovableOptThreeColor, fill=DistributedMovableOptThreeColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_distributed_movable_optimization_3.csv};
   \end{axis}
 \end{tikzpicture}

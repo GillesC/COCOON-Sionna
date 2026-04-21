@@ -6,6 +6,8 @@
 \definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
 \definecolor{DistributedFixedColor}{HTML}{2F5D8A}
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
+\definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}
+\definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
 \begin{tikzpicture}
   \begin{axis}[
     name=leftplot,
@@ -22,8 +24,8 @@
     \addplot[draw=none, fill=CentralMassiveMimoColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_central_massive_mimo.csv};
     \addplot[draw=none, fill=DistributedFixedColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_fixed.csv};
     \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_movable.csv};
-    \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_2.csv};
-    \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_3.csv};
+    \addplot[draw=none, fill=DistributedMovableOptTwoColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_2.csv};
+    \addplot[draw=none, fill=DistributedMovableOptThreeColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_3.csv};
   \end{axis}
   \begin{axis}[
     at={(leftplot.outer north east)},
@@ -44,7 +46,7 @@
     \addplot[draw=none, fill=CentralMassiveMimoColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_central_massive_mimo.csv};
     \addplot[draw=none, fill=DistributedFixedColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_fixed.csv};
     \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_movable.csv};
-    \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_2.csv};
-    \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_3.csv};
+    \addplot[draw=none, fill=DistributedMovableOptTwoColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_2.csv};
+    \addplot[draw=none, fill=DistributedMovableOptThreeColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_3.csv};
   \end{axis}
 \end{tikzpicture}

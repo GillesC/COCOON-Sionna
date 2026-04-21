@@ -6,6 +6,8 @@
 \definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
 \definecolor{DistributedFixedColor}{HTML}{2F5D8A}
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
+\definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}
+\definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
 \begin{tikzpicture}
   \begin{axis}[
     width=\postprocessfigurewidth,
@@ -15,15 +17,15 @@
     grid=major,
     legend pos=south east,
   ]
-    \addplot[const plot mark right, no markers, line width=1.2pt, color=CentralMassiveMimoColor, dash dot,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_central_massive_mimo.csv};
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=CentralMassiveMimoColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_central_massive_mimo.csv};
     \addlegendentry{Central massive MIMO}
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedFixedColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_fixed.csv};
     \addlegendentry{Distributed fixed}
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, dashed,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable.csv};
     \addlegendentry{Distributed movable (Opt. 1)}
-    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable_optimization_2.csv};
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptTwoColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable_optimization_2.csv};
     \addlegendentry{Distributed movable (Opt. 2)}
-    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, dotted,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable_optimization_3.csv};
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptThreeColor, dotted,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable_optimization_3.csv};
     \addlegendentry{Distributed movable (Opt. 3)}
   \end{axis}
 \end{tikzpicture}

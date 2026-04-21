@@ -38,18 +38,18 @@ STRATEGY_COLORS = {
     "central_massive_mimo": "#d4a017",
     "distributed_fixed": "#2f5d8a",
     "distributed_movable": "#cb3a2a",
-    "distributed_movable_optimization_2": "#cb3a2a",
-    "distributed_movable_optimization_3": "#cb3a2a",
+    "distributed_movable_optimization_2": "#1b9e77",
+    "distributed_movable_optimization_3": "#7570b3",
 }
 STRATEGY_TIKZ_COLOR_NAMES = {
     "central_massive_mimo": "CentralMassiveMimoColor",
     "distributed_fixed": "DistributedFixedColor",
     "distributed_movable": "DistributedMovableColor",
-    "distributed_movable_optimization_2": "DistributedMovableColor",
-    "distributed_movable_optimization_3": "DistributedMovableColor",
+    "distributed_movable_optimization_2": "DistributedMovableOptTwoColor",
+    "distributed_movable_optimization_3": "DistributedMovableOptThreeColor",
 }
 STRATEGY_LINESTYLES = {
-    "central_massive_mimo": "-.",
+    "central_massive_mimo": "-",
     "distributed_fixed": "-",
     "distributed_movable": "--",
     "distributed_movable_optimization_2": "-",
@@ -659,8 +659,8 @@ def _write_histogram_tikz(
         rel = _relative_posix_path(csv_path, path.parent)
         body.extend(
             [
-                "    \\addplot[draw=none, fill=%s, fill opacity=0.45] table[x=bin_center_m,y=count,col sep=comma] {%s};"
-                % (_tikz_color_name(strategy), rel),
+                "    \\addplot[draw=%s, fill=%s, fill opacity=0.35] table[x=bin_center_m,y=count,col sep=comma] {%s};"
+                % (_tikz_color_name(strategy), _tikz_color_name(strategy), rel),
                 "    \\addlegendentry{%s}" % _label(strategy),
             ]
         )

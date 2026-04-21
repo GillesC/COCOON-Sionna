@@ -6,6 +6,8 @@
 \definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
 \definecolor{DistributedFixedColor}{HTML}{2F5D8A}
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
+\definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}
+\definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
 \begin{tikzpicture}
   \begin{axis}[
     width=\postprocessfigurewidth,
@@ -17,11 +19,11 @@
     bar width=7pt,
     legend pos=north east,
   ]
-    \addplot[draw=none, fill=DistributedMovableColor, fill opacity=0.45] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable.csv};
+    \addplot[draw=DistributedMovableColor, fill=DistributedMovableColor, fill opacity=0.35] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable.csv};
     \addlegendentry{Distributed movable (Opt. 1)}
-    \addplot[draw=none, fill=DistributedMovableColor, fill opacity=0.45] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_2.csv};
+    \addplot[draw=DistributedMovableOptTwoColor, fill=DistributedMovableOptTwoColor, fill opacity=0.35] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_2.csv};
     \addlegendentry{Distributed movable (Opt. 2)}
-    \addplot[draw=none, fill=DistributedMovableColor, fill opacity=0.45] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_3.csv};
+    \addplot[draw=DistributedMovableOptThreeColor, fill=DistributedMovableOptThreeColor, fill opacity=0.35] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_3.csv};
     \addlegendentry{Distributed movable (Opt. 3)}
   \end{axis}
 \end{tikzpicture}
