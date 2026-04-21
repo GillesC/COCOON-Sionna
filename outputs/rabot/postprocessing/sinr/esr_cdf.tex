@@ -18,14 +18,14 @@
     legend pos=south east,
   ]
     \addplot[const plot mark right, no markers, line width=1.2pt, color=CentralMassiveMimoColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_central_massive_mimo.csv};
-    \addlegendentry{Central massive MIMO}
+    \addlegendentry{\strategy1}
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedFixedColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_fixed.csv};
-    \addlegendentry{Distributed fixed}
-    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, dashed,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable.csv};
-    \addlegendentry{Distributed movable (Opt. 1)}
+    \addlegendentry{\strategy2}
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable.csv};
+    \addlegendentry{\strategy3}
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptTwoColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable_optimization_2.csv};
-    \addlegendentry{Distributed movable (Opt. 2)}
-    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptThreeColor, dotted,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable_optimization_3.csv};
-    \addlegendentry{Distributed movable (Opt. 3)}
+    \addlegendentry{\strategy4}
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptThreeColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable_optimization_3.csv};
+    \addlegendentry{\strategy5}
   \end{axis}
 \end{tikzpicture}

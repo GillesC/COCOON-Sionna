@@ -17,3 +17,28 @@
 \colorlet{AMBdarkgreen}{color1}
 \colorlet{AMBlightgreen}{color1}
 \definecolor{darkgray176}{RGB}{176,176,176}
+
+% Strategy colors and compact labels used in PGFPlots figures.
+\definecolor{CentralMassiveMimoColor}{HTML}{D4A017}
+\definecolor{DistributedFixedColor}{HTML}{2F5D8A}
+\definecolor{DistributedMovableColor}{HTML}{CB3A2A}
+\definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}
+\definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
+
+\ExplSyntaxOn
+\NewDocumentCommand{\StrategyLabel}{ m m m O{long} }{%
+  {\setlength{\fboxsep}{0.45pt}\fcolorbox{#2}{#2!22}{\scriptsize\strut (#1)}}%
+  \str_if_eq:nnF {#4} {short} {\nobreakspace{}#3}%
+}
+\NewDocumentCommand{\strategy}{ m O{long} }{%
+  \str_case:nnF {#1}
+    {
+      {1}{\StrategyLabel{1}{CentralMassiveMimoColor}{Central~massive~MIMO}[#2]}
+      {2}{\StrategyLabel{2}{DistributedFixedColor}{Distributed~fixed}[#2]}
+      {3}{\StrategyLabel{3}{DistributedMovableColor}{Distributed~movable~(Opt.~1)}[#2]}
+      {4}{\StrategyLabel{4}{DistributedMovableOptTwoColor}{Distributed~movable~(Opt.~2)}[#2]}
+      {5}{\StrategyLabel{5}{DistributedMovableOptThreeColor}{Distributed~movable~(Opt.~3)}[#2]}
+    }
+    {(#1)}%
+}
+\ExplSyntaxOff

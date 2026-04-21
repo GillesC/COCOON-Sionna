@@ -82,8 +82,8 @@
 
     \addplot[no markers, line width=0.5pt, opacity=0.35, color=CentralMassiveMimoColor, solid] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_central_massive_mimo.csv};
     \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedFixedColor, solid] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_fixed.csv};
-    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedMovableColor, dashed] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable.csv};
+    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedMovableColor, solid] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable.csv};
     \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedMovableOptTwoColor, solid] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable_optimization_2.csv};
-    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedMovableOptThreeColor, dotted] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable_optimization_3.csv};
+    \addplot[no markers, line width=0.5pt, opacity=0.35, color=DistributedMovableOptThreeColor, solid] table[x=time_s,y=esr_bps_hz,col sep=comma] {tikz_data/esr_timeseries_distributed_movable_optimization_3.csv};
   \end{axis}
 \end{tikzpicture}

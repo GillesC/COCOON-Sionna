@@ -81,14 +81,14 @@
     \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3600.00000000,-0.42000000) (3600.00000000,7.42000000)};
 
     \addplot[no markers, line width=1.2pt, color=CentralMassiveMimoColor, solid] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_central_massive_mimo.csv};
-    \addlegendentry{Central massive MIMO}
+    \addlegendentry{\strategy1}
     \addplot[no markers, line width=1.2pt, color=DistributedFixedColor, solid] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_fixed.csv};
-    \addlegendentry{Distributed fixed}
-    \addplot[no markers, line width=1.2pt, color=DistributedMovableColor, dashed] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_movable.csv};
-    \addlegendentry{Distributed movable (Opt. 1)}
+    \addlegendentry{\strategy2}
+    \addplot[no markers, line width=1.2pt, color=DistributedMovableColor, solid] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_movable.csv};
+    \addlegendentry{\strategy3}
     \addplot[no markers, line width=1.2pt, color=DistributedMovableOptTwoColor, solid] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_movable_optimization_2.csv};
-    \addlegendentry{Distributed movable (Opt. 2)}
-    \addplot[no markers, line width=1.2pt, color=DistributedMovableOptThreeColor, dotted] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_movable_optimization_3.csv};
-    \addlegendentry{Distributed movable (Opt. 3)}
+    \addlegendentry{\strategy4}
+    \addplot[no markers, line width=1.2pt, color=DistributedMovableOptThreeColor, solid] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_movable_optimization_3.csv};
+    \addlegendentry{\strategy5}
   \end{axis}
 \end{tikzpicture}

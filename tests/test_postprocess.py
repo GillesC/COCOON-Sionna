@@ -310,6 +310,9 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     assert "\\definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}" in tikz_text
     assert "\\definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}" in tikz_text
     assert "color=CentralMassiveMimoColor, solid" in tikz_text
+    assert "\\addlegendentry{\\strategy1}" in tikz_text
+    assert "dashed" not in tikz_text
+    assert "dotted" not in tikz_text
     assert "each nth point=5" in tikz_text
     assert "xmin=-20" in tikz_text
     esr_tikz_text = artifacts["esr_timeseries_plot_tikz"].read_text(encoding="utf-8")
@@ -319,6 +322,7 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     boxplot_tikz_text = artifacts["boxplot_tikz"].read_text(encoding="utf-8")
     assert "title={" not in boxplot_tikz_text
     assert "xlabel={Per-user mean SINR [dB]}" in boxplot_tikz_text
+    assert "\\strategy1[short]" in boxplot_tikz_text
     rows = list(csv.DictReader(artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
     assert rows[0]["strategy"] == "central_massive_mimo"
     assert rows[1]["strategy"] == "distributed_fixed"
@@ -366,7 +370,11 @@ def test_run_schedule_analysis_and_manuscript_report(tmp_path: Path):
     assert schedule_artifacts["summary_csv"].exists()
     assert schedule_artifacts["transition_csv"].exists()
     assert schedule_artifacts["overview_tikz"].exists()
-    assert "\\addplot" in schedule_artifacts["overview_tikz"].read_text(encoding="utf-8")
+    overview_tikz_text = schedule_artifacts["overview_tikz"].read_text(encoding="utf-8")
+    histogram_tikz_text = schedule_artifacts["histogram_tikz"].read_text(encoding="utf-8")
+    assert "\\addplot" in overview_tikz_text
+    assert "xtick=\\empty" in overview_tikz_text
+    assert "bar shift=" in histogram_tikz_text
     schedule_rows = list(csv.DictReader(schedule_artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
     local_row = next(row for row in schedule_rows if row["strategy"] == "distributed_movable")
     assert float(local_row["total_distance_m"]) == 10.0

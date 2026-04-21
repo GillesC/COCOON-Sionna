@@ -116,9 +116,9 @@ def _strategy_linestyle(strategy_name: str) -> str:
     styles = {
         "central_massive_mimo": "-",
         "distributed_fixed": "-",
-        "distributed_movable": "--",
+        "distributed_movable": "-",
         "distributed_movable_optimization_2": "-",
-        "distributed_movable_optimization_3": ":",
+        "distributed_movable_optimization_3": "-",
     }
     return styles.get(strategy_name, "-")
 
@@ -2117,9 +2117,9 @@ def _plot_user_sinr_cdf(strategy_ap_ue: dict[str, dict[str, Any]], output_path: 
     styles = {
         "central_massive_mimo": ("#2ca02c", "-"),
         "distributed_fixed": ("#1f77b4", "-"),
-        "distributed_movable": ("#ff7f0e", "--"),
+        "distributed_movable": ("#ff7f0e", "-"),
         "distributed_movable_optimization_2": ("#ff7f0e", "-"),
-        "distributed_movable_optimization_3": ("#ff7f0e", ":"),
+        "distributed_movable_optimization_3": ("#ff7f0e", "-"),
     }
     minimum = None
     for name in strategy_names:

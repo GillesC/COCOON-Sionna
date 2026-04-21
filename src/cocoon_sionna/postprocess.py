@@ -48,14 +48,21 @@ STRATEGY_TIKZ_COLOR_NAMES = {
     "distributed_movable_optimization_2": "DistributedMovableOptTwoColor",
     "distributed_movable_optimization_3": "DistributedMovableOptThreeColor",
 }
+STRATEGY_TEX_MACROS = {
+    "central_massive_mimo": "strategy1",
+    "distributed_fixed": "strategy2",
+    "distributed_movable": "strategy3",
+    "distributed_movable_optimization_2": "strategy4",
+    "distributed_movable_optimization_3": "strategy5",
+}
 STRATEGY_LINESTYLES = {
     "central_massive_mimo": "-",
     "distributed_fixed": "-",
-    "distributed_movable": "--",
+    "distributed_movable": "-",
     "distributed_movable_optimization_2": "-",
-    "distributed_movable_optimization_3": ":",
+    "distributed_movable_optimization_3": "-",
 }
-WINDOW_LINESTYLES = ("-", "--", ":", "-.")
+WINDOW_LINESTYLES = ("-",)
 PGFPLOTS_LINESTYLES = {
     "-": "solid",
     "--": "dashed",
@@ -80,6 +87,13 @@ def _ordered_strategies(names: Iterable[str]) -> list[str]:
 
 def _label(name: str) -> str:
     return STRATEGY_LABELS.get(name, name)
+
+
+def _strategy_tex_label(name: str, *, short: bool = False) -> str:
+    macro_name = STRATEGY_TEX_MACROS.get(name)
+    if macro_name is None:
+        return _label(name)
+    return f"\\{macro_name}[short]" if short else f"\\{macro_name}"
 
 
 def _strategy_color(name: str) -> str:
@@ -517,7 +531,7 @@ def _write_cdf_tikz(
             [
                 "    \\addplot[const plot mark right, no markers, line width=1.2pt, color=%s, %s%s] table[x=%s,y=%s,col sep=comma] {%s};"
                 % (_tikz_color_name(strategy), _tikz_line_style(strategy), extra_style, x_column, y_column, rel),
-                "    \\addlegendentry{%s}" % _label(strategy),
+                "    \\addlegendentry{%s}" % _strategy_tex_label(strategy),
             ]
         )
     body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
@@ -584,7 +598,7 @@ def _write_timeseries_tikz(
                 [
                     "    \\addplot[%s, line width=1.2pt, color=%s, %s] table[x=%s,y=%s,col sep=comma] {%s};"
                     % (plot_style, _tikz_color_name(strategy), _tikz_line_style(strategy), x_column, y_column, rel),
-                    "    \\addlegendentry{%s}" % _label(strategy),
+                    "    \\addlegendentry{%s}" % _strategy_tex_label(strategy),
                 ]
             )
     body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
@@ -601,7 +615,7 @@ def _write_boxplot_tikz(
     series_paths: dict[str, Path],
     strategy_names: Sequence[str],
 ) -> Path:
-    tick_labels = ",".join("{%s}" % _label(strategy) for strategy in strategy_names)
+    tick_labels = ",".join("{%s}" % _strategy_tex_label(strategy, short=True) for strategy in strategy_names)
     body = [
         "\\begin{tikzpicture}",
         "  \\begin{axis}[",
@@ -612,7 +626,6 @@ def _write_boxplot_tikz(
         "    grid=major,",
         "    xtick={%s}," % ",".join(str(index) for index in range(1, len(strategy_names) + 1)),
         f"    xticklabels={{{tick_labels}}},",
-        "    xticklabel style={rotate=15,anchor=east},",
         "    xmin=0,",
         "  ]",
     ]
@@ -639,6 +652,7 @@ def _write_histogram_tikz(
     series_paths: dict[str, Path],
     strategy_names: Sequence[str],
 ) -> Path:
+    plotted_strategies = [strategy for strategy in strategy_names if series_paths.get(strategy) is not None]
     body = [
         "\\begin{tikzpicture}",
         "  \\begin{axis}[",
@@ -648,20 +662,21 @@ def _write_histogram_tikz(
         f"    ylabel={{{ylabel}}},",
         "    grid=major,",
         "    ybar,",
-        "    bar width=7pt,",
+        "    bar width=5pt,",
         "    legend pos=north east,",
         "  ]",
     ]
-    for strategy in strategy_names:
+    for index, strategy in enumerate(plotted_strategies):
         csv_path = series_paths.get(strategy)
         if csv_path is None:
             continue
         rel = _relative_posix_path(csv_path, path.parent)
+        bar_shift = (float(index) - 0.5 * float(len(plotted_strategies) - 1)) * 6.0
         body.extend(
             [
-                "    \\addplot[draw=%s, fill=%s, fill opacity=0.35] table[x=bin_center_m,y=count,col sep=comma] {%s};"
-                % (_tikz_color_name(strategy), _tikz_color_name(strategy), rel),
-                "    \\addlegendentry{%s}" % _label(strategy),
+                "    \\addplot[draw=%s, fill=%s, fill opacity=0.55, bar shift=%0.1fpt] table[x=bin_center_m,y=count,col sep=comma] {%s};"
+                % (_tikz_color_name(strategy), _tikz_color_name(strategy), bar_shift, rel),
+                "    \\addlegendentry{%s}" % _strategy_tex_label(strategy, short=True),
             ]
         )
     body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
@@ -674,8 +689,6 @@ def _write_schedule_overview_tikz(
     series_paths: dict[str, Path],
     strategy_names: Sequence[str],
 ) -> Path:
-    xticks = ",".join(str(index) for index in range(len(strategy_names)))
-    xticklabels = ",".join("{%s}" % _label(strategy) for strategy in strategy_names)
     body = [
         "\\begin{tikzpicture}",
         "  \\begin{axis}[",
@@ -686,9 +699,7 @@ def _write_schedule_overview_tikz(
         "    grid=major,",
         "    ybar,",
         "    bar width=12pt,",
-        f"    xtick={{{xticks}}},",
-        f"    xticklabels={{{xticklabels}}},",
-        "    xticklabel style={rotate=15,anchor=east},",
+        "    xtick=\\empty,",
         "  ]",
     ]
     for strategy in strategy_names:
@@ -715,9 +726,7 @@ def _write_schedule_overview_tikz(
             "    grid=major,",
             "    ybar,",
             "    bar width=12pt,",
-            f"    xtick={{{xticks}}},",
-            f"    xticklabels={{{xticklabels}}},",
-            "    xticklabel style={rotate=15,anchor=east},",
+            "    xtick=\\empty,",
             "  ]",
         ]
     )
@@ -1575,7 +1584,7 @@ def run_sinr_snapshot_analysis(
                                         _tikz_companion_path(target_dir / "esr_time_conditioned_cdf.png").parent,
                                     ),
                                 ),
-                                "    \\addlegendentry{%s W%d}" % (_label(strategy), int(window["window_index"])),
+                                "    \\addlegendentry{%s W%d}" % (_strategy_tex_label(strategy), int(window["window_index"])),
                             ]
                         )
                     ],
@@ -1748,27 +1757,27 @@ def run_schedule_analysis(output_dir: str | Path, analysis_dir: str | Path | Non
     histogram_path = target_dir / "schedule_transition_distance_histogram.png"
     histogram_series_paths: dict[str, Path] = {}
     if move_rows:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        for strategy in strategies:
-            values = [row["distance_m"] for row in move_rows if row["strategy"] == strategy]
-            if values:
-                ax.hist(
-                    values,
-                    bins=min(12, max(4, len(values))),
-                    alpha=0.45,
-                    color=_strategy_color(strategy),
-                    label=_label(strategy),
-                )
-        ax.set_xlabel("Relocation distance [m]")
-        ax.set_ylabel("Count")
-        ax.grid(True, axis="y", alpha=0.3)
-        ax.legend()
-        fig.tight_layout()
-        _save_figure(fig, histogram_path)
-        plt.close(fig)
         all_values = np.asarray([row["distance_m"] for row in move_rows], dtype=float)
         num_bins = min(12, max(4, len(all_values)))
         bin_edges = np.histogram_bin_edges(all_values, bins=num_bins)
+        histogram_values_by_strategy = [
+            np.asarray([row["distance_m"] for row in move_rows if row["strategy"] == strategy], dtype=float)
+            for strategy in strategies
+        ]
+        nonempty_histogram_series = [
+            (strategy, values) for strategy, values in zip(strategies, histogram_values_by_strategy, strict=True) if values.size
+        ]
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        if nonempty_histogram_series:
+            ax.hist(
+                [values for _, values in nonempty_histogram_series],
+                bins=bin_edges,
+                alpha=0.75,
+                color=[_strategy_color(strategy) for strategy, _ in nonempty_histogram_series],
+                label=[_label(strategy) for strategy, _ in nonempty_histogram_series],
+                histtype="bar",
+            )
         for strategy in strategies:
             values = np.asarray([row["distance_m"] for row in move_rows if row["strategy"] == strategy], dtype=float)
             if values.size == 0:
@@ -1785,6 +1794,13 @@ def run_schedule_analysis(output_dir: str | Path, analysis_dir: str | Path | Non
                     for index, count in enumerate(counts)
                 ],
             )
+        ax.set_xlabel("Relocation distance [m]")
+        ax.set_ylabel("Count")
+        ax.grid(True, axis="y", alpha=0.3)
+        ax.legend()
+        fig.tight_layout()
+        _save_figure(fig, histogram_path)
+        plt.close(fig)
     else:
         _save_empty_plot(histogram_path, "Relocation distances", "No AP relocations were observed")
     _add_plot_artifact(
