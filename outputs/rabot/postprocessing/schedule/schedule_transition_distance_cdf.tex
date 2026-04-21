@@ -1,4 +1,4 @@
-% Auto-generated PGFPlots figure for schedule_transition_distance_histogram
+% Auto-generated PGFPlots figure for schedule_transition_distance_cdf
 % Requires: \usepackage{pgfplots,pgfplotstable,xcolor}
 % Optional: \usepgfplotslibrary{groupplots}
 \providecommand{\postprocessfigurewidth}{\linewidth}
@@ -13,22 +13,22 @@
     width=\postprocessfigurewidth,
     height=0.62\postprocessfigurewidth,
     xlabel={Relocation distance [m]},
-    ylabel={Count},
+    ylabel={CDF},
     grid=major,
-    ybar,
-    bar width=3pt,
-    legend pos=north east,
+    legend pos=south east,
+    ymin=0,
+    ymax=1.02,
   ]
     \ifShowStrategyThree
-    \addplot[draw=none, fill=DistributedMovableColor, fill opacity=0.55, bar shift=-6.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable.csv};
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, solid] table[x=distance_m,y=cdf,col sep=comma] {tikz_data/schedule_distance_cdf_distributed_movable.csv};
     \addlegendentry{\strategy3[short]}
     \fi
     \ifShowStrategyFour
-    \addplot[draw=none, fill=DistributedMovableOptTwoColor, fill opacity=0.55, bar shift=0.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_2.csv};
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptTwoColor, solid] table[x=distance_m,y=cdf,col sep=comma] {tikz_data/schedule_distance_cdf_distributed_movable_optimization_2.csv};
     \addlegendentry{\strategy4[short]}
     \fi
     \ifShowStrategyFive
-    \addplot[draw=none, fill=DistributedMovableOptThreeColor, fill opacity=0.55, bar shift=6.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_3.csv};
+    \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptThreeColor, solid] table[x=distance_m,y=cdf,col sep=comma] {tikz_data/schedule_distance_cdf_distributed_movable_optimization_3.csv};
     \addlegendentry{\strategy5[short]}
     \fi
   \end{axis}

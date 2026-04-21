@@ -188,8 +188,6 @@ def _write_tikz_file(path: Path, body_lines: Sequence[str], *, extra_comments: S
         defined_colors.add(color_name)
         color_value = _strategy_color(strategy).lstrip("#").upper()
         lines.append(f"\\definecolor{{{color_name}}}{{HTML}}{{{color_value}}}")
-    for conditional in STRATEGY_SHOW_CONDITIONALS.values():
-        lines.append(f"\\ifdefined\\if{conditional}\\else\\newif\\if{conditional}\\{conditional}true\\fi")
     if extra_comments:
         lines.extend(extra_comments)
     lines.extend(body_lines)
@@ -537,6 +535,7 @@ def _write_cdf_tikz(
     strategy_names: Sequence[str],
     xmin: float | None = None,
     each_nth_point: int | None = None,
+    short_legend: bool = False,
 ) -> Path:
     body = [
         "\\begin{tikzpicture}",
@@ -563,7 +562,7 @@ def _write_cdf_tikz(
             [
                 "    \\addplot[const plot mark right, no markers, line width=1.2pt, color=%s, %s%s] table[x=%s,y=%s,col sep=comma] {%s};"
                 % (_tikz_color_name(strategy), _tikz_line_style(strategy), extra_style, x_column, y_column, rel),
-                "    \\addlegendentry{%s}" % _strategy_tex_label(strategy),
+                "    \\addlegendentry{%s}" % _strategy_tex_label(strategy, short=short_legend),
             ],
         )
     body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
@@ -1802,70 +1801,60 @@ def run_schedule_analysis(output_dir: str | Path, analysis_dir: str | Path | Non
     }
 
     move_rows = [row for row in transition_rows if row["moved"]]
-    histogram_path = target_dir / "schedule_transition_distance_histogram.png"
-    histogram_series_paths: dict[str, Path] = {}
+    distance_cdf_path = target_dir / "schedule_transition_distance_cdf.png"
+    distance_cdf_series_paths: dict[str, Path] = {}
     if move_rows:
-        all_values = np.asarray([row["distance_m"] for row in move_rows], dtype=float)
-        num_bins = min(12, max(4, len(all_values)))
-        bin_edges = np.histogram_bin_edges(all_values, bins=num_bins)
-        histogram_values_by_strategy = [
+        distance_values_by_strategy = [
             np.asarray([row["distance_m"] for row in move_rows if row["strategy"] == strategy], dtype=float)
             for strategy in strategies
         ]
-        nonempty_histogram_series = [
-            (strategy, values) for strategy, values in zip(strategies, histogram_values_by_strategy, strict=True) if values.size
+        nonempty_distance_series = [
+            (strategy, np.sort(values)) for strategy, values in zip(strategies, distance_values_by_strategy, strict=True) if values.size
         ]
 
         fig, ax = plt.subplots(figsize=(8, 6))
-        if nonempty_histogram_series:
-            ax.hist(
-                [values for _, values in nonempty_histogram_series],
-                bins=bin_edges,
-                alpha=0.75,
-                color=[_strategy_color(strategy) for strategy, _ in nonempty_histogram_series],
-                label=[_label(strategy) for strategy, _ in nonempty_histogram_series],
-                histtype="bar",
-            )
-        for strategy in strategies:
-            values = np.asarray([row["distance_m"] for row in move_rows if row["strategy"] == strategy], dtype=float)
-            if values.size == 0:
-                continue
-            counts, _ = np.histogram(values, bins=bin_edges)
-            histogram_series_paths[strategy] = _write_csv_rows(
-                tikz_data_dir / f"schedule_histogram_{_slugify(strategy)}.csv",
-                ["bin_center_m", "count"],
+        for strategy, values in nonempty_distance_series:
+            cdf = np.arange(1, values.size + 1, dtype=float) / float(values.size)
+            ax.step(values, cdf, where="post", linewidth=2.0, color=_strategy_color(strategy), label=_label(strategy))
+            distance_cdf_series_paths[strategy] = _write_csv_rows(
+                tikz_data_dir / f"schedule_distance_cdf_{_slugify(strategy)}.csv",
+                ["distance_m", "cdf"],
                 [
                     {
-                        "bin_center_m": float(0.5 * (bin_edges[index] + bin_edges[index + 1])),
-                        "count": int(count),
+                        "distance_m": float(distance_m),
+                        "cdf": float(cdf_value),
                     }
-                    for index, count in enumerate(counts)
+                    for distance_m, cdf_value in zip(values, cdf, strict=True)
                 ],
             )
         ax.set_xlabel("Relocation distance [m]")
-        ax.set_ylabel("Count")
-        ax.grid(True, axis="y", alpha=0.3)
+        ax.set_ylabel("CDF")
+        ax.set_ylim(0.0, 1.02)
+        ax.grid(True, alpha=0.3)
         ax.legend()
         fig.tight_layout()
-        _save_figure(fig, histogram_path)
+        _save_figure(fig, distance_cdf_path)
         plt.close(fig)
     else:
-        _save_empty_plot(histogram_path, "Relocation distances", "No AP relocations were observed")
+        _save_empty_plot(distance_cdf_path, "Relocation distances", "No AP relocations were observed")
     _add_plot_artifact(
         artifacts,
         "histogram",
-        histogram_path,
+        distance_cdf_path,
         tikz_path=(
-            _write_histogram_tikz(
-                _tikz_companion_path(histogram_path),
+            _write_cdf_tikz(
+                _tikz_companion_path(distance_cdf_path),
                 title="Relocation distances",
                 xlabel="Relocation distance [m]",
-                ylabel="Count",
-                series_paths=histogram_series_paths,
+                ylabel="CDF",
+                x_column="distance_m",
+                y_column="cdf",
+                series_paths=distance_cdf_series_paths,
                 strategy_names=strategies,
+                short_legend=True,
             )
-            if histogram_series_paths
-            else _empty_tikz(_tikz_companion_path(histogram_path), "Relocation distances", "No AP relocations were observed")
+            if distance_cdf_series_paths
+            else _empty_tikz(_tikz_companion_path(distance_cdf_path), "Relocation distances", "No AP relocations were observed")
         ),
     )
 

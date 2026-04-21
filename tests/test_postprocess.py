@@ -310,7 +310,6 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     assert "\\definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}" in tikz_text
     assert "\\definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}" in tikz_text
     assert "color=CentralMassiveMimoColor, solid" in tikz_text
-    assert "\\ifdefined\\ifShowStrategyOne" in tikz_text
     assert "\\ifShowStrategyOne" in tikz_text
     assert "\\addlegendentry{\\strategy1}" in tikz_text
     assert "dashed" not in tikz_text
@@ -377,10 +376,12 @@ def test_run_schedule_analysis_and_manuscript_report(tmp_path: Path):
     assert schedule_artifacts["transition_csv"].exists()
     assert schedule_artifacts["overview_tikz"].exists()
     overview_tikz_text = schedule_artifacts["overview_tikz"].read_text(encoding="utf-8")
-    histogram_tikz_text = schedule_artifacts["histogram_tikz"].read_text(encoding="utf-8")
+    distance_cdf_tikz_text = schedule_artifacts["histogram_tikz"].read_text(encoding="utf-8")
     assert "\\addplot" in overview_tikz_text
     assert "xtick=\\empty" in overview_tikz_text
-    assert "bar shift=" in histogram_tikz_text
+    assert "ylabel={CDF}" in distance_cdf_tikz_text
+    assert "schedule_distance_cdf_distributed_movable.csv" in distance_cdf_tikz_text
+    assert "bar shift=" not in distance_cdf_tikz_text
     schedule_rows = list(csv.DictReader(schedule_artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
     local_row = next(row for row in schedule_rows if row["strategy"] == "distributed_movable")
     assert float(local_row["total_distance_m"]) == 10.0
