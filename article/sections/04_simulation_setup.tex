@@ -19,29 +19,30 @@ This section documents the reproducible processing chain from scene generation t
     \centering
     \caption{Key Rabot scenario parameters used in the Rabot simulations.}
     \label{tab:rabot_setup}
-    \begin{tabular}{ll}
+    \begin{tabular}{p{0.56\linewidth}p{0.34\linewidth}}
         \toprule
         Parameter & Value \\
         \midrule
-        Carrier frequency & \SI{3.5}{\giga\hertz} \\
-        Bandwidth & \SI{100}{\mega\hertz} \\
-        AP array topology & $2 \times 3$ \gls{upa}, dual-polarized \texttt{VH} \\
-        Central proxy topology & normalized co-located $6 \times 6$ \gls{upa}, dual-polarized \texttt{VH} \\
-        UE array topology & $1 \times 1$ planar array, dual-polarized \texttt{VH} \\
-        Element spacing & $0.5\lambda$ vertical, $0.5\lambda$ horizontal \\
+        Carrier frequency $f_c$ & \SI{3.5}{\giga\hertz} \\
+        Bandwidth $B$ & \SI{100}{\mega\hertz} \\
+        CFR tones $F$ & 128 \\
+        AP array topology $N_{\mathrm{AP}}^{\mathrm{row}}\times N_{\mathrm{AP}}^{\mathrm{col}}$ & $2 \times 3$ \gls{upa}, dual-polarized \texttt{VH} \\
+        Central proxy topology $N_{\mathrm{cent}}^{\mathrm{row}}\times N_{\mathrm{cent}}^{\mathrm{col}}$ & normalized co-located $6 \times 6$ \gls{upa}, dual-polarized \texttt{VH} \\
+        UE array topology $N_{\mathrm{UE}}^{\mathrm{row}}\times N_{\mathrm{UE}}^{\mathrm{col}}$ & $1 \times 1$ planar array, dual-polarized \texttt{VH} \\
+        Element spacing $\Delta_v,\Delta_h$ & $0.5\lambda$ vertical, $0.5\lambda$ horizontal \\
         Element radiation pattern & \gls{3gpp} \texttt{tr38901} \\
-        User height & \SI{1.5}{\meter} \\
-        Number of users & 10 \\
-        Simulation horizon & \SI{3600}{\second} \\
-        Time step & \SI{5}{\second} \\
-        Distributed \glspl{ap} per strategy & 6 \\
-        Fixed distributed \glspl{ap} & 0 \\
-        Candidate wall height & \SI{1.5}{\meter} \\
-        Candidate wall spacing & \SI{18}{\meter} \\
-        Minimum candidate spacing dth & \SI{12}{\meter} \\
-        Candidate wall offset & \SI{0.25}{\meter} \\
-        Relocation window Trel & \SI{60}{\second} \\
-        Optimization distance threshold & \SI{25}{\meter} \\
+        User height $h_{\mathrm{UE}}$ & \SI{1.5}{\meter} \\
+        Number of users $K$ & 10 \\
+        Simulation horizon $T_{\mathrm{sim}}$ & \SI{3600}{\second} \\
+        Time step $\Delta t$ & \SI{5}{\second} \\
+        Distributed \glspl{ap} per strategy $N_{\mathrm{mov}}$ & 6 \\
+        Fixed distributed \glspl{ap} $N_{\mathrm{fix}}$ & 0 \\
+        Candidate wall height $h_{\mathrm{cand}}$ & \SI{1.5}{\meter} \\
+        Candidate wall spacing $s_{\mathrm{wall}}$ & \SI{18}{\meter} \\
+        Minimum candidate spacing $d_{\mathrm{cand}}^{\min}$ & \SI{12}{\meter} \\
+        Candidate wall offset $\Delta_{\mathrm{wall}}$ & \SI{0.25}{\meter} \\
+        Relocation window $T_{\mathrm{rel}}$ & \SI{60}{\second} \\
+        Optimization distance threshold $d_{\mathrm{th}}$ & \SI{25}{\meter} \\
         % Initialization seed & 11 \\
         % Compared strategies & central proxy, fixed distributed, movable distributed opt.~2, opt.~3 \\
         % Coverage maps & disabled in current Rabot config \\
