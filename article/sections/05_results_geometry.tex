@@ -3,23 +3,25 @@
 
 This result block summarizes the simulated environment before presenting radio-performance metrics. It reports the available candidate mounting locations, the selected deployment, and the spatial distribution of user trajectories over the Rabot area.
 
-\begin{figure*}[t]
+\begin{figure}[t]
     \centering
-    \begin{subfigure}[t]{0.47\textwidth}
-        \centering
-        \PaperImage[\linewidth]{\resultroot/scene_layout.png}
-        \caption{Top-down Rabot scene layout with candidate sites, selected sites, and simulated mobility overlays.}
-        \label{fig:scene_layout}
-    \end{subfigure}\hfill
-    \begin{subfigure}[t]{0.47\textwidth}
-        \centering
-        \PaperImage[\linewidth]{\resultroot/trajectory_colormap.png}
-        \caption{Trajectory colormap used to visualize the temporal spread of user motion through the walkable space.}
-        \label{fig:trajectory_colormap}
-    \end{subfigure}
+    % \begin{subfigure}[t]{0.47\textwidth}
+    %     \centering
+    %     \PaperImage[\linewidth]{\resultroot/scene_layout.png}
+    %     \caption{Top-down Rabot scene layout with candidate sites, selected sites, and simulated mobility overlays.}
+    %     \label{fig:scene_layout}
+    % \end{subfigure}\hfill
+    % \begin{subfigure}[t]{0.47\textwidth}
+    %     \centering
+    %     \PaperImage[\linewidth]{\resultroot/trajectory_colormap.png}
+    %     \caption{Trajectory colormap used to visualize the temporal spread of user motion through the walkable space.}
+    %     \label{fig:trajectory_colormap}
+    % \end{subfigure}
+
+    \PaperImage[\linewidth]{\resultroot/scene_layout.png}
     \caption{Geometry results for the Rabot scenario. The panels show the selected deployment in the urban layout and the temporal distribution of user motion over the walkable area.}
     \label{fig:geometry_pair}
-\end{figure*}
+\end{figure}
 
 Figure~\ref{fig:geometry_pair} provides the geometric context for the subsequent \gls{sinr}, \gls{esr}, and relocation analyses. The scene-layout panel reports the candidate-site pool and the selected constellation, whereas the trajectory colormap reports the spatial spread of the simulated user population.
 For the present Rabot instance, the wall-generation stage yields 87 candidate low-height mounting locations, from which six distributed sites are activated per distributed strategy. The simulated mobility trace contributes 7210 user-snapshot positions over the one-hour horizon, and these positions span most of the accessible outdoor footprint rather than a single narrow corridor. This geometry already suggests that a single rooftop proxy will face a harder coverage problem than wall-mounted distributed deployments, because the user population repeatedly moves through streets and courtyard edges that can be served from multiple nearby façades.
