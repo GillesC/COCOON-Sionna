@@ -10,9 +10,11 @@
 \definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
 \begin{tikzpicture}
   \begin{axis}[
+    legend to name=sharedlegend,
     width=\postprocessfigurewidth,
     height=0.62\postprocessfigurewidth,
     xlabel={SINR per user snapshot [dB]},
+    legend columns=4,
     ylabel={CDF},
     grid=major,
     legend pos=south east,

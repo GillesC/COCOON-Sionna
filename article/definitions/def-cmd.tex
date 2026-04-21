@@ -1,0 +1,73 @@
+\newif\ifShowStrategyOne
+\newif\ifShowStrategyTwo
+\newif\ifShowStrategyThree
+\newif\ifShowStrategyFour
+\newif\ifShowStrategyFive
+\ShowStrategyOnetrue
+\ShowStrategyTwotrue
+\ShowStrategyThreetrue
+\ShowStrategyFourtrue
+\ShowStrategyFivetrue
+
+\usepackage{xstring}
+
+
+\ExplSyntaxOn
+\NewDocumentCommand{\disableStrategy}{ m }{%
+  \str_case:nn {#1}
+    {
+      {1}{\ShowStrategyOnefalse}
+      {2}{\ShowStrategyTwofalse}
+      {3}{\ShowStrategyThreefalse}
+      {4}{\ShowStrategyFourfalse}
+      {5}{\ShowStrategyFivefalse}
+    }%
+}
+\NewDocumentCommand{\enableStrategy}{ m }{%
+  \str_case:nn {#1}
+    {
+      {1}{\ShowStrategyOnetrue}
+      {2}{\ShowStrategyTwotrue}
+      {3}{\ShowStrategyThreetrue}
+      {4}{\ShowStrategyFourtrue}
+      {5}{\ShowStrategyFivetrue}
+    }%
+}
+% \NewDocumentCommand{\StrategyLabel}{ m m m O{long} }{%
+%   {\setlength{\fboxsep}{2pt}\fcolorbox{#2}{#2!22}{\scriptsize\strut #1}}%
+%   \str_if_eq:nnF {#4} {short} {\nobreakspace{}#3}%
+% }
+
+\usepackage[most]{tcolorbox}
+\newtcbox{\strategybox}[1][]{%
+  nobeforeafter,
+  boxrule=0.4pt,
+  arc=1.5pt,
+  left=4pt,
+  right=4pt,
+  top=0.1pt,
+  bottom=0.1pt,
+  boxsep=0pt,
+  colback=gray!20,
+  colframe=gray,
+  #1
+}
+
+\NewDocumentCommand{\StrategyLabel}{ m m m O{long} }{%
+  \IfStrEq{#4}{title}{}{\nobreakspace{}\strategybox[colframe=#2,colback=#2!22]{\scriptsize\strut \textcolor{#2}{#1}}}%
+  \IfStrEq{#4}{short}{}{\nobreakspace{}#3}%
+}
+
+
+\NewDocumentCommand{\strategy}{ m O{long} }{%
+  \str_case:nnF {#1}
+    {
+      {1}{\StrategyLabel{1}{CentralMassiveMimoColor}{\textcolor{CentralMassiveMimoColor}{Central~massive~MIMO}}[#2]}
+      {2}{\StrategyLabel{2}{DistributedFixedColor}{\textcolor{DistributedFixedColor}{Distributed~fixed}}[#2]}
+      {3}{\StrategyLabel{3}{DistributedMovableColor}{\textcolor{DistributedMovableColor}{Distributed~movable~(Opt.~1)}}[#2]}
+      {4}{\StrategyLabel{4}{DistributedMovableOptTwoColor}{\textcolor{DistributedMovableOptTwoColor}{Distributed~movable~(CSI)}}[#2]}
+      {5}{\StrategyLabel{5}{DistributedMovableOptThreeColor}{\textcolor{DistributedMovableOptThreeColor}{Distributed~movable~(PL)}}[#2]}
+    }
+    {(#1)}%
+}
+\ExplSyntaxOff

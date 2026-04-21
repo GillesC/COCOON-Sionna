@@ -21,15 +21,15 @@
   ]
     \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, solid] table[x=distance_m,y=cdf,col sep=comma] {tikz_data/schedule_distance_cdf_distributed_movable.csv};
-    \addlegendentry{\strategy3[short]}
+    \addlegendentry{\strategy3}
     \fi
     \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptTwoColor, solid] table[x=distance_m,y=cdf,col sep=comma] {tikz_data/schedule_distance_cdf_distributed_movable_optimization_2.csv};
-    \addlegendentry{\strategy4[short]}
+    \addlegendentry{\strategy4}
     \fi
     \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptThreeColor, solid] table[x=distance_m,y=cdf,col sep=comma] {tikz_data/schedule_distance_cdf_distributed_movable_optimization_3.csv};
-    \addlegendentry{\strategy5[short]}
+    \addlegendentry{\strategy5}
     \fi
   \end{axis}
 \end{tikzpicture}

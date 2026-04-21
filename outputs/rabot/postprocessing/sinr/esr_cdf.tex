@@ -10,6 +10,7 @@
 \definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
 \begin{tikzpicture}
   \begin{axis}[
+  % legend to name=sharedlegend,
     width=\postprocessfigurewidth,
     height=0.62\postprocessfigurewidth,
     xlabel={ESR [bit/s/Hz]},
@@ -19,23 +20,23 @@
   ]
     \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.2pt, color=CentralMassiveMimoColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_central_massive_mimo.csv};
-    \addlegendentry{\strategy1}
+    % \addlegendentry{\strategy1}
     \fi
     \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedFixedColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_fixed.csv};
-    \addlegendentry{\strategy2}
+    % \addlegendentry{\strategy2}
     \fi
     \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable.csv};
-    \addlegendentry{\strategy3}
+    % \addlegendentry{\strategy3}
     \fi
     \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptTwoColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable_optimization_2.csv};
-    \addlegendentry{\strategy4}
+    % \addlegendentry{\strategy4}
     \fi
     \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptThreeColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable_optimization_3.csv};
-    \addlegendentry{\strategy5}
+    % \addlegendentry{\strategy5}
     \fi
   \end{axis}
 \end{tikzpicture}
