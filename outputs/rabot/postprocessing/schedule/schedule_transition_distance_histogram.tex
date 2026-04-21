@@ -8,6 +8,11 @@
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
 \definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}
 \definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
+\ifdefined\ifShowStrategyOne\else\newif\ifShowStrategyOne\ShowStrategyOnetrue\fi
+\ifdefined\ifShowStrategyTwo\else\newif\ifShowStrategyTwo\ShowStrategyTwotrue\fi
+\ifdefined\ifShowStrategyThree\else\newif\ifShowStrategyThree\ShowStrategyThreetrue\fi
+\ifdefined\ifShowStrategyFour\else\newif\ifShowStrategyFour\ShowStrategyFourtrue\fi
+\ifdefined\ifShowStrategyFive\else\newif\ifShowStrategyFive\ShowStrategyFivetrue\fi
 \begin{tikzpicture}
   \begin{axis}[
     width=\postprocessfigurewidth,
@@ -19,11 +24,17 @@
     bar width=3pt,
     legend pos=north east,
   ]
+    \ifShowStrategyThree
     \addplot[draw=none, fill=DistributedMovableColor, fill opacity=0.55, bar shift=-6.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable.csv};
     \addlegendentry{\strategy3[short]}
+    \fi
+    \ifShowStrategyFour
     \addplot[draw=none, fill=DistributedMovableOptTwoColor, fill opacity=0.55, bar shift=0.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_2.csv};
     \addlegendentry{\strategy4[short]}
+    \fi
+    \ifShowStrategyFive
     \addplot[draw=none, fill=DistributedMovableOptThreeColor, fill opacity=0.55, bar shift=6.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_3.csv};
     \addlegendentry{\strategy5[short]}
+    \fi
   \end{axis}
 \end{tikzpicture}

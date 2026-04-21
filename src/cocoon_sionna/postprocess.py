@@ -55,6 +55,13 @@ STRATEGY_TEX_MACROS = {
     "distributed_movable_optimization_2": "strategy4",
     "distributed_movable_optimization_3": "strategy5",
 }
+STRATEGY_SHOW_CONDITIONALS = {
+    "central_massive_mimo": "ShowStrategyOne",
+    "distributed_fixed": "ShowStrategyTwo",
+    "distributed_movable": "ShowStrategyThree",
+    "distributed_movable_optimization_2": "ShowStrategyFour",
+    "distributed_movable_optimization_3": "ShowStrategyFive",
+}
 STRATEGY_LINESTYLES = {
     "central_massive_mimo": "-",
     "distributed_fixed": "-",
@@ -94,6 +101,27 @@ def _strategy_tex_label(name: str, *, short: bool = False) -> str:
     if macro_name is None:
         return _label(name)
     return f"\\{macro_name}[short]" if short else f"\\{macro_name}"
+
+
+def _strategy_show_conditional(name: str) -> str | None:
+    return STRATEGY_SHOW_CONDITIONALS.get(name)
+
+
+def _strategy_tick_label(name: str) -> str:
+    label = _strategy_tex_label(name, short=True)
+    conditional = _strategy_show_conditional(name)
+    if conditional is None:
+        return label
+    return f"\\if{conditional}{label}\\fi"
+
+
+def _append_strategy_plot(body: list[str], strategy: str, lines: Sequence[str]) -> None:
+    conditional = _strategy_show_conditional(strategy)
+    if conditional is not None:
+        body.append(f"    \\if{conditional}")
+    body.extend(lines)
+    if conditional is not None:
+        body.append("    \\fi")
 
 
 def _strategy_color(name: str) -> str:
@@ -160,6 +188,8 @@ def _write_tikz_file(path: Path, body_lines: Sequence[str], *, extra_comments: S
         defined_colors.add(color_name)
         color_value = _strategy_color(strategy).lstrip("#").upper()
         lines.append(f"\\definecolor{{{color_name}}}{{HTML}}{{{color_value}}}")
+    for conditional in STRATEGY_SHOW_CONDITIONALS.values():
+        lines.append(f"\\ifdefined\\if{conditional}\\else\\newif\\if{conditional}\\{conditional}true\\fi")
     if extra_comments:
         lines.extend(extra_comments)
     lines.extend(body_lines)
@@ -527,12 +557,14 @@ def _write_cdf_tikz(
             continue
         rel = _relative_posix_path(csv_path, path.parent)
         extra_style = f",each nth point={int(each_nth_point)}" if each_nth_point is not None else ""
-        body.extend(
+        _append_strategy_plot(
+            body,
+            strategy,
             [
                 "    \\addplot[const plot mark right, no markers, line width=1.2pt, color=%s, %s%s] table[x=%s,y=%s,col sep=comma] {%s};"
                 % (_tikz_color_name(strategy), _tikz_line_style(strategy), extra_style, x_column, y_column, rel),
                 "    \\addlegendentry{%s}" % _strategy_tex_label(strategy),
-            ]
+            ],
         )
     body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
     return _write_tikz_file(path, body)
@@ -583,9 +615,13 @@ def _write_timeseries_tikz(
             if csv_path is None:
                 continue
             rel = _relative_posix_path(csv_path, path.parent)
-            body.append(
-                "    \\addplot[no markers, line width=0.5pt, opacity=0.35, color=%s, %s] table[x=%s,y=%s,col sep=comma] {%s};"
-                % (_tikz_color_name(strategy), _tikz_line_style(strategy), x_column, faint_y_column, rel)
+            _append_strategy_plot(
+                body,
+                strategy,
+                [
+                    "    \\addplot[no markers, line width=0.5pt, opacity=0.35, color=%s, %s] table[x=%s,y=%s,col sep=comma] {%s};"
+                    % (_tikz_color_name(strategy), _tikz_line_style(strategy), x_column, faint_y_column, rel)
+                ],
             )
     if include_primary_series:
         plot_style = "const plot mark right" if step else "no markers"
@@ -594,12 +630,14 @@ def _write_timeseries_tikz(
             if csv_path is None:
                 continue
             rel = _relative_posix_path(csv_path, path.parent)
-            body.extend(
+            _append_strategy_plot(
+                body,
+                strategy,
                 [
                     "    \\addplot[%s, line width=1.2pt, color=%s, %s] table[x=%s,y=%s,col sep=comma] {%s};"
                     % (plot_style, _tikz_color_name(strategy), _tikz_line_style(strategy), x_column, y_column, rel),
                     "    \\addlegendentry{%s}" % _strategy_tex_label(strategy),
-                ]
+                ],
             )
     body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
     return _write_tikz_file(path, body)
@@ -615,7 +653,7 @@ def _write_boxplot_tikz(
     series_paths: dict[str, Path],
     strategy_names: Sequence[str],
 ) -> Path:
-    tick_labels = ",".join("{%s}" % _strategy_tex_label(strategy, short=True) for strategy in strategy_names)
+    tick_labels = ",".join("{%s}" % _strategy_tick_label(strategy) for strategy in strategy_names)
     body = [
         "\\begin{tikzpicture}",
         "  \\begin{axis}[",
@@ -624,8 +662,8 @@ def _write_boxplot_tikz(
         (f"    xlabel={{{xlabel}}}," if xlabel else ""),
         f"    ylabel={{{ylabel}}},",
         "    grid=major,",
-        "    xtick={%s}," % ",".join(str(index) for index in range(1, len(strategy_names) + 1)),
-        f"    xticklabels={{{tick_labels}}},",
+        "    ytick={%s}," % ",".join(str(index) for index in range(1, len(strategy_names) + 1)),
+        f"    yticklabels={{{tick_labels}}},",
         "    xmin=0,",
         "  ]",
     ]
@@ -635,9 +673,13 @@ def _write_boxplot_tikz(
         if csv_path is None:
             continue
         rel = _relative_posix_path(csv_path, path.parent)
-        body.append(
-            "    \\addplot[boxplot, boxplot/draw position=%d, draw=%s, fill=%s!35] table[y=%s,col sep=comma] {%s};"
-            % (index, _tikz_color_name(strategy), _tikz_color_name(strategy), y_column, rel)
+        _append_strategy_plot(
+            body,
+            strategy,
+            [
+                "    \\addplot[boxplot, boxplot/draw direction=x, boxplot/draw position=%d, draw=%s, fill=%s!35] table[x=%s,col sep=comma] {%s};"
+                % (index, _tikz_color_name(strategy), _tikz_color_name(strategy), y_column, rel)
+            ],
         )
     body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
     return _write_tikz_file(path, body)
@@ -662,7 +704,7 @@ def _write_histogram_tikz(
         f"    ylabel={{{ylabel}}},",
         "    grid=major,",
         "    ybar,",
-        "    bar width=5pt,",
+        "    bar width=3pt,",
         "    legend pos=north east,",
         "  ]",
     ]
@@ -672,12 +714,14 @@ def _write_histogram_tikz(
             continue
         rel = _relative_posix_path(csv_path, path.parent)
         bar_shift = (float(index) - 0.5 * float(len(plotted_strategies) - 1)) * 6.0
-        body.extend(
+        _append_strategy_plot(
+            body,
+            strategy,
             [
-                "    \\addplot[draw=%s, fill=%s, fill opacity=0.55, bar shift=%0.1fpt] table[x=bin_center_m,y=count,col sep=comma] {%s};"
-                % (_tikz_color_name(strategy), _tikz_color_name(strategy), bar_shift, rel),
+                "    \\addplot[draw=none, fill=%s, fill opacity=0.55, bar shift=%0.1fpt] table[x=bin_center_m,y=count,col sep=comma] {%s};"
+                % (_tikz_color_name(strategy), bar_shift, rel),
                 "    \\addlegendentry{%s}" % _strategy_tex_label(strategy, short=True),
-            ]
+            ],
         )
     body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
     return _write_tikz_file(path, body)
@@ -707,9 +751,13 @@ def _write_schedule_overview_tikz(
         if csv_path is None:
             continue
         rel = _relative_posix_path(csv_path, path.parent)
-        body.append(
-            "    \\addplot[draw=none, fill=%s] table[x=index,y=total_distance_m,col sep=comma] {%s};"
-            % (_tikz_color_name(strategy), rel)
+        _append_strategy_plot(
+            body,
+            strategy,
+            [
+                "    \\addplot[draw=none, fill=%s] table[x=index,y=total_distance_m,col sep=comma] {%s};"
+                % (_tikz_color_name(strategy), rel)
+            ],
         )
     body.extend(
         [
@@ -735,9 +783,13 @@ def _write_schedule_overview_tikz(
         if csv_path is None:
             continue
         rel = _relative_posix_path(csv_path, path.parent)
-        body.append(
-            "    \\addplot[draw=none, fill=%s] table[x=index,y=move_fraction,col sep=comma] {%s};"
-            % (_tikz_color_name(strategy), rel)
+        _append_strategy_plot(
+            body,
+            strategy,
+            [
+                "    \\addplot[draw=none, fill=%s] table[x=index,y=move_fraction,col sep=comma] {%s};"
+                % (_tikz_color_name(strategy), rel)
+            ],
         )
     body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
     return _write_tikz_file(path, body)
@@ -1551,47 +1603,43 @@ def run_sinr_snapshot_analysis(
             if plotted:
                 axis.legend(ncols=min(4, max(1, len(analysis_windows))))
         fig.tight_layout()
+        esr_window_tikz_path = _tikz_companion_path(target_dir / "esr_time_conditioned_cdf.png")
+        esr_window_tikz_body = [
+            "\\begin{tikzpicture}",
+            "  \\begin{axis}[",
+            "    width=\\postprocessfigurewidth,",
+            "    height=0.66\\postprocessfigurewidth,",
+            "    xlabel={ESR [bit/s/Hz]},",
+            "    ylabel={CDF},",
+            "    grid=major,",
+            "    legend pos=south east,",
+            "  ]",
+        ]
+        for strategy in strategy_names:
+            for window_offset, window in enumerate(analysis_windows):
+                window_key = f"{strategy}:W{int(window['window_index'])}"
+                csv_path = esr_window_series_paths.get(window_key)
+                if csv_path is None:
+                    continue
+                _append_strategy_plot(
+                    esr_window_tikz_body,
+                    strategy,
+                    [
+                        "    \\addplot[const plot mark right, no markers, line width=1.0pt, color=%s, %s] table[x=esr_bps_hz,y=cdf,col sep=comma] {%s};"
+                        % (
+                            _tikz_color_name(strategy),
+                            PGFPLOTS_LINESTYLES[WINDOW_LINESTYLES[window_offset % len(WINDOW_LINESTYLES)]],
+                            _relative_posix_path(csv_path, esr_window_tikz_path.parent),
+                        ),
+                        "    \\addlegendentry{%s W%d}" % (_strategy_tex_label(strategy), int(window["window_index"])),
+                    ],
+                )
+        esr_window_tikz_body.extend(["  \\end{axis}", "\\end{tikzpicture}"])
         _add_plot_artifact(
             artifacts,
             "esr_window_cdf_plot",
             _save_figure(fig, target_dir / "esr_time_conditioned_cdf.png"),
-            tikz_path=_write_tikz_file(
-                _tikz_companion_path(target_dir / "esr_time_conditioned_cdf.png"),
-                [
-                    "\\begin{tikzpicture}",
-                    "  \\begin{axis}[",
-                    "    width=\\postprocessfigurewidth,",
-                    "    height=0.66\\postprocessfigurewidth,",
-                    "    xlabel={ESR [bit/s/Hz]},",
-                    "    ylabel={CDF},",
-                    "    grid=major,",
-                    "    legend pos=south east,",
-                    "  ]",
-                    *[
-                        line
-                        for strategy in strategy_names
-                        for window_offset, window in enumerate(analysis_windows)
-                        for line in (
-                            []
-                            if f"{strategy}:W{int(window['window_index'])}" not in esr_window_series_paths
-                            else [
-                                "    \\addplot[const plot mark right, no markers, line width=1.0pt, color=%s, %s] table[x=esr_bps_hz,y=cdf,col sep=comma] {%s};"
-                                % (
-                                    _tikz_color_name(strategy),
-                                    PGFPLOTS_LINESTYLES[WINDOW_LINESTYLES[window_offset % len(WINDOW_LINESTYLES)]],
-                                    _relative_posix_path(
-                                        esr_window_series_paths[f'{strategy}:W{int(window["window_index"])}'],
-                                        _tikz_companion_path(target_dir / "esr_time_conditioned_cdf.png").parent,
-                                    ),
-                                ),
-                                "    \\addlegendentry{%s W%d}" % (_strategy_tex_label(strategy), int(window["window_index"])),
-                            ]
-                        )
-                    ],
-                    "  \\end{axis}",
-                    "\\end{tikzpicture}",
-                ],
-            ),
+            tikz_path=_write_tikz_file(esr_window_tikz_path, esr_window_tikz_body),
         )
         plt.close(fig)
     else:

@@ -8,6 +8,11 @@
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
 \definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}
 \definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
+\ifdefined\ifShowStrategyOne\else\newif\ifShowStrategyOne\ShowStrategyOnetrue\fi
+\ifdefined\ifShowStrategyTwo\else\newif\ifShowStrategyTwo\ShowStrategyTwotrue\fi
+\ifdefined\ifShowStrategyThree\else\newif\ifShowStrategyThree\ShowStrategyThreetrue\fi
+\ifdefined\ifShowStrategyFour\else\newif\ifShowStrategyFour\ShowStrategyFourtrue\fi
+\ifdefined\ifShowStrategyFive\else\newif\ifShowStrategyFive\ShowStrategyFivetrue\fi
 \begin{tikzpicture}
   \begin{axis}[
     width=\postprocessfigurewidth,
@@ -80,15 +85,25 @@
     \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3540.00000000,-0.42000000) (3540.00000000,7.42000000)};
     \addplot[gray, densely dotted, line width=0.5pt, no markers, forget plot] coordinates {(3600.00000000,-0.42000000) (3600.00000000,7.42000000)};
 
+    \ifShowStrategyOne
     \addplot[no markers, line width=1.2pt, color=CentralMassiveMimoColor, solid] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_central_massive_mimo.csv};
     \addlegendentry{\strategy1}
+    \fi
+    \ifShowStrategyTwo
     \addplot[no markers, line width=1.2pt, color=DistributedFixedColor, solid] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_fixed.csv};
     \addlegendentry{\strategy2}
+    \fi
+    \ifShowStrategyThree
     \addplot[no markers, line width=1.2pt, color=DistributedMovableColor, solid] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_movable.csv};
     \addlegendentry{\strategy3}
+    \fi
+    \ifShowStrategyFour
     \addplot[no markers, line width=1.2pt, color=DistributedMovableOptTwoColor, solid] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_movable_optimization_2.csv};
     \addlegendentry{\strategy4}
+    \fi
+    \ifShowStrategyFive
     \addplot[no markers, line width=1.2pt, color=DistributedMovableOptThreeColor, solid] table[x=time_s,y=users_below_threshold,col sep=comma] {tikz_data/users_below_threshold_distributed_movable_optimization_3.csv};
     \addlegendentry{\strategy5}
+    \fi
   \end{axis}
 \end{tikzpicture}

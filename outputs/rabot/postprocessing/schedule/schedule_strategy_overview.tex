@@ -8,6 +8,11 @@
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
 \definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}
 \definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
+\ifdefined\ifShowStrategyOne\else\newif\ifShowStrategyOne\ShowStrategyOnetrue\fi
+\ifdefined\ifShowStrategyTwo\else\newif\ifShowStrategyTwo\ShowStrategyTwotrue\fi
+\ifdefined\ifShowStrategyThree\else\newif\ifShowStrategyThree\ShowStrategyThreetrue\fi
+\ifdefined\ifShowStrategyFour\else\newif\ifShowStrategyFour\ShowStrategyFourtrue\fi
+\ifdefined\ifShowStrategyFive\else\newif\ifShowStrategyFive\ShowStrategyFivetrue\fi
 \begin{tikzpicture}
   \begin{axis}[
     name=leftplot,
@@ -19,11 +24,21 @@
     bar width=12pt,
     xtick=\empty,
   ]
+    \ifShowStrategyOne
     \addplot[draw=none, fill=CentralMassiveMimoColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_central_massive_mimo.csv};
+    \fi
+    \ifShowStrategyTwo
     \addplot[draw=none, fill=DistributedFixedColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_fixed.csv};
+    \fi
+    \ifShowStrategyThree
     \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_movable.csv};
+    \fi
+    \ifShowStrategyFour
     \addplot[draw=none, fill=DistributedMovableOptTwoColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_2.csv};
+    \fi
+    \ifShowStrategyFive
     \addplot[draw=none, fill=DistributedMovableOptThreeColor] table[x=index,y=total_distance_m,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_3.csv};
+    \fi
   \end{axis}
   \begin{axis}[
     at={(leftplot.outer north east)},
@@ -39,10 +54,20 @@
     bar width=12pt,
     xtick=\empty,
   ]
+    \ifShowStrategyOne
     \addplot[draw=none, fill=CentralMassiveMimoColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_central_massive_mimo.csv};
+    \fi
+    \ifShowStrategyTwo
     \addplot[draw=none, fill=DistributedFixedColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_fixed.csv};
+    \fi
+    \ifShowStrategyThree
     \addplot[draw=none, fill=DistributedMovableColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_movable.csv};
+    \fi
+    \ifShowStrategyFour
     \addplot[draw=none, fill=DistributedMovableOptTwoColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_2.csv};
+    \fi
+    \ifShowStrategyFive
     \addplot[draw=none, fill=DistributedMovableOptThreeColor] table[x=index,y=move_fraction,col sep=comma] {tikz_data/schedule_overview_distributed_movable_optimization_3.csv};
+    \fi
   \end{axis}
 \end{tikzpicture}

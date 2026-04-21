@@ -8,6 +8,11 @@
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
 \definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}
 \definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
+\ifdefined\ifShowStrategyOne\else\newif\ifShowStrategyOne\ShowStrategyOnetrue\fi
+\ifdefined\ifShowStrategyTwo\else\newif\ifShowStrategyTwo\ShowStrategyTwotrue\fi
+\ifdefined\ifShowStrategyThree\else\newif\ifShowStrategyThree\ShowStrategyThreetrue\fi
+\ifdefined\ifShowStrategyFour\else\newif\ifShowStrategyFour\ShowStrategyFourtrue\fi
+\ifdefined\ifShowStrategyFive\else\newif\ifShowStrategyFive\ShowStrategyFivetrue\fi
 \begin{tikzpicture}
   \begin{axis}[
     width=\postprocessfigurewidth,
@@ -17,15 +22,25 @@
     grid=major,
     legend pos=south east,
   ]
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.2pt, color=CentralMassiveMimoColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_central_massive_mimo.csv};
     \addlegendentry{\strategy1}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedFixedColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_fixed.csv};
     \addlegendentry{\strategy2}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable.csv};
     \addlegendentry{\strategy3}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptTwoColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable_optimization_2.csv};
     \addlegendentry{\strategy4}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.2pt, color=DistributedMovableOptThreeColor, solid,each nth point=5] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_cdf_distributed_movable_optimization_3.csv};
     \addlegendentry{\strategy5}
+    \fi
   \end{axis}
 \end{tikzpicture}

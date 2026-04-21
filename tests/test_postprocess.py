@@ -310,6 +310,8 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     assert "\\definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}" in tikz_text
     assert "\\definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}" in tikz_text
     assert "color=CentralMassiveMimoColor, solid" in tikz_text
+    assert "\\ifdefined\\ifShowStrategyOne" in tikz_text
+    assert "\\ifShowStrategyOne" in tikz_text
     assert "\\addlegendentry{\\strategy1}" in tikz_text
     assert "dashed" not in tikz_text
     assert "dotted" not in tikz_text
@@ -322,6 +324,10 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     boxplot_tikz_text = artifacts["boxplot_tikz"].read_text(encoding="utf-8")
     assert "title={" not in boxplot_tikz_text
     assert "xlabel={Per-user mean SINR [dB]}" in boxplot_tikz_text
+    assert "ytick={1,2,3}" in boxplot_tikz_text
+    assert "xticklabels" not in boxplot_tikz_text
+    assert "boxplot/draw direction=x" in boxplot_tikz_text
+    assert "table[x=mean_sinr_db" in boxplot_tikz_text
     assert "\\strategy1[short]" in boxplot_tikz_text
     rows = list(csv.DictReader(artifacts["summary_csv"].open("r", encoding="utf-8", newline="")))
     assert rows[0]["strategy"] == "central_massive_mimo"

@@ -8,6 +8,11 @@
 \definecolor{DistributedMovableColor}{HTML}{CB3A2A}
 \definecolor{DistributedMovableOptTwoColor}{HTML}{1B9E77}
 \definecolor{DistributedMovableOptThreeColor}{HTML}{7570B3}
+\ifdefined\ifShowStrategyOne\else\newif\ifShowStrategyOne\ShowStrategyOnetrue\fi
+\ifdefined\ifShowStrategyTwo\else\newif\ifShowStrategyTwo\ShowStrategyTwotrue\fi
+\ifdefined\ifShowStrategyThree\else\newif\ifShowStrategyThree\ShowStrategyThreetrue\fi
+\ifdefined\ifShowStrategyFour\else\newif\ifShowStrategyFour\ShowStrategyFourtrue\fi
+\ifdefined\ifShowStrategyFive\else\newif\ifShowStrategyFive\ShowStrategyFivetrue\fi
 \begin{tikzpicture}
   \begin{axis}[
     width=\postprocessfigurewidth,
@@ -17,615 +22,1225 @@
     grid=major,
     legend pos=south east,
   ]
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w0.csv};
     \addlegendentry{\strategy1 W0}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w1.csv};
     \addlegendentry{\strategy1 W1}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w2.csv};
     \addlegendentry{\strategy1 W2}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w3.csv};
     \addlegendentry{\strategy1 W3}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w4.csv};
     \addlegendentry{\strategy1 W4}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w5.csv};
     \addlegendentry{\strategy1 W5}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w6.csv};
     \addlegendentry{\strategy1 W6}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w7.csv};
     \addlegendentry{\strategy1 W7}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w8.csv};
     \addlegendentry{\strategy1 W8}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w9.csv};
     \addlegendentry{\strategy1 W9}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w10.csv};
     \addlegendentry{\strategy1 W10}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w11.csv};
     \addlegendentry{\strategy1 W11}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w12.csv};
     \addlegendentry{\strategy1 W12}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w13.csv};
     \addlegendentry{\strategy1 W13}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w14.csv};
     \addlegendentry{\strategy1 W14}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w15.csv};
     \addlegendentry{\strategy1 W15}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w16.csv};
     \addlegendentry{\strategy1 W16}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w17.csv};
     \addlegendentry{\strategy1 W17}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w18.csv};
     \addlegendentry{\strategy1 W18}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w19.csv};
     \addlegendentry{\strategy1 W19}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w20.csv};
     \addlegendentry{\strategy1 W20}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w21.csv};
     \addlegendentry{\strategy1 W21}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w22.csv};
     \addlegendentry{\strategy1 W22}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w23.csv};
     \addlegendentry{\strategy1 W23}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w24.csv};
     \addlegendentry{\strategy1 W24}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w25.csv};
     \addlegendentry{\strategy1 W25}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w26.csv};
     \addlegendentry{\strategy1 W26}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w27.csv};
     \addlegendentry{\strategy1 W27}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w28.csv};
     \addlegendentry{\strategy1 W28}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w29.csv};
     \addlegendentry{\strategy1 W29}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w30.csv};
     \addlegendentry{\strategy1 W30}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w31.csv};
     \addlegendentry{\strategy1 W31}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w32.csv};
     \addlegendentry{\strategy1 W32}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w33.csv};
     \addlegendentry{\strategy1 W33}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w34.csv};
     \addlegendentry{\strategy1 W34}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w35.csv};
     \addlegendentry{\strategy1 W35}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w36.csv};
     \addlegendentry{\strategy1 W36}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w37.csv};
     \addlegendentry{\strategy1 W37}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w38.csv};
     \addlegendentry{\strategy1 W38}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w39.csv};
     \addlegendentry{\strategy1 W39}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w40.csv};
     \addlegendentry{\strategy1 W40}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w41.csv};
     \addlegendentry{\strategy1 W41}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w42.csv};
     \addlegendentry{\strategy1 W42}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w43.csv};
     \addlegendentry{\strategy1 W43}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w44.csv};
     \addlegendentry{\strategy1 W44}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w45.csv};
     \addlegendentry{\strategy1 W45}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w46.csv};
     \addlegendentry{\strategy1 W46}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w47.csv};
     \addlegendentry{\strategy1 W47}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w48.csv};
     \addlegendentry{\strategy1 W48}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w49.csv};
     \addlegendentry{\strategy1 W49}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w50.csv};
     \addlegendentry{\strategy1 W50}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w51.csv};
     \addlegendentry{\strategy1 W51}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w52.csv};
     \addlegendentry{\strategy1 W52}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w53.csv};
     \addlegendentry{\strategy1 W53}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w54.csv};
     \addlegendentry{\strategy1 W54}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w55.csv};
     \addlegendentry{\strategy1 W55}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w56.csv};
     \addlegendentry{\strategy1 W56}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w57.csv};
     \addlegendentry{\strategy1 W57}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w58.csv};
     \addlegendentry{\strategy1 W58}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w59.csv};
     \addlegendentry{\strategy1 W59}
+    \fi
+    \ifShowStrategyOne
     \addplot[const plot mark right, no markers, line width=1.0pt, color=CentralMassiveMimoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_central_massive_mimo_w60.csv};
     \addlegendentry{\strategy1 W60}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w0.csv};
     \addlegendentry{\strategy2 W0}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w1.csv};
     \addlegendentry{\strategy2 W1}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w2.csv};
     \addlegendentry{\strategy2 W2}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w3.csv};
     \addlegendentry{\strategy2 W3}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w4.csv};
     \addlegendentry{\strategy2 W4}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w5.csv};
     \addlegendentry{\strategy2 W5}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w6.csv};
     \addlegendentry{\strategy2 W6}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w7.csv};
     \addlegendentry{\strategy2 W7}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w8.csv};
     \addlegendentry{\strategy2 W8}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w9.csv};
     \addlegendentry{\strategy2 W9}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w10.csv};
     \addlegendentry{\strategy2 W10}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w11.csv};
     \addlegendentry{\strategy2 W11}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w12.csv};
     \addlegendentry{\strategy2 W12}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w13.csv};
     \addlegendentry{\strategy2 W13}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w14.csv};
     \addlegendentry{\strategy2 W14}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w15.csv};
     \addlegendentry{\strategy2 W15}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w16.csv};
     \addlegendentry{\strategy2 W16}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w17.csv};
     \addlegendentry{\strategy2 W17}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w18.csv};
     \addlegendentry{\strategy2 W18}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w19.csv};
     \addlegendentry{\strategy2 W19}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w20.csv};
     \addlegendentry{\strategy2 W20}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w21.csv};
     \addlegendentry{\strategy2 W21}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w22.csv};
     \addlegendentry{\strategy2 W22}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w23.csv};
     \addlegendentry{\strategy2 W23}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w24.csv};
     \addlegendentry{\strategy2 W24}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w25.csv};
     \addlegendentry{\strategy2 W25}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w26.csv};
     \addlegendentry{\strategy2 W26}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w27.csv};
     \addlegendentry{\strategy2 W27}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w28.csv};
     \addlegendentry{\strategy2 W28}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w29.csv};
     \addlegendentry{\strategy2 W29}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w30.csv};
     \addlegendentry{\strategy2 W30}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w31.csv};
     \addlegendentry{\strategy2 W31}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w32.csv};
     \addlegendentry{\strategy2 W32}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w33.csv};
     \addlegendentry{\strategy2 W33}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w34.csv};
     \addlegendentry{\strategy2 W34}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w35.csv};
     \addlegendentry{\strategy2 W35}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w36.csv};
     \addlegendentry{\strategy2 W36}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w37.csv};
     \addlegendentry{\strategy2 W37}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w38.csv};
     \addlegendentry{\strategy2 W38}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w39.csv};
     \addlegendentry{\strategy2 W39}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w40.csv};
     \addlegendentry{\strategy2 W40}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w41.csv};
     \addlegendentry{\strategy2 W41}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w42.csv};
     \addlegendentry{\strategy2 W42}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w43.csv};
     \addlegendentry{\strategy2 W43}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w44.csv};
     \addlegendentry{\strategy2 W44}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w45.csv};
     \addlegendentry{\strategy2 W45}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w46.csv};
     \addlegendentry{\strategy2 W46}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w47.csv};
     \addlegendentry{\strategy2 W47}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w48.csv};
     \addlegendentry{\strategy2 W48}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w49.csv};
     \addlegendentry{\strategy2 W49}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w50.csv};
     \addlegendentry{\strategy2 W50}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w51.csv};
     \addlegendentry{\strategy2 W51}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w52.csv};
     \addlegendentry{\strategy2 W52}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w53.csv};
     \addlegendentry{\strategy2 W53}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w54.csv};
     \addlegendentry{\strategy2 W54}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w55.csv};
     \addlegendentry{\strategy2 W55}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w56.csv};
     \addlegendentry{\strategy2 W56}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w57.csv};
     \addlegendentry{\strategy2 W57}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w58.csv};
     \addlegendentry{\strategy2 W58}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w59.csv};
     \addlegendentry{\strategy2 W59}
+    \fi
+    \ifShowStrategyTwo
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedFixedColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_fixed_w60.csv};
     \addlegendentry{\strategy2 W60}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w0.csv};
     \addlegendentry{\strategy3 W0}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w1.csv};
     \addlegendentry{\strategy3 W1}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w2.csv};
     \addlegendentry{\strategy3 W2}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w3.csv};
     \addlegendentry{\strategy3 W3}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w4.csv};
     \addlegendentry{\strategy3 W4}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w5.csv};
     \addlegendentry{\strategy3 W5}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w6.csv};
     \addlegendentry{\strategy3 W6}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w7.csv};
     \addlegendentry{\strategy3 W7}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w8.csv};
     \addlegendentry{\strategy3 W8}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w9.csv};
     \addlegendentry{\strategy3 W9}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w10.csv};
     \addlegendentry{\strategy3 W10}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w11.csv};
     \addlegendentry{\strategy3 W11}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w12.csv};
     \addlegendentry{\strategy3 W12}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w13.csv};
     \addlegendentry{\strategy3 W13}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w14.csv};
     \addlegendentry{\strategy3 W14}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w15.csv};
     \addlegendentry{\strategy3 W15}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w16.csv};
     \addlegendentry{\strategy3 W16}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w17.csv};
     \addlegendentry{\strategy3 W17}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w18.csv};
     \addlegendentry{\strategy3 W18}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w19.csv};
     \addlegendentry{\strategy3 W19}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w20.csv};
     \addlegendentry{\strategy3 W20}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w21.csv};
     \addlegendentry{\strategy3 W21}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w22.csv};
     \addlegendentry{\strategy3 W22}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w23.csv};
     \addlegendentry{\strategy3 W23}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w24.csv};
     \addlegendentry{\strategy3 W24}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w25.csv};
     \addlegendentry{\strategy3 W25}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w26.csv};
     \addlegendentry{\strategy3 W26}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w27.csv};
     \addlegendentry{\strategy3 W27}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w28.csv};
     \addlegendentry{\strategy3 W28}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w29.csv};
     \addlegendentry{\strategy3 W29}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w30.csv};
     \addlegendentry{\strategy3 W30}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w31.csv};
     \addlegendentry{\strategy3 W31}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w32.csv};
     \addlegendentry{\strategy3 W32}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w33.csv};
     \addlegendentry{\strategy3 W33}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w34.csv};
     \addlegendentry{\strategy3 W34}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w35.csv};
     \addlegendentry{\strategy3 W35}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w36.csv};
     \addlegendentry{\strategy3 W36}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w37.csv};
     \addlegendentry{\strategy3 W37}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w38.csv};
     \addlegendentry{\strategy3 W38}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w39.csv};
     \addlegendentry{\strategy3 W39}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w40.csv};
     \addlegendentry{\strategy3 W40}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w41.csv};
     \addlegendentry{\strategy3 W41}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w42.csv};
     \addlegendentry{\strategy3 W42}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w43.csv};
     \addlegendentry{\strategy3 W43}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w44.csv};
     \addlegendentry{\strategy3 W44}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w45.csv};
     \addlegendentry{\strategy3 W45}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w46.csv};
     \addlegendentry{\strategy3 W46}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w47.csv};
     \addlegendentry{\strategy3 W47}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w48.csv};
     \addlegendentry{\strategy3 W48}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w49.csv};
     \addlegendentry{\strategy3 W49}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w50.csv};
     \addlegendentry{\strategy3 W50}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w51.csv};
     \addlegendentry{\strategy3 W51}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w52.csv};
     \addlegendentry{\strategy3 W52}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w53.csv};
     \addlegendentry{\strategy3 W53}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w54.csv};
     \addlegendentry{\strategy3 W54}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w55.csv};
     \addlegendentry{\strategy3 W55}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w56.csv};
     \addlegendentry{\strategy3 W56}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w57.csv};
     \addlegendentry{\strategy3 W57}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w58.csv};
     \addlegendentry{\strategy3 W58}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w59.csv};
     \addlegendentry{\strategy3 W59}
+    \fi
+    \ifShowStrategyThree
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_w60.csv};
     \addlegendentry{\strategy3 W60}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w0.csv};
     \addlegendentry{\strategy4 W0}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w1.csv};
     \addlegendentry{\strategy4 W1}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w2.csv};
     \addlegendentry{\strategy4 W2}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w3.csv};
     \addlegendentry{\strategy4 W3}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w4.csv};
     \addlegendentry{\strategy4 W4}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w5.csv};
     \addlegendentry{\strategy4 W5}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w6.csv};
     \addlegendentry{\strategy4 W6}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w7.csv};
     \addlegendentry{\strategy4 W7}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w8.csv};
     \addlegendentry{\strategy4 W8}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w9.csv};
     \addlegendentry{\strategy4 W9}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w10.csv};
     \addlegendentry{\strategy4 W10}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w11.csv};
     \addlegendentry{\strategy4 W11}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w12.csv};
     \addlegendentry{\strategy4 W12}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w13.csv};
     \addlegendentry{\strategy4 W13}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w14.csv};
     \addlegendentry{\strategy4 W14}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w15.csv};
     \addlegendentry{\strategy4 W15}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w16.csv};
     \addlegendentry{\strategy4 W16}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w17.csv};
     \addlegendentry{\strategy4 W17}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w18.csv};
     \addlegendentry{\strategy4 W18}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w19.csv};
     \addlegendentry{\strategy4 W19}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w20.csv};
     \addlegendentry{\strategy4 W20}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w21.csv};
     \addlegendentry{\strategy4 W21}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w22.csv};
     \addlegendentry{\strategy4 W22}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w23.csv};
     \addlegendentry{\strategy4 W23}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w24.csv};
     \addlegendentry{\strategy4 W24}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w25.csv};
     \addlegendentry{\strategy4 W25}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w26.csv};
     \addlegendentry{\strategy4 W26}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w27.csv};
     \addlegendentry{\strategy4 W27}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w28.csv};
     \addlegendentry{\strategy4 W28}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w29.csv};
     \addlegendentry{\strategy4 W29}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w30.csv};
     \addlegendentry{\strategy4 W30}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w31.csv};
     \addlegendentry{\strategy4 W31}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w32.csv};
     \addlegendentry{\strategy4 W32}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w33.csv};
     \addlegendentry{\strategy4 W33}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w34.csv};
     \addlegendentry{\strategy4 W34}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w35.csv};
     \addlegendentry{\strategy4 W35}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w36.csv};
     \addlegendentry{\strategy4 W36}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w37.csv};
     \addlegendentry{\strategy4 W37}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w38.csv};
     \addlegendentry{\strategy4 W38}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w39.csv};
     \addlegendentry{\strategy4 W39}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w40.csv};
     \addlegendentry{\strategy4 W40}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w41.csv};
     \addlegendentry{\strategy4 W41}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w42.csv};
     \addlegendentry{\strategy4 W42}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w43.csv};
     \addlegendentry{\strategy4 W43}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w44.csv};
     \addlegendentry{\strategy4 W44}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w45.csv};
     \addlegendentry{\strategy4 W45}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w46.csv};
     \addlegendentry{\strategy4 W46}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w47.csv};
     \addlegendentry{\strategy4 W47}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w48.csv};
     \addlegendentry{\strategy4 W48}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w49.csv};
     \addlegendentry{\strategy4 W49}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w50.csv};
     \addlegendentry{\strategy4 W50}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w51.csv};
     \addlegendentry{\strategy4 W51}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w52.csv};
     \addlegendentry{\strategy4 W52}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w53.csv};
     \addlegendentry{\strategy4 W53}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w54.csv};
     \addlegendentry{\strategy4 W54}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w55.csv};
     \addlegendentry{\strategy4 W55}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w56.csv};
     \addlegendentry{\strategy4 W56}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w57.csv};
     \addlegendentry{\strategy4 W57}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w58.csv};
     \addlegendentry{\strategy4 W58}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w59.csv};
     \addlegendentry{\strategy4 W59}
+    \fi
+    \ifShowStrategyFour
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptTwoColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_2_w60.csv};
     \addlegendentry{\strategy4 W60}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w0.csv};
     \addlegendentry{\strategy5 W0}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w1.csv};
     \addlegendentry{\strategy5 W1}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w2.csv};
     \addlegendentry{\strategy5 W2}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w3.csv};
     \addlegendentry{\strategy5 W3}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w4.csv};
     \addlegendentry{\strategy5 W4}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w5.csv};
     \addlegendentry{\strategy5 W5}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w6.csv};
     \addlegendentry{\strategy5 W6}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w7.csv};
     \addlegendentry{\strategy5 W7}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w8.csv};
     \addlegendentry{\strategy5 W8}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w9.csv};
     \addlegendentry{\strategy5 W9}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w10.csv};
     \addlegendentry{\strategy5 W10}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w11.csv};
     \addlegendentry{\strategy5 W11}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w12.csv};
     \addlegendentry{\strategy5 W12}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w13.csv};
     \addlegendentry{\strategy5 W13}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w14.csv};
     \addlegendentry{\strategy5 W14}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w15.csv};
     \addlegendentry{\strategy5 W15}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w16.csv};
     \addlegendentry{\strategy5 W16}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w17.csv};
     \addlegendentry{\strategy5 W17}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w18.csv};
     \addlegendentry{\strategy5 W18}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w19.csv};
     \addlegendentry{\strategy5 W19}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w20.csv};
     \addlegendentry{\strategy5 W20}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w21.csv};
     \addlegendentry{\strategy5 W21}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w22.csv};
     \addlegendentry{\strategy5 W22}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w23.csv};
     \addlegendentry{\strategy5 W23}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w24.csv};
     \addlegendentry{\strategy5 W24}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w25.csv};
     \addlegendentry{\strategy5 W25}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w26.csv};
     \addlegendentry{\strategy5 W26}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w27.csv};
     \addlegendentry{\strategy5 W27}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w28.csv};
     \addlegendentry{\strategy5 W28}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w29.csv};
     \addlegendentry{\strategy5 W29}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w30.csv};
     \addlegendentry{\strategy5 W30}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w31.csv};
     \addlegendentry{\strategy5 W31}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w32.csv};
     \addlegendentry{\strategy5 W32}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w33.csv};
     \addlegendentry{\strategy5 W33}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w34.csv};
     \addlegendentry{\strategy5 W34}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w35.csv};
     \addlegendentry{\strategy5 W35}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w36.csv};
     \addlegendentry{\strategy5 W36}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w37.csv};
     \addlegendentry{\strategy5 W37}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w38.csv};
     \addlegendentry{\strategy5 W38}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w39.csv};
     \addlegendentry{\strategy5 W39}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w40.csv};
     \addlegendentry{\strategy5 W40}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w41.csv};
     \addlegendentry{\strategy5 W41}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w42.csv};
     \addlegendentry{\strategy5 W42}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w43.csv};
     \addlegendentry{\strategy5 W43}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w44.csv};
     \addlegendentry{\strategy5 W44}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w45.csv};
     \addlegendentry{\strategy5 W45}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w46.csv};
     \addlegendentry{\strategy5 W46}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w47.csv};
     \addlegendentry{\strategy5 W47}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w48.csv};
     \addlegendentry{\strategy5 W48}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w49.csv};
     \addlegendentry{\strategy5 W49}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w50.csv};
     \addlegendentry{\strategy5 W50}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w51.csv};
     \addlegendentry{\strategy5 W51}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w52.csv};
     \addlegendentry{\strategy5 W52}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w53.csv};
     \addlegendentry{\strategy5 W53}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w54.csv};
     \addlegendentry{\strategy5 W54}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w55.csv};
     \addlegendentry{\strategy5 W55}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w56.csv};
     \addlegendentry{\strategy5 W56}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w57.csv};
     \addlegendentry{\strategy5 W57}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w58.csv};
     \addlegendentry{\strategy5 W58}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w59.csv};
     \addlegendentry{\strategy5 W59}
+    \fi
+    \ifShowStrategyFive
     \addplot[const plot mark right, no markers, line width=1.0pt, color=DistributedMovableOptThreeColor, solid] table[x=esr_bps_hz,y=cdf,col sep=comma] {tikz_data/esr_window_cdf_distributed_movable_optimization_3_w60.csv};
     \addlegendentry{\strategy5 W60}
+    \fi
   \end{axis}
 \end{tikzpicture}

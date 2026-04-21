@@ -8,7 +8,7 @@ The simulation workflow used by the paper matches the repository workflow:
     \item generate wall-mounted candidate \glspl{ap} and the single rooftop proxy site,
     \item simulate user trajectories over the walkable outdoor area,
     \item compute path-based \gls{csi} and explicit \gls{sinr} terms,
-    \item compare the central proxy, the fixed distributed baseline, the historical local-\gls{csi} relocation rule, the nearest-user proxy-\gls{esr} rule, and the nearest-user proxy-power rule,
+    \item compare the central proxy, the fixed distributed baseline, the nearest-user proxy-\gls{esr} rule, and the nearest-user proxy-power rule,
     \item export reusable result files,
     \item generate analysis figures in a separate postprocessing step.
 \end{enumerate}
@@ -41,11 +41,9 @@ This section documents the reproducible processing chain from scene generation t
         Minimum candidate spacing & \SI{12}{\meter} \\
         Candidate wall offset & \SI{0.25}{\meter} \\
         Relocation window & \SI{60}{\second} \\
-        Historical \gls{csi} decay rate & \num{0.00116}~\si{\per\second} \\
-        Optimization-1 neighborhood size & $K=10$ nearest \gls{ue} snapshots per candidate \\
         Optimization-2 distance threshold & \SI{25}{\meter} \\
         Initialization seed & 11 \\
-        Compared strategies & central proxy, fixed distributed, movable distributed opt.~1, opt.~2, opt.~3 \\
+        Compared strategies & central proxy, fixed distributed, movable distributed opt.~2, opt.~3 \\
         Coverage maps & disabled in current Rabot config \\
         \bottomrule
     \end{tabular}
@@ -61,7 +59,6 @@ This section documents the reproducible processing chain from scene generation t
         \midrule
         \texttt{central\_massive\_mimo} & Single rooftop proxy on the building nearest the area center, oriented toward the center, with a normalized co-located $6\times 6$ \gls{upa} obtained by aggregating the distributed element budget into one rooftop site. Use as central reference only. \\
         \texttt{distributed\_fixed} & One distributed subset is selected from wall candidates and kept unchanged for the full run. \\
-        \texttt{distributed\_movable} & Optimization~1. The distributed subset is reselected every relocation window from the weighted 10th percentile of the stored best-user deployed-\gls{ap}-to-\gls{ue} \gls{sinr} samples in the union of the configured $K=10$ nearest \gls{ue}-snapshot neighborhoods per candidate, with exponential aging of older window segments. \\
         \texttt{distributed\_movable\_optimization\_2} & Optimization~2. The distributed subset is reselected every relocation window from a nearest-user \gls{ue}-to-\gls{ue} proxy-\gls{csi} model: each candidate site binds to the closest user within the configured distance threshold, the code forms a wideband proxy channel from that user's measured \gls{ue}-to-\gls{ue} CFR, and the subset is ranked by proxy \gls{esr}. \\
         \texttt{distributed\_movable\_optimization\_3} & Optimization~3. The distributed subset is reselected every relocation window from the same nearest-user distance-threshold proxy model as optimization~2, but the code uses the stored \gls{ue}-to-\gls{ue} link-power row of the anchor user, replaces the diagonal entry by the strongest non-self value, rescales by $P_{\mathrm{AP}}/P_{\mathrm{UE}}$, and ranks the subset by proxy average power. \\
         \bottomrule
@@ -70,4 +67,4 @@ This section documents the reproducible processing chain from scene generation t
 
 The figure set in \cref{sec:results_geometry,sec:results_sinr,sec:results_relocation} is read directly from the generated Rabot outputs under \texttt{outputs/rabot/} and \texttt{outputs/rabot/postprocessing/}. This keeps the manuscript synchronized with the latest postprocessed result files in the repository.
 
-For the current Rabot instantiation, the relocation controller starts from a single seed constellation drawn from the wall-mounted candidate pool using the configured random seed. That seed constellation is frozen for the \texttt{distributed\_fixed} baseline and also provides the initial labeled movable-\gls{ap} positions for \texttt{distributed\_movable}, \texttt{distributed\_movable\_optimization\_2}, and \texttt{distributed\_movable\_optimization\_3}. Thereafter, every relocation window applies the greedy subset search from \cref{sec:system_model} with the selected optimization objective and then solves a minimum-displacement assignment so that schedule traces, relocation distances, and move fractions correspond to the motion of persistent AP identities rather than to arbitrary reordering of candidate sites. For optimization~2 and optimization~3, the dormant candidate-position \gls{ap}-to-\gls{ue} channel is never queried during this search; only measured \gls{ue}-to-\gls{ue} proxy information is used. Optimization~2 prefers the full complex wideband proxy channel and falls back to a power-based proxy-\gls{esr} computation when that proxy channel cannot be decoded robustly from the exported tensor. Optimization~3 always uses the stored proxy link-power tensor. In all cases, the actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed only after the new candidate subset has been selected.
+For the current Rabot instantiation, the relocation controller starts from a single seed constellation drawn from the wall-mounted candidate pool using the configured random seed. That seed constellation is frozen for the \texttt{distributed\_fixed} baseline and also provides the initial labeled movable-\gls{ap} positions for \texttt{distributed\_movable\_optimization\_2} and \texttt{distributed\_movable\_optimization\_3}. Thereafter, every relocation window applies the greedy subset search from \cref{sec:system_model} with the selected proxy objective and then solves a minimum-displacement assignment so that schedule traces, relocation distances, and move fractions correspond to the motion of persistent AP identities rather than to arbitrary reordering of candidate sites. For optimization~2 and optimization~3, the dormant candidate-position \gls{ap}-to-\gls{ue} channel is never queried during this search; only measured \gls{ue}-to-\gls{ue} proxy information is used. Optimization~2 prefers the full complex wideband proxy channel and falls back to a power-based proxy-\gls{esr} computation when that proxy channel cannot be decoded robustly from the exported tensor. Optimization~3 always uses the stored proxy link-power tensor. In all cases, the actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed only after the new candidate subset has been selected.
