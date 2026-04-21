@@ -324,6 +324,7 @@ def test_run_sinr_snapshot_analysis_writes_csvs_and_plots(tmp_path: Path):
     assert "title={" not in boxplot_tikz_text
     assert "xlabel={Per-user mean SINR [dB]}" in boxplot_tikz_text
     assert "ytick={1,2,3}" in boxplot_tikz_text
+    assert "yticklabels={{\\strategy1[short]},{\\strategy2[short]},{\\strategy3[short]}}" in boxplot_tikz_text
     assert "xticklabels" not in boxplot_tikz_text
     assert "boxplot/draw direction=x" in boxplot_tikz_text
     assert "table[x=mean_sinr_db" in boxplot_tikz_text

@@ -108,11 +108,7 @@ def _strategy_show_conditional(name: str) -> str | None:
 
 
 def _strategy_tick_label(name: str) -> str:
-    label = _strategy_tex_label(name, short=True)
-    conditional = _strategy_show_conditional(name)
-    if conditional is None:
-        return label
-    return f"\\if{conditional}{label}\\fi"
+    return _strategy_tex_label(name, short=True)
 
 
 def _append_strategy_plot(body: list[str], strategy: str, lines: Sequence[str]) -> None:
