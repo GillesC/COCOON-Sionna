@@ -16,14 +16,14 @@
     ylabel={Count},
     grid=major,
     ybar,
-    bar width=5pt,
+    bar width=3pt,
     legend pos=north east,
   ]
-    \addplot[draw=DistributedMovableColor, fill=DistributedMovableColor, fill opacity=0.55, bar shift=-6.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable.csv};
+    \addplot[draw=none, fill=DistributedMovableColor, fill opacity=0.55, bar shift=-6.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable.csv};
     \addlegendentry{\strategy3[short]}
-    \addplot[draw=DistributedMovableOptTwoColor, fill=DistributedMovableOptTwoColor, fill opacity=0.55, bar shift=0.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_2.csv};
+    \addplot[draw=none, fill=DistributedMovableOptTwoColor, fill opacity=0.55, bar shift=0.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_2.csv};
     \addlegendentry{\strategy4[short]}
-    \addplot[draw=DistributedMovableOptThreeColor, fill=DistributedMovableOptThreeColor, fill opacity=0.55, bar shift=6.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_3.csv};
+    \addplot[draw=none, fill=DistributedMovableOptThreeColor, fill opacity=0.55, bar shift=6.0pt] table[x=bin_center_m,y=count,col sep=comma] {tikz_data/schedule_histogram_distributed_movable_optimization_3.csv};
     \addlegendentry{\strategy5[short]}
   \end{axis}
 \end{tikzpicture}

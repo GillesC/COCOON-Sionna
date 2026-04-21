@@ -15,8 +15,8 @@
     xlabel={Per-user mean SINR [dB]},
     ylabel={Deployment Strategy},
     grid=major,
-    xtick={1,2,3,4,5},
-    xticklabels={{\strategy1[short]},{\strategy2[short]},{\strategy3[short]},{\strategy4[short]},{\strategy5[short]}},
+    ytick={1,2,3,4,5},
+    yticklabels={{\strategy1[short]},{\strategy2[short]},{\strategy3[short]},{\strategy4[short]},{\strategy5[short]}},
     xmin=0,
   ]
     \addplot[boxplot, boxplot/draw position=1, draw=CentralMassiveMimoColor, fill=CentralMassiveMimoColor!35] table[y=mean_sinr_db,col sep=comma] {tikz_data/per_user_mean_sinr_central_massive_mimo.csv};
