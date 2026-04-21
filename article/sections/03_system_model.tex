@@ -51,8 +51,8 @@ The placement layer compares four strategies under a common \gls{ap} budget:
 \begin{itemize}
     \item[] \strategy1 -- one rooftop \gls{ap} is placed on the building whose rooftop representative point is nearest the area center; the \gls{bs} is oriented toward the area center. Its antenna topology is the normalized co-located array obtained by aggregating the distributed element budget into one rooftop \gls{upa}. 
     \item[] \strategy2 -- a distributed set of wall-mounted candidate positions is sampled once and kept fixed over the full trajectory.
-    \item[] \strategy4 -- optimization 1. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with a current-window nearest-user \gls{ue}-to-\gls{ue} proxy-\gls{csi} rule and a proxy-\gls{esr} objective.
-    \item[] \strategy5 -- optimization 3. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with the same nearest-user proxy association as optimization 1, but with a proxy-average-power objective based on $|\mathrm{CSI}|^2$.
+    \item[] \strategy4 -- optimization 2. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with a current-window nearest-user \gls{ue}-to-\gls{ue} proxy-\gls{csi} rule and a proxy-\gls{esr} objective.
+    \item[] \strategy5 -- optimization 3. The same number of distributed \glspl{ap} is reselected at each relocation window from the wall-mounted candidate pool with the same nearest-user proxy association as optimization 2, but with a proxy-average-power objective based on $|\mathrm{CSI}|^2$.
 \end{itemize}
 
 Let $\mathcal{C}$ denote the wall-mounted candidate pool and let $\mathcal{S}_w \subseteq \mathcal{C}$ denote the selected movable-\gls{ap} subset in relocation window $w$. 
@@ -61,14 +61,14 @@ Let $\mathcal{C}$ denote the wall-mounted candidate pool and let $\mathcal{S}_w 
 
 \section{Relocation Heuristic}
 
-The relocation mechanism repeats the same observe-score-relocate loop at every relocation instant. Optimization~1 and optimization~3 assume that the \gls{ap}-to-\gls{ue} channel of a dormant candidate position is not known before an \gls{ap} is actually moved there. Consequently, these two rules do not optimize directly over candidate-position \gls{ap}-to-\gls{ue} \gls{csi}. Instead, each candidate site is associated with the closest user within a distance threshold. Optimization~1 reuses the measured \gls{ue}-to-\gls{ue} wideband channel of that nearby user as a proxy and ranks the subset by proxy \gls{esr}. Optimization~3 uses the corresponding stored \gls{ue}-to-\gls{ue} link-power samples, scaled to the \gls{ap} transmit-power budget, and ranks the subset by proxy average power. Once the best subset has been chosen, the movable \glspl{ap} are relocated to those candidate positions and the actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed for storage, postprocessing, and final reporting.
+The relocation mechanism repeats the same observe-score-relocate loop at every relocation instant. Optimization~2 and optimization~3 assume that the \gls{ap}-to-\gls{ue} channel of a dormant candidate position is not known before an \gls{ap} is actually moved there. Consequently, these two rules do not optimize directly over candidate-position \gls{ap}-to-\gls{ue} \gls{csi}. Instead, each candidate site is associated with the closest user within a distance threshold. Optimization~2 reuses the measured \gls{ue}-to-\gls{ue} wideband channel of that nearby user as a proxy and ranks the subset by proxy \gls{esr}. Optimization~3 uses the corresponding stored \gls{ue}-to-\gls{ue} link-power samples, scaled to the \gls{ap} transmit-power budget, and ranks the subset by proxy average power. In the present trace-driven simulation, the selector is given the user positions and \gls{ue}-to-\gls{ue} proxy measurements over the current relocation window as a short-horizon look-ahead signal. This is future information relative to a strictly causal online controller, but it is not candidate-position \gls{ap}-to-\gls{ue} \gls{csi}. Once the best subset has been chosen, the movable \glspl{ap} are relocated to those candidate positions and the actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed for storage, postprocessing, and final reporting.
 
 The movable distributed strategy is implemented as a windowed receding-horizon controller. Let $\{t_n\}_{n=0}^{N_t-1}$ denote the simulated snapshot times and let $T_{\mathrm{rel}}$ denote the relocation interval. The trajectory is partitioned into disjoint decision windows
 \begin{equation}
     \mathcal{W}_w = \left\{n \in \{0,\ldots,N_t-1\} :
     \left\lfloor \frac{t_n-t_0}{T_{\mathrm{rel}}}\right\rfloor = w\right\}.
 \end{equation}
-At the beginning of each window $w$, the controller selects a subset $\mathcal{S}_w \subseteq \mathcal{C}$ with cardinality $\lvert \mathcal{S}_w \rvert = N_{\mathrm{mov}}$, where $N_{\mathrm{mov}}$ is the movable-\gls{ap} budget. The fixed distributed mode uses one time-invariant subset, whereas the movable mode recomputes $\mathcal{S}_w$ at every relocation instant.
+At the beginning of each window $w$, the controller selects a subset $\mathcal{S}_w \subseteq \mathcal{C}$ with cardinality $\lvert \mathcal{S}_w \rvert = N_{\mathrm{mov}}$, where $N_{\mathrm{mov}}$ is the movable-\gls{ap} budget. The fixed distributed mode uses one time-invariant subset, whereas the movable mode recomputes $\mathcal{S}_w$ at every relocation instant. A strictly causal online variant would replace the current-window samples below by only the decision-time sample, or by predicted samples for the upcoming window.
 
 \subsection{\strategy4[title] -- current-window nearest-user proxy-\gls{csi} controller.}
 Let $d_{\mathrm{th}}$ denote the configured distance threshold. For each candidate site $c \in \mathcal{C}$ and snapshot $n \in \mathcal{W}_w$, define the anchor user
@@ -84,7 +84,7 @@ and the validity indicator
         \left\|\mathbf{r}_{\ell(c,n),n}-\mathbf{x}_c\right\|_2 \le d_{\mathrm{th}}
     \right\}.
 \end{equation}
-The \gls{ap}-to-\gls{ue} channels for the candidate site is \gls{csi} is not available before relocation. Therefore, Optimization~1 replaces it by a proxy channel extracted from the measured \gls{ue}-to-\gls{ue} \gls{csi}. If $h^{\mathrm{UU}}_{u,v,n}[f]$ denotes the sampled \gls{ue}-to-\gls{ue} coefficient from transmitter-user $v$ to receiver-user $u$ at snapshot $n$ and tone $f$, the proxy coefficient used for candidate $c$ is
+The \gls{ap}-to-\gls{ue} \gls{csi} for a dormant candidate site is not available before relocation. Therefore, Optimization~2 replaces it by a proxy channel extracted from the measured \gls{ue}-to-\gls{ue} \gls{csi}. If $h^{\mathrm{UU}}_{u,v,n}[f]$ denotes the sampled \gls{ue}-to-\gls{ue} coefficient from transmitter-user $v$ to receiver-user $u$ at snapshot $n$ and tone $f$, the proxy coefficient used for candidate $c$ is
 \begin{equation}
     \tilde{h}_{u,c,n}[f]=
     \begin{cases}
@@ -95,17 +95,18 @@ The \gls{ap}-to-\gls{ue} channels for the candidate site is \gls{csi} is not ava
 \end{equation}
 where $v^\star=\arg\max_{v \in \mathcal{U}} \max_f |h^{\mathrm{UU}}_{v,\ell(c,n),n}[f]|$ supplies a surrogate self-link because the diagonal user-to-itself measurement is not observable. For a candidate subset $\mathcal{S}$, the proxy channel matrix $\tilde{\mathbf{H}}_n[f](\mathcal{S})$ is formed by stacking the columns $\tilde{h}_{u,c,n}[f]$ for all $c \in \mathcal{S}$. The same \gls{zf} procedure as in the deployed \gls{ap} case is then applied on every sampled tone, yielding a proxy \gls{sinr} $\tilde{\gamma}_{u,n}[f](\mathcal{S})$ and the current-window proxy-\gls{esr} objective
 \begin{equation}
-    J_w^{(1)}(\mathcal{S}) =
+    J_w^{(2)}(\mathcal{S}) =
     \frac{1}{|\mathcal{W}_w|F}
     \sum_{n \in \mathcal{W}_w}
     \sum_{f=1}^{F}
     \sum_{u \in \mathcal{U}}
     \log_2\!\left(1+\tilde{\gamma}_{u,n}[f](\mathcal{S})\right).
 \end{equation}
-% Consequently, Optimization~1 uses measured \gls{ue}-to-\gls{ue} proxy \gls{csi} to rank candidate subsets, while avoiding the unrealistic assumption that dormant candidate-position \gls{ap}-to-\gls{ue} channels are already known.
+The summation over $n \in \mathcal{W}_w$ is therefore an average over trace samples in the relocation interval for which $\mathcal{S}_w$ remains deployed. It is a proxy-\gls{esr} score computed from \gls{ue}-to-\gls{ue} look-ahead measurements, not from candidate-position \gls{ap}-to-\gls{ue} \gls{csi}.
+% Consequently, Optimization~2 uses measured \gls{ue}-to-\gls{ue} proxy \gls{csi} to rank candidate subsets, while avoiding the unrealistic assumption that dormant candidate-position \gls{ap}-to-\gls{ue} channels are already known.
 
 \subsection{\strategy5[title] -- current-window nearest-user proxy-power controller.}
-The proxy-power rule reuses the same nearest-user anchor $\ell(c,n)$ and validity indicator $\delta(c,n)$ as Optimization~1, but it does not use the complex proxy coefficient directly. Instead, it operates on the stored \gls{ue}-to-\gls{ue} link-power tensor. Let $\rho^{\mathrm{UU}}_{a,u,n}$ denote the ordered link-power entry returned by the simulator between anchor-user index $a$ and user index $u$ at snapshot $n$. The implementation forms the per-candidate proxy-power row
+The proxy-power rule reuses the same nearest-user anchor $\ell(c,n)$ and validity indicator $\delta(c,n)$ as Optimization~2, but it does not use the complex proxy coefficient directly. Instead, it operates on the stored \gls{ue}-to-\gls{ue} link-power tensor. Let $\rho^{\mathrm{UU}}_{a,u,n}$ denote the ordered link-power entry returned by the simulator between anchor-user index $a$ and user index $u$ at snapshot $n$. The implementation forms the per-candidate proxy-power row
 \begin{equation}
     \bar{\rho}_{u,c,n} =
     \begin{cases}
@@ -129,7 +130,7 @@ The optimization-3 objective is then
     \sum_{c \in \mathcal{S}}
     \tilde{\rho}_{u,c,n}.
 \end{equation}
-Optimization~3 is therefore the power-only counterpart of Optimization~1: it uses the same nearest-user proxy association and the same self-link substitution rule, but it requires only stored proxy link power rather than the complex proxy channel.
+Optimization~3 is therefore the power-only counterpart of Optimization~2: it uses the same nearest-user proxy association and the same self-link substitution rule, but it requires only stored proxy link power rather than the complex proxy channel.
 
 \subsection{AP Relocation Selection -- Greedy subset construction.}
 Both proxy-based optimization rules use the same forward-selection search. Starting from $\mathcal{S}_w^{(0)}=\varnothing$, the controller adds one candidate at a time according to
@@ -139,13 +140,13 @@ Both proxy-based optimization rules use the same forward-selection search. Start
     J_w^{(q)}\!\left(\mathcal{S}_w^{(r-1)} \cup \{c\}\right),
 \end{equation}
 \begin{equation}
-    q \in \{1,2\},
+    q \in \{2,3\},
     \qquad
     \mathcal{S}_w^{(r)} =
     \mathcal{S}_w^{(r-1)} \cup \{c_r^\star\},
     \qquad r=1,\ldots,N_{\mathrm{mov}},
 \end{equation}
-and finally sets $\mathcal{S}_w=\mathcal{S}_w^{(N_{\mathrm{mov}})}$. It emulates as if the channel vectors form the anchor users, where the new channels for the \glspl{ap}. It uses thus a forward-selection heuristic and not an exhaustive combinatorial optimizer.
+and finally sets $\mathcal{S}_w=\mathcal{S}_w^{(N_{\mathrm{mov}})}$. This is a forward-selection heuristic rather than an exhaustive combinatorial optimizer.
 
 \subsection{Physically Relocating APs}
 
