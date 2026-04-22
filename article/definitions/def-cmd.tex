@@ -54,8 +54,10 @@
 }
 
 \NewDocumentCommand{\StrategyLabel}{ m m m O{long} }{%
-  \IfStrEq{#4}{title}{}{\nobreakspace{}\strategybox[colframe=#2,colback=#2!22]{\scriptsize\strut \textcolor{#2}{#1}}}%
-  \IfStrEq{#4}{short}{}{\nobreakspace{}#3}%
+  \IfStrEq{#4}{title}{#3}{%
+    \nobreakspace{}\strategybox[colframe=#2,colback=#2!22]{\scriptsize\strut \textcolor{#2}{#1}}%
+    \IfStrEq{#4}{short}{}{\nobreakspace{}#3}%
+  }%
 }
 
 

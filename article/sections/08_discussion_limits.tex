@@ -2,13 +2,14 @@
 
 The present study has several modeling and evaluation limits that define the scope of the reported results.
 
-Two findings stand out from the Rabot results. First, distributed wall-mounted deployments are consistently superior to the normalized central rooftop proxy in this scenario. Even the static distributed baseline improves both average and lower-tail performance over \texttt{central\_massive\_mimo}, which indicates that the spatially spread outdoor user process benefits strongly from nearby façade-mounted service points. Second, the quality of the relocation proxy matters more than relocation alone. Optimization~2 outperforms optimization~3 on all reported radio metrics while also requiring less movement, which shows that phase-aware \gls{ue}-to-\gls{ue} proxy \gls{csi} carries useful information beyond power-only proxy measurements.
+Two findings stand out from the Rabot results. First, distributed wall-mounted deployments are consistently superior to the normalized central rooftop proxy in this scenario. Even \strategy2[title] improves both average and lower-tail performance over \strategy1[title], which indicates that the spatially spread outdoor user process benefits strongly from nearby façade-mounted service points. Second, the quality of the relocation proxy matters more than relocation alone. \strategy4[title] outperforms \strategy5[title] on all reported radio metrics while also requiring less movement, which shows that phase-aware \gls{ue}-to-\gls{ue} proxy \gls{csi} carries useful information beyond power-only proxy measurements.
 
 The main limitations are the following:
 \begin{itemize}
     \item Only a single outdoor scenario is considered.
-    \item The \texttt{central\_massive\_mimo} comparison point is a rooftop proxy, not a full placement model for one true co-located massive-\gls{mimo} array.
+    \item The central massive-\gls{mimo} comparison point is a rooftop proxy, not a full placement model for one true co-located massive-\gls{mimo} array.
     \item The movable optimization results use trace-driven current-window look-ahead in the \gls{ue}-to-\gls{ue} proxy measurements. They should therefore be read as a window-level relocation benchmark, not as a strictly causal online controller.
+    \item The relocation analysis reports aggregate movement burden rather than attributing marginal \gls{esr} gain to individual moves; this would require counterfactual no-move comparisons at each relocation instant.
     \item The current Rabot configuration disables coverage-map exports, so the paper centers on trajectory-level \gls{sinr} and schedule metrics.
     \item Citizen participation is abstracted as movable candidate positions and scheduler actions rather than being validated experimentally.
     \item Sensitivity to random seeds, scenario perturbations, and broader deployment-cost models is not yet characterized.
