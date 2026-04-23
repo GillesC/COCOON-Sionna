@@ -60,7 +60,7 @@ The movable distributed strategy is implemented as a windowed receding-horizon c
 \end{equation}
 At the beginning of each window $w$, the controller selects a subset $\mathcal{S}_w \subseteq \mathcal{C}$ with cardinality $\lvert \mathcal{S}_w \rvert = N_{\mathrm{mov}}$, where $N_{\mathrm{mov}}$ is the movable-\gls{ap} budget. The fixed distributed mode uses one time-invariant subset, whereas the movable mode recomputes $\mathcal{S}_w$ at every relocation instant. A strictly causal online variant would replace the current-window samples below by only the decision-time sample, or by predicted samples for the upcoming window.
 
-\subsection{\texorpdfstring{\strategy4[title] -- current-window nearest-user proxy-\gls{csi} controller.}{Distributed movable (CSI) -- current-window nearest-user proxy-CSI controller.}}
+\subsection{\texorpdfstring{\strategy4[title] -- current-window nearest-user proxy-\gls{csi} controller.}{Distributed movable optimization 1 -- current-window nearest-user proxy-CSI controller.}}
 Let $d_{\mathrm{th}}$ denote the configured distance threshold, let $\mathbf{r}_{u,n}$ be the horizontal position of user $u$ at snapshot $n$, and let $\mathbf{x}_c$ be the horizontal coordinate of candidate site $c$. For each candidate site $c \in \mathcal{C}$ and snapshot $n \in \mathcal{W}_w$, define the anchor user
 \begin{equation}
     \ell(c,n)=
@@ -85,7 +85,7 @@ The \gls{ap}-to-\gls{ue} \gls{csi} for a dormant candidate site is not available
 \end{equation}
 where $v^\star=\arg\max_{v \in \mathcal{U}} \max_f |h^{\mathrm{UU}}_{v,\ell(c,n),n}[f]|$ supplies a surrogate self-link because the diagonal user-to-itself measurement is not observable. For a candidate subset $\mathcal{S}$, the proxy channel matrix $\tilde{\mathbf{H}}_n[f](\mathcal{S})$ is formed by stacking the columns $\tilde{h}_{u,c,n}[f]$ for all $c \in \mathcal{S}$. The same \gls{zf} procedure as in the deployed \gls{ap} case is then applied on every sampled tone, yielding a proxy \gls{sinr} $\tilde{\gamma}_{u,n}[f](\mathcal{S})$ and the current-window proxy-\gls{esr} objective
 \begin{equation}
-    J_w^{(2)}(\mathcal{S}) =
+    J_w^{(1)}(\mathcal{S}) =
     \frac{1}{|\mathcal{W}_w|F}
     \sum_{n \in \mathcal{W}_w}
     \sum_{f=1}^{F}
@@ -94,7 +94,7 @@ where $v^\star=\arg\max_{v \in \mathcal{U}} \max_f |h^{\mathrm{UU}}_{v,\ell(c,n)
 \end{equation}
 The summation over $n \in \mathcal{W}_w$ is therefore an average over trace samples in the relocation interval for which $\mathcal{S}_w$ remains deployed. It is a proxy-\gls{esr} score computed from \gls{ue}-to-\gls{ue} look-ahead measurements, not from candidate-position \gls{ap}-to-\gls{ue} \gls{csi}.
 
-\subsection{\texorpdfstring{\strategy5[title] -- current-window nearest-user proxy-power controller.}{Distributed movable (PL) -- current-window nearest-user proxy-power controller.}}
+\subsection{\texorpdfstring{\strategy5[title] -- current-window nearest-user proxy-power controller.}{Distributed movable optimization 2 -- current-window nearest-user proxy-power controller.}}
 The proxy-power rule reuses the same nearest-user anchor $\ell(c,n)$ and validity indicator $\delta(c,n)$ as \strategy4[title], but it does not use the complex proxy coefficient directly. Instead, it operates on the stored \gls{ue}-to-\gls{ue} link-power tensor. Let $\rho^{\mathrm{UU}}_{a,u,n}$ denote the ordered link-power entry returned by the simulator between anchor-user index $a$ and user index $u$ at snapshot $n$. The implementation forms the per-candidate proxy-power row
 \begin{equation}
     \bar{\rho}_{u,c,n} =
@@ -111,7 +111,7 @@ and then rescales that row to the distributed-\gls{ap} transmit-power budget acc
 \end{equation}
 The \strategy5[title] objective is then
 \begin{equation}
-    J_w^{(3)}(\mathcal{S}) =
+    J_w^{(2)}(\mathcal{S}) =
     \frac{1}{|\mathcal{W}_w|}
     \sum_{n \in \mathcal{W}_w}
     \frac{1}{|\mathcal{U}|}
@@ -129,7 +129,7 @@ Both proxy-based optimization rules use the same forward-selection search. Start
     J_w^{(q)}\!\left(\mathcal{S}_w^{(r-1)} \cup \{c\}\right),
 \end{equation}
 \begin{equation}
-    q \in \{2,3\},
+    q \in \{1,2\},
     \qquad
     \mathcal{S}_w^{(r)} =
     \mathcal{S}_w^{(r-1)} \cup \{c_r^\star\},
@@ -152,5 +152,5 @@ where $\Pi_{N_{\mathrm{mov}}}$ is the permutation set on $\{1,\ldots,N_{\mathrm{
 % \begin{equation}
 %     F = -\alpha P_{\mathrm{out}} + \beta P_{10} + \eta T_{\mathrm{peer}},
 % \end{equation}
-% where $P_{\mathrm{out}}$ is the fraction of user snapshots below the configured \gls{sinr} threshold, $P_{10}$ is the trajectory-wide 10th percentile, and $T_{\mathrm{peer}}$ is a peer-weighted mean \gls{sinr} term derived from \gls{ue}-to-\gls{ue} \gls{csi}. The coefficients $(\alpha,\beta,\eta)$ correspond to the configured outage, percentile, and peer tie-break weights. This final score is used for reporting and mode comparison; the online relocation controller itself is driven by either $J_w^{(2)}(\mathcal{S})$ or $J_w^{(3)}(\mathcal{S})$, depending on the selected movable-strategy variant.
+% where $P_{\mathrm{out}}$ is the fraction of user snapshots below the configured \gls{sinr} threshold, $P_{10}$ is the trajectory-wide 10th percentile, and $T_{\mathrm{peer}}$ is a peer-weighted mean \gls{sinr} term derived from \gls{ue}-to-\gls{ue} \gls{csi}. The coefficients $(\alpha,\beta,\eta)$ correspond to the configured outage, percentile, and peer tie-break weights. This final score is used for reporting and mode comparison; the online relocation controller itself is driven by either $J_w^{(1)}(\mathcal{S})$ or $J_w^{(2)}(\mathcal{S})$, depending on the selected movable-strategy variant.
 % The above formulation defines the relocation mechanisms used throughout the Rabot simulations.
