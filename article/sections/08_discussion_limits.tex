@@ -10,9 +10,9 @@ The main limitations are the following:
     \item The central massive-\gls{mimo} comparison point is a rooftop proxy, not a full placement model for one true co-located massive-\gls{mimo} array.
     \item The movable optimization results use trace-driven current-window look-ahead in the \gls{ue}-to-\gls{ue} proxy measurements. They should therefore be read as a window-level relocation benchmark, not as a strictly causal online controller.
     \item The relocation analysis reports aggregate movement burden rather than attributing marginal \gls{esr} gain to individual moves; this would require counterfactual no-move comparisons at each relocation instant.
-    \item The current Rabot configuration disables coverage-map exports, so the paper centers on trajectory-level \gls{sinr} and schedule metrics.
+    % \item The current Rabot configuration disables coverage-map exports, so the paper centers on trajectory-level \gls{sinr} and schedule metrics.
     \item Citizen participation is abstracted as movable candidate positions and scheduler actions rather than being validated experimentally.
     \item Sensitivity to random seeds, scenario perturbations, and broader deployment-cost models is not yet characterized.
 \end{itemize}
 
-These limitations motivate extensions toward multi-scenario studies, sensitivity analyses, coverage-map reporting, and eventual experimental validation in co-created deployments.
+These limitations motivate extensions toward multi-scenario studies, sensitivity analyses, and eventual experimental validation in co-created deployments.
