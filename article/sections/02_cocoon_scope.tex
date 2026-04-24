@@ -1,14 +1,14 @@
 \section{Scope Within Cocoon}
 
-The full Cocoon proposal spans citizen interaction with the wireless network, channel assessment, architecture design, and proof-of-concept validation. The present article addresses the simulation-facing part of that program, with emphasis on dynamic channel-aware adaptation, low-height \gls{ap}/\gls{csp} placement, and the algorithmic consequences of allowing physical repositioning.
+The broader Cocoon research programme spans citizen interaction with the wireless network, channel assessment, architecture design, and proof-of-concept validation. The present article addresses the radio-simulation component of that programme, with emphasis on dynamic channel-aware adaptation, low-height \gls{ap}/\gls{csp} placement, and the algorithmic consequences of allowing physical repositioning.
 
-The main modeling simplification is that co-creation is represented here through an abstract movable infrastructure layer rather than through a user study or a deployment trial. Candidate mounting locations stand in for positions that could later be offered to citizens, and the placement scheduler stands in for the future tool chain that would notify participants where the next best \gls{csp} constellation should be installed.
+The main modeling simplification is that co-creation is represented through an abstract movable infrastructure layer rather than through a user study or deployment trial. Candidate mounting locations model feasible low-height positions, and the placement scheduler models the channel-aware decision process that selects the next \gls{csp} constellation.
 
 Accordingly, the scope of the present article is:
 \begin{itemize}
-    \item the paper validates a simulation methodology and a comparison workflow, not the social feasibility of citizen participation,
-    \item the paper studies a Rabot outdoor scenario, not yet a multi-site or multi-season campaign,
-    \item the paper compares placement strategies over a common \gls{csi}-derived objective, not yet a full end-to-end network stack.
+    \item a simulation methodology and comparative evaluation, not a validation of the social feasibility of citizen participation,
+    \item a Rabot outdoor scenario, not a multi-site or multi-season campaign,
+    \item a placement-strategy comparison over a common \gls{csi}-derived objective, not a full end-to-end network stack.
 \end{itemize}
 
 \subsection{Placement Strategies}
@@ -18,6 +18,6 @@ The placement layer compares the following strategy definitions under a common \
 \begin{itemize}
     \item[] \strategy1 -- one rooftop proxy is placed on the building whose rooftop representative point is nearest the area center and is oriented toward that center. Its antenna topology is the normalized co-located $\num{6}\times\num{6}$ \gls{upa} obtained by aggregating the distributed element budget into one rooftop site; it is used only as the central reference.
     \item[] \strategy2 -- one distributed subset is sampled from the wall-mounted candidate pool and kept unchanged over the full trajectory.
-    \item[] \strategy4 -- optimization \num{1}. The distributed subset is reselected every relocation window from a nearest-user \gls{ue}-to-\gls{ue} proxy-\gls{csi} model. Each candidate site binds to the closest user within $d_{\mathrm{th}}$, the controller forms a wideband proxy channel from that user's measured \gls{ue}-to-\gls{ue} CFR, and the subset is ranked by proxy \gls{esr}.
-    \item[] \strategy5 -- optimization \num{2}. The distributed subset is reselected every relocation window from the same nearest-user distance-threshold proxy model, but the controller uses the stored \gls{ue}-to-\gls{ue} link-power row of the anchor user, replaces the diagonal entry by the strongest non-self value, rescales by $P_{\mathrm{AP}}/P_{\mathrm{UE}}$, and ranks the subset by proxy average power.
+    \item[] \strategy4 -- nearest-user proxy-\gls{csi} relocation. The distributed subset is reselected every relocation window from a nearest-user \gls{ue}-to-\gls{ue} proxy-\gls{csi} model. Each candidate site binds to the closest user within $d_{\mathrm{th}}$, the controller forms a wideband proxy channel from that user's measured \gls{ue}-to-\gls{ue} CFR, and the subset is ranked by proxy \gls{esr}.
+    \item[] \strategy5 -- nearest-user proxy-power relocation. The distributed subset is reselected every relocation window from the same nearest-user distance-threshold proxy model, but the controller uses the stored \gls{ue}-to-\gls{ue} link-power row of the anchor user, replaces the diagonal entry by the strongest non-self value, rescales by $P_{\mathrm{AP}}/P_{\mathrm{UE}}$, and ranks the subset by proxy average power.
 \end{itemize}

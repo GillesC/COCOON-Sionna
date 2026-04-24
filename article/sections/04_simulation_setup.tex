@@ -1,23 +1,23 @@
 \section{Simulation Setup}
 
-The Rabot outdoor scenario is defined in \texttt{scenarios/rabot.yaml}. The scene is derived from an \gls{osm} boundary around the KU Leuven Gent Campus Rabot environment. Candidate distributed-\gls{ap} positions are generated along building walls at low height, one rooftop proxy is reserved for the central reference strategy, and user mobility is simulated over the outdoor walkable area with mixed pedestrian and bicycle profiles.
+The numerical study uses the Rabot outdoor scenario, with parameters encoded in \texttt{scenarios/rabot.yaml}. The scene is derived from an \gls{osm} boundary around the KU Leuven Gent Campus Rabot environment. Candidate distributed-\gls{ap} positions are generated along building walls at low height, one rooftop proxy is reserved for the central reference strategy, and user mobility is simulated over the outdoor walkable area with mixed pedestrian and bicycle profiles.
 
-The simulation workflow used by the paper matches the repository workflow:
+The evaluation follows the following reproducible sequence:
 \begin{enumerate}
     \item build the outdoor scene and walk graph from \gls{osm},
     \item generate wall-mounted candidate \glspl{ap} and the single rooftop proxy site,
     \item simulate user trajectories over the walkable outdoor area,
     \item compute path-based \gls{csi} and explicit \gls{sinr} terms,
     \item compare \strategy1[title], \strategy2[title], \strategy4[title], and \strategy5[title],
-    \item export reusable result files,
-    \item generate analysis figures in a separate postprocessing step.
+    \item store per-strategy channel and performance samples,
+    \item compute summary figures and tables from the stored outputs.
 \end{enumerate}
 
-This section documents the reproducible processing chain from scene generation to postprocessed figure export. The antenna configuration is kept fixed across all placement strategies at the element-model level: the simulator instantiates \gls{upa}-based node arrays with the \gls{3gpp} \texttt{tr38901} element pattern, half-wavelength spacing in both planar dimensions, and \texttt{VH} dual polarization. The distributed strategies use identical $\num{2}\times\num{3}$ wall-mounted \glspl{ap}, whereas the central reference aggregates that same element budget into one normalized co-located rooftop $\num{6}\times\num{6}$ array with summed transmit power. Consequently, the comparison isolates the effect of geometry, relocation, and distributed-versus-co-located topology while keeping the underlying element directivity model unchanged.
+This section specifies the processing chain from scene generation to figure construction. The antenna configuration is kept fixed across all placement strategies at the element-model level: the simulator instantiates \gls{upa}-based node arrays with the \gls{3gpp} \texttt{tr38901} element pattern, half-wavelength spacing in both planar dimensions, and \texttt{VH} dual polarization. The distributed strategies use identical $\num{2}\times\num{3}$ wall-mounted \glspl{ap}, whereas the central reference aggregates that same element budget into one normalized co-located rooftop $\num{6}\times\num{6}$ array with summed transmit power. Consequently, the comparison isolates the effect of geometry, relocation, and distributed-versus-co-located topology while keeping the underlying element directivity model unchanged.
 
 \begin{table}[t]
     \centering
-    \caption{Key Rabot scenario parameters used in the Rabot simulations.}
+    \caption{Key Rabot scenario parameters used in the simulations.}
     \label{tab:rabot_setup}
     \begin{tabular}{p{0.56\linewidth}p{0.34\linewidth}}
         \toprule
@@ -42,14 +42,14 @@ This section documents the reproducible processing chain from scene generation t
         Minimum candidate spacing $d_{\mathrm{cand}}^{\min}$ & \SI{12}{\meter} \\
         Candidate wall offset $\Delta_{\mathrm{wall}}$ & \SI{0.25}{\meter} \\
         Relocation window $T_{\mathrm{rel}}$ & \SI{60}{\second} \\
-        Optimization distance threshold $d_{\mathrm{th}}$ & \SI{25}{\meter} \\
+        Proxy association distance threshold $d_{\mathrm{th}}$ & \SI{25}{\meter} \\
         % Initialization seed & 11 \\
-        % Compared strategies & central proxy, fixed distributed, movable distributed opt.~2, opt.~3 \\
+        % Compared strategies & central proxy, fixed distributed, proxy-CSI movable, proxy-power movable \\
         % Coverage maps & disabled in current Rabot config \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-The figure set in \cref{sec:results_geometry,sec:results_sinr,sec:results_relocation} is read directly from the generated Rabot outputs under \texttt{outputs/rabot/} and \texttt{outputs/rabot/postprocessing/}. This keeps the manuscript synchronized with the latest postprocessed result files in the repository.
+All figures in \cref{sec:results_geometry,sec:results_sinr,sec:results_relocation} are produced from the same stored Rabot simulation outputs. This preserves consistency between the tabulated parameters, plotted data, and narrative statistics.
 
-For the current Rabot instantiation, the relocation controller starts from a single seed constellation drawn from the wall-mounted candidate pool using the configured random seed. That seed constellation is frozen for \strategy2[title] and also initializes \strategy4[title] and \strategy5[title]. Thereafter, every relocation window applies the greedy subset search from \cref{sec:system_model} with the selected proxy objective, followed by a minimum-displacement assignment that preserves persistent \gls{ap} identities across windows. The actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed only after the new candidate subset has been selected.
+In the Rabot instantiation, the relocation controller starts from a single seed constellation drawn from the wall-mounted candidate pool using the configured random seed. That seed constellation is frozen for \strategy2[title] and also initializes \strategy4[title] and \strategy5[title]. Thereafter, every relocation window applies the greedy subset search from \cref{sec:system_model} with the selected proxy objective, followed by a minimum-displacement assignment that preserves persistent \gls{ap} identities across windows. The actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed only after the new candidate subset has been selected.

@@ -1,4 +1,4 @@
-\section{Discussion and Current Limits}
+\section{Discussion and Limitations}
 
 The present study has several modeling and evaluation limits that define the scope of the reported results.
 
@@ -8,9 +8,9 @@ The main limitations are the following:
 \begin{itemize}
     \item Only a single outdoor scenario is considered.
     \item The central massive-\gls{mimo} comparison point is a rooftop proxy, not a full placement model for one true co-located massive-\gls{mimo} array.
-    \item The movable optimization results use trace-driven current-window look-ahead in the \gls{ue}-to-\gls{ue} proxy measurements. They should therefore be read as a window-level relocation benchmark, not as a strictly causal online controller.
+    \item The movable relocation results use trace-driven current-window look-ahead in the \gls{ue}-to-\gls{ue} proxy measurements. They should therefore be read as a window-level relocation benchmark, not as a strictly causal online controller.
     \item The relocation analysis reports aggregate movement burden rather than attributing marginal \gls{esr} gain to individual moves; this would require counterfactual no-move comparisons at each relocation instant.
-    % \item The current Rabot configuration disables coverage-map exports, so the paper centers on trajectory-level \gls{sinr} and schedule metrics.
+    \item Coverage-map exports are disabled in the present Rabot configuration, so the analysis centers on trajectory-level \gls{sinr}, \gls{esr}, and relocation metrics.
     \item Citizen participation is abstracted as movable candidate positions and scheduler actions rather than being validated experimentally.
     \item Sensitivity to random seeds, scenario perturbations, and broader deployment-cost models is not yet characterized.
 \end{itemize}

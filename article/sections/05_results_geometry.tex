@@ -1,7 +1,7 @@
 \section{Scenario Geometry and Mobility Results}
 \label{sec:results_geometry}
 
-This result block summarizes the simulated environment before presenting radio-performance metrics. It reports the available candidate mounting locations, the selected deployment, and the spatial distribution of user trajectories over the Rabot area.
+This section summarizes the simulated environment before presenting radio-performance metrics. It reports the available candidate mounting locations, the selected deployment, and the spatial distribution of user trajectories over the Rabot area.
 
 \begin{figure}[t]
     \centering
@@ -23,6 +23,6 @@ This result block summarizes the simulated environment before presenting radio-p
     \label{fig:geometry_pair}
 \end{figure}
 
-\Cref{fig:geometry_pair} provides the geometric context for the subsequent \gls{sinr}, \gls{esr}, and relocation analyses. The scene-layout panel reports the candidate-site pool and the selected constellation, whereas the trajectory overlay reports the spatial spread of the simulated user population.
-For the present Rabot instance, the wall-generation stage yields \num{87} candidate low-height mounting locations, from which \num{6} distributed sites are activated per distributed strategy. The simulated mobility trace contributes \num{7210} user-snapshot positions over the \SI{1}{\hour} horizon, and these positions span most of the accessible outdoor footprint rather than a single narrow corridor. This geometry already suggests that a single rooftop proxy will face a harder coverage problem than wall-mounted distributed deployments, because the user population repeatedly moves through streets and courtyard edges that can be served from multiple nearby façades.
+\Cref{fig:geometry_pair} provides the geometric context for the subsequent \gls{sinr}, \gls{esr}, and relocation analyses. The scene-layout panel depicts the candidate-site pool and the selected constellation, whereas the trajectory overlay shows the spatial spread of the simulated user population.
+For the present Rabot instance, the candidate-generation procedure yields \num{87} candidate low-height mounting locations, from which \num{6} distributed sites are activated per distributed strategy. The simulated mobility trace contributes \num{7210} user-snapshot positions over the \SI{1}{\hour} horizon, and these positions span most of the accessible outdoor footprint rather than a single narrow corridor. This geometry anticipates a harder coverage problem for the single rooftop proxy than for wall-mounted distributed deployments, because the user population repeatedly moves through streets and courtyard edges that can be served from multiple nearby façades.
 % \FloatBarrier

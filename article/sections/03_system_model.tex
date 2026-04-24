@@ -10,7 +10,7 @@ and the full distributed channel observed by \gls{ue} $k$ is
     \mathbf{H}_k[f] = \left[\mathbf{H}_{k,1}[f]\;\mathbf{H}_{k,2}[f]\;\cdots\;\mathbf{H}_{k,M}[f]\right].
 \end{equation}
 
-The antenna topology follows the \texttt{PlanarArray} abstraction used by the simulator. Each node is modeled as a \gls{upa} with $N^{\mathrm{row}}$ rows and $N^{\mathrm{col}}$ columns, so that the number of polarization-agnostic elements is $N^{\mathrm{row}}N^{\mathrm{col}}$. The implementation uses the same element radiation pattern, polarization setting, and inter-element spacing on transmit and receive arrays. More precisely, the number of ports is
+The antenna topology follows the \texttt{PlanarArray} abstraction used by the simulator. Each node is modeled as a \gls{upa} with $N^{\mathrm{row}}$ rows and $N^{\mathrm{col}}$ columns, so that the number of polarization-agnostic elements is $N^{\mathrm{row}}N^{\mathrm{col}}$. All simulated transmit and receive arrays use the same element radiation pattern, polarization setting, and inter-element spacing. More precisely, the number of ports is
 \begin{equation}
     N = N^{\mathrm{row}} N^{\mathrm{col}} N^{\mathrm{pol}},
 \end{equation}
@@ -18,7 +18,7 @@ where $N^{\mathrm{pol}}$ is the number of active polarization ports implied by t
 
 The element radiation pattern is the \gls{3gpp} \texttt{tr38901} pattern provided by Sionna. Thus, the simulated channel is not isotropic at the element level: every array response combines the \texttt{tr38901} element directivity with the \gls{upa} array factor determined by the node orientation, row-column topology, and the propagation geometry. This matters for the present study because the wall-mounted distributed \glspl{ap} and the rooftop central proxy are evaluated with the same underlying element pattern while differing in their locations, orientations, and distributed versus centralized array geometry.
 
-For the central reference, the implementation collapses the distributed element budget into one normalized co-located rooftop array. If each distributed \gls{ap} has $N_{\mathrm{AP}}^{\mathrm{row}}N_{\mathrm{AP}}^{\mathrm{col}}$ physical element locations and the distributed budget contains $M_{\mathrm{dist}}$ \glspl{ap}, then the central proxy uses
+For the central reference, the distributed element budget is collapsed into one normalized co-located rooftop array. If each distributed \gls{ap} has $N_{\mathrm{AP}}^{\mathrm{row}}N_{\mathrm{AP}}^{\mathrm{col}}$ physical element locations and the distributed budget contains $M_{\mathrm{dist}}$ \glspl{ap}, then the central proxy uses
 \begin{equation}
     N_{\mathrm{cent}}^{\mathrm{elem}} =
     M_{\mathrm{dist}} N_{\mathrm{AP}}^{\mathrm{row}} N_{\mathrm{AP}}^{\mathrm{col}}
@@ -29,7 +29,7 @@ Given a receive combiner $\mathbf{u}_k[f]$, the effective channel becomes
 \begin{equation}
     \mathbf{h}_k^{\mathsf{H}}[f] = \mathbf{u}_k^{\mathsf{H}}[f]\mathbf{H}_k[f].
 \end{equation}
-Stacking all users yields the effective distributed channel matrix $\mathbf{H}_{\mathrm{eff}}[f]$. The current pipeline applies a least-squares pseudo-inverse \gls{zf} precoder independently on every sampled tone, followed by per-stream power allocation under a total \gls{ap} power budget.
+Stacking all users yields the effective distributed channel matrix $\mathbf{H}_{\mathrm{eff}}[f]$. The numerical evaluation applies a least-squares pseudo-inverse \gls{zf} precoder independently on every sampled tone, followed by per-stream power allocation under a total \gls{ap} power budget.
 
 For \gls{ue} $k$ on tone $f$, the instantaneous downlink \gls{sinr} is evaluated as
 \begin{equation}
@@ -37,9 +37,9 @@ For \gls{ue} $k$ on tone $f$, the instantaneous downlink \gls{sinr} is evaluated
     \frac{p_k \left|\mathbf{h}_k^{\mathsf{H}}[f]\mathbf{f}_k[f]\right|^2}
     {\sum_{i \in \mathcal{U},\, i \neq k} p_i \left|\mathbf{h}_k^{\mathsf{H}}[f]\mathbf{f}_i[f]\right|^2 + \sigma^2},
 \end{equation}
-where $\mathbf{f}_i$ is the precoding vector for stream $i$, $p_i$ its allocated power, and $\sigma^2$ the thermal-noise term. The implementation keeps the interference term explicitly and exports desired-signal, interference, and noise power terms for each evaluated user snapshot.
+where $\mathbf{f}_i$ is the precoding vector for stream $i$, $p_i$ its allocated power, and $\sigma^2$ the thermal-noise term. The evaluation retains the interference term explicitly and records desired-signal, interference, and noise power terms for each evaluated user snapshot.
 
-The implementation evaluates this expression on all sampled tones and stores a scalar wideband \gls{sinr} per user by mapping the tone-averaged spectral efficiency back to a Shannon-equivalent \gls{sinr}. The \gls{esr} used later in the results section is derived from the same full-band per-snapshot \gls{sinr} samples. For snapshot $n$ with scheduled-user set $\mathcal{U}_n$, the postprocessing layer computes
+The evaluation computes this expression on all sampled tones and stores a scalar wideband \gls{sinr} per user by mapping the tone-averaged spectral efficiency back to a Shannon-equivalent \gls{sinr}. The \gls{esr} used later in the results section is derived from the same full-band per-snapshot \gls{sinr} samples. For snapshot $n$ with scheduled-user set $\mathcal{U}_n$, the aggregate spectral efficiency is
 \begin{equation}
     \mathrm{ESR}_n = \sum_{k \in \mathcal{U}_n}\frac{1}{F}\sum_{f=1}^{F}\log_2\!\left(1+\mathrm{SINR}^{\mathrm{DL}}_{k,n}[f]\right).
 \end{equation}
@@ -49,18 +49,18 @@ The placement strategies compared throughout the article are defined in \cref{se
 
 % In the Rabot scenario studied here, $\lvert \mathcal{S}_w \rvert = N_{\mathrm{mov}}=6$ and no always-on distributed \glspl{ap} are used, so the distributed comparison isolates the effect of changing the movable subset over time.
 
-\section{Relocation Heuristic}
+\section{Relocation Model}
 
-The relocation mechanism repeats the same observe-score-relocate loop at every relocation instant. The \strategy4[title] and \strategy5[title] rules assume that the \gls{ap}-to-\gls{ue} channel of a dormant candidate position is not known before an \gls{ap} is actually moved there. Consequently, these two rules do not optimize directly over candidate-position \gls{ap}-to-\gls{ue} \gls{csi}. Instead, each candidate site is associated with the closest user within a distance threshold. The \strategy4[title] rule reuses the measured \gls{ue}-to-\gls{ue} wideband channel of that nearby user as a proxy and ranks the subset by proxy \gls{esr}. The \strategy5[title] rule uses the corresponding stored \gls{ue}-to-\gls{ue} link-power samples, scaled to the \gls{ap} transmit-power budget, and ranks the subset by proxy average power. In the present trace-driven simulation, the selector is given the user positions and \gls{ue}-to-\gls{ue} proxy measurements over the current relocation window as a short-horizon look-ahead signal. This is future information relative to a strictly causal online controller, but it is not candidate-position \gls{ap}-to-\gls{ue} \gls{csi}. Once the best subset has been chosen, the movable \glspl{ap} are relocated to those candidate positions and the actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed for storage, postprocessing, and final reporting.
+At each relocation instant, the movable strategies select a candidate subset from proxy information available over the decision window. The \strategy4[title] and \strategy5[title] rules assume that the \gls{ap}-to-\gls{ue} channel of a dormant candidate position is not known before an \gls{ap} is actually moved there. Consequently, these two rules do not optimize directly over candidate-position \gls{ap}-to-\gls{ue} \gls{csi}. Instead, each candidate site is associated with the closest user within a distance threshold. The \strategy4[title] rule reuses the measured \gls{ue}-to-\gls{ue} wideband channel of that nearby user as a proxy and ranks the subset by proxy \gls{esr}. The \strategy5[title] rule uses the corresponding stored \gls{ue}-to-\gls{ue} link-power samples, scaled to the \gls{ap} transmit-power budget, and ranks the subset by proxy average power. In the present trace-driven evaluation, the selector is given the user positions and \gls{ue}-to-\gls{ue} proxy measurements over the current relocation window as a short-horizon look-ahead signal. This is future information relative to a strictly causal online controller, but it is not candidate-position \gls{ap}-to-\gls{ue} \gls{csi}. Once the best subset has been chosen, the movable \glspl{ap} are relocated to those candidate positions and the actual deployed \gls{ap}-to-\gls{ue} \gls{csi} is recomputed for the reported performance metrics.
 
-The movable distributed strategy is implemented as a windowed receding-horizon controller. Let $\{t_n\}_{n=1}^{N_t}$ denote the simulated snapshot times and let $T_{\mathrm{rel}}$ denote the relocation interval. The trajectory is partitioned into disjoint decision windows
+The movable distributed strategy is modeled as a windowed receding-horizon controller. Let $\{t_n\}_{n=1}^{N_t}$ denote the simulated snapshot times and let $T_{\mathrm{rel}}$ denote the relocation interval. The trajectory is partitioned into disjoint decision windows
 \begin{equation}
     \mathcal{W}_w = \left\{n \in \{1,\ldots,N_t\} :
     \left\lfloor \frac{t_n-t_1}{T_{\mathrm{rel}}}\right\rfloor = w-1\right\}.
 \end{equation}
 At the beginning of each window $w$, the controller selects a subset $\mathcal{S}_w \subseteq \mathcal{C}$ with cardinality $\lvert \mathcal{S}_w \rvert = N_{\mathrm{mov}}$, where $N_{\mathrm{mov}}$ is the movable-\gls{ap} budget. The fixed distributed mode uses one time-invariant subset, whereas the movable mode recomputes $\mathcal{S}_w$ at every relocation instant. A strictly causal online variant would replace the current-window samples below by only the decision-time sample, or by predicted samples for the upcoming window.
 
-\subsection{\texorpdfstring{\strategy4[title] -- current-window nearest-user proxy-\gls{csi} controller.}{Distributed movable optimization 1 -- current-window nearest-user proxy-CSI controller.}}
+\subsection{\texorpdfstring{\strategy4[title] -- nearest-user proxy-\gls{csi} relocation.}{Distributed movable proxy-CSI relocation.}}
 Let $d_{\mathrm{th}}$ denote the configured distance threshold, let $\mathbf{r}_{u,n}$ be the horizontal position of user $u$ at snapshot $n$, and let $\mathbf{x}_c$ be the horizontal coordinate of candidate site $c$. For each candidate site $c \in \mathcal{C}$ and snapshot $n \in \mathcal{W}_w$, define the anchor user
 \begin{equation}
     \ell(c,n)=
@@ -94,8 +94,8 @@ where $v^\star=\arg\max_{v \in \mathcal{U}} \max_f |h^{\mathrm{UU}}_{v,\ell(c,n)
 \end{equation}
 The summation over $n \in \mathcal{W}_w$ is therefore an average over trace samples in the relocation interval for which $\mathcal{S}_w$ remains deployed. It is a proxy-\gls{esr} score computed from \gls{ue}-to-\gls{ue} look-ahead measurements, not from candidate-position \gls{ap}-to-\gls{ue} \gls{csi}.
 
-\subsection{\texorpdfstring{\strategy5[title] -- current-window nearest-user proxy-power controller.}{Distributed movable optimization 2 -- current-window nearest-user proxy-power controller.}}
-The proxy-power rule reuses the same nearest-user anchor $\ell(c,n)$ and validity indicator $\delta(c,n)$ as \strategy4[title], but it does not use the complex proxy coefficient directly. Instead, it operates on the stored \gls{ue}-to-\gls{ue} link-power tensor. Let $\rho^{\mathrm{UU}}_{a,u,n}$ denote the ordered link-power entry returned by the simulator between anchor-user index $a$ and user index $u$ at snapshot $n$. The implementation forms the per-candidate proxy-power row
+\subsection{\texorpdfstring{\strategy5[title] -- nearest-user proxy-power relocation.}{Distributed movable proxy-power relocation.}}
+The proxy-power rule reuses the same nearest-user anchor $\ell(c,n)$ and validity indicator $\delta(c,n)$ as \strategy4[title], but it does not use the complex proxy coefficient directly. Instead, it operates on the stored \gls{ue}-to-\gls{ue} link-power tensor. Let $\rho^{\mathrm{UU}}_{a,u,n}$ denote the ordered link-power entry returned by the simulator between anchor-user index $a$ and user index $u$ at snapshot $n$. The rule forms the per-candidate proxy-power row
 \begin{equation}
     \bar{\rho}_{u,c,n} =
     \begin{cases}
@@ -121,8 +121,8 @@ The \strategy5[title] objective is then
 \end{equation}
 \strategy5[title] is therefore the power-only counterpart of \strategy4[title]: it uses the same nearest-user proxy association and the same self-link substitution rule, but it requires only stored proxy link power rather than the complex proxy channel.
 
-\subsection{AP Relocation Selection -- Greedy subset construction.}
-Both proxy-based optimization rules use the same forward-selection search. Starting from $\mathcal{S}_w^{(0)}=\varnothing$, the controller adds one candidate at a time according to
+\subsection{Greedy Subset Construction}
+Both proxy-based relocation rules use the same forward-selection search. Starting from $\mathcal{S}_w^{(0)}=\varnothing$, the controller adds one candidate at a time according to
 \begin{equation}
     c_r^\star =
     \arg\max_{c \in \mathcal{C}\setminus \mathcal{S}_w^{(r-1)}}
@@ -137,16 +137,16 @@ Both proxy-based optimization rules use the same forward-selection search. Start
 \end{equation}
 and finally sets $\mathcal{S}_w=\mathcal{S}_w^{(N_{\mathrm{mov}})}$. This is a forward-selection heuristic rather than an exhaustive combinatorial optimizer.
 
-\subsection{Physically Relocating APs}
+\subsection{Physical Relocation Assignment}
 
-After either optimization rule has chosen the subset, the selected geometric candidate sites are converted into physical relocations of labeled movable \glspl{ap}. Let $\mathbf{p}_m^{(w-1)}$ denote the previous-window position of movable \gls{ap} $m$ and let $\mathbf{q}_j^{(w)}$ denote the coordinates of the candidates in the newly selected subset. The controller solves the linear assignment problem
+After either proxy rule has chosen the subset, the selected geometric candidate sites are converted into physical relocations of labeled movable \glspl{ap}. Let $\mathbf{p}_m^{(w-1)}$ denote the previous-window position of movable \gls{ap} $m$ and let $\mathbf{q}_j^{(w)}$ denote the coordinates of the candidates in the newly selected subset. The controller solves the linear assignment problem
 \begin{equation}
     \pi_w^\star =
     \arg\min_{\pi \in \Pi_{N_{\mathrm{mov}}}}
     \sum_{m=1}^{N_{\mathrm{mov}}}
     \left\|\mathbf{p}_m^{(w-1)}-\mathbf{q}_{\pi(m)}^{(w)}\right\|_2^2,
 \end{equation}
-where $\Pi_{N_{\mathrm{mov}}}$ is the permutation set on $\{1,\ldots,N_{\mathrm{mov}}\}$. This minimum-displacement matching preserves \gls{ap} identities across windows and yields schedule traces that correspond to physically meaningful AP trajectories instead of arbitrary candidate relabelings. This allows to investigate the required relocation distances, i.e., which strategies require the most relocations.
+where $\Pi_{N_{\mathrm{mov}}}$ is the permutation set on $\{1,\ldots,N_{\mathrm{mov}}\}$. This minimum-displacement matching preserves \gls{ap} identities across windows and yields schedule traces that correspond to physically meaningful AP trajectories instead of arbitrary candidate relabelings. The resulting trajectories provide the relocation-distance statistics used to compare movement requirements across strategies.
 
 % Once all windows have been simulated, the concatenated movable-strategy trajectory is evaluated using the same trajectory-level summary score as the static baselines,
 % \begin{equation}
