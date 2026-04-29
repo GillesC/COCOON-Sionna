@@ -1,33 +1,7 @@
 \section{SINR- and ESR-Oriented Results}
 \label{sec:results_sinr}
 
-This section reports radio-performance statistics for the evaluated placement strategies. The panels summarize global \gls{sinr} statistics, user-level averages, temporal \gls{esr} evolution, aggregate \gls{esr} distributions, and worst-user behavior.
-
-% \begin{figure*}[t]
-%     \centering
-%     \begin{subfigure}[t]{0.47\textwidth}
-%         \centering
-%         \begingroup
-%         \def\postprocessfigurewidth{\linewidth}
-%         \pgfplotsset{table/search path={\SINRFigureRoot}}
-%         \input{\SINRCdfFigurePath}
-%         \endgroup
-%         \caption{Empirical \gls{sinr} distribution across all user snapshots and compared placement strategies.}
-%         \label{fig:sinr_cdf}
-%     \end{subfigure}\hfill
-%     % \begin{subfigure}[t]{0.47\textwidth}
-%     %     \centering
-%     %     \begingroup
-%     %     \def\postprocessfigurewidth{\linewidth}
-%     %     \pgfplotsset{table/search path={\SINRFigureRoot}}
-%     %     \input{\PerUserMeanBoxplotFigurePath}
-%     %     \endgroup
-%     %     \caption{Per-user mean \gls{sinr} boxplot across strategies.}
-%     %     \label{fig:sinr_boxplot}
-%     % \end{subfigure}
-%     \caption{First pair of radio-performance results. The proxy-\gls{esr} controller dominates the global \gls{sinr} distribution and shifts the full per-user mean-\gls{sinr} boxplot upward, while the central rooftop proxy remains the weakest strategy.}
-%     \label{fig:sinr_primary_pair}
-% \end{figure*}
+This section reports radio-performance statistics for the evaluated placement strategies. The panels summarize the empirical \gls{sinr} distribution across user snapshots and the aggregate \gls{esr} distribution across evaluated time samples.
 
 \begin{figure*}[t]
     \centering
@@ -35,17 +9,7 @@ This section reports radio-performance statistics for the evaluated placement st
     \ref{sharedlegend}
     \vspace*{1em}
     
-    % \begin{subfigure}[t]{0.47\textwidth}
-    %     \centering
-    %     \begingroup
-    %     \def\postprocessfigurewidth{\linewidth}
-    %     \pgfplotsset{table/search path={\SINRFigureRoot}}
-    %     \input{\ESRTimeseriesFigurePath}
-    %     \endgroup
-    %     \caption{\gls{esr} over time, including relocation markers and window-level step behavior.}
-    %     \label{fig:esr_timeseries}
-    % \end{subfigure}\hfill
-        \begin{subfigure}[t]{0.48\textwidth}
+    \begin{subfigure}[t]{0.48\textwidth}
         \centering
         \begingroup
         \def\postprocessfigurewidth{\linewidth}
@@ -65,29 +29,15 @@ This section reports radio-performance statistics for the evaluated placement st
         \caption{\gls{esr} \gls{cdf} across the \num{721} evaluated time samples.}
         \label{fig:esr_cdf}
     \end{subfigure}
-    \caption{Radio-performance distributions for the Rabot trace. \strategy4[title] produces the most favorable \gls{sinr} and \gls{esr} distributions, with \strategy5[title] as the next-best movable strategy.}
+    \caption{Radio-performance distributions for the campus trace. \strategy4[title] produces the most favorable \gls{sinr} and \gls{esr} distributions, with \strategy5[title] as the next-best movable strategy.}
     \label{fig:radio_primary_pair}
 \end{figure*}
 
-% \begin{figure}[t]
-%     \centering
-%     \begin{minipage}{0.90\linewidth}
-%         \centering
-%         \begingroup
-%         \def\postprocessfigurewidth{\linewidth}
-%         \pgfplotsset{table/search path={\SINRFigureRoot}}
-%         \input{\SINRWorstUserFigurePath}
-%         \endgroup
-%     \end{minipage}
-%     \caption{Worst-user \gls{sinr} over time.}
-%     \label{fig:sinr_worst_user}
-% \end{figure}
-
 \Cref{fig:radio_primary_pair} establishes a clear ordering. The nearest-user proxy-\gls{esr} controller of \strategy4[title] dominates almost the full empirical \gls{sinr} range. Its mean \gls{sinr} reaches \SI{39.7}{dB}, with a \num{10}th percentile of \SI{24.5}{dB}; \strategy2[title] reaches \SI{21.3}{dB} mean and \SI{7.5}{dB} at the \num{10}th percentile. The outage fraction below \SI{0}{dB} drops from \SI{4.41}{\percent} for \strategy2[title] to \SI{1.87}{\percent} for \strategy4[title]. \strategy5[title] is the second-best radio strategy with \SI{35.7}{dB} mean \gls{sinr} and \SI{16.3}{dB} \num{10}th-percentile \gls{sinr}, but its outage fraction remains essentially identical to \strategy2[title] at about \SI{4.42}{\percent}. Hence, the power-only proxy improves the middle and upper portions of the distribution much more strongly than the weakest-link tail.
 
-\strategy1[title] is weakest throughout, with \SI{9.8}{dB} mean \gls{sinr}, \SI{-22.1}{dB} \num{10}th-percentile \gls{sinr}, and \SI{18.4}{\percent} outage. The per-user mean boxplot reinforces the same message: \strategy4[title] lifts all users into a narrow \SIrange{36.4}{42.5}{dB} band, \strategy5[title] places all users in a lower but still clearly elevated \SIrange{31.1}{38.8}{dB} band, whereas \strategy1[title] exhibits the widest user imbalance and even negative per-user means for the weakest users.
+\strategy1[title] is weakest throughout, with \SI{9.8}{dB} mean \gls{sinr}, \SI{-22.1}{dB} \num{10}th-percentile \gls{sinr}, and \SI{18.4}{\percent} outage.
 
-The \gls{esr} figures in \cref{fig:radio_primary_pair} follow the same ranking. Mean \gls{esr} reaches \SI{133.1}{bit/s/Hz} for \strategy4[title], \SI{122.8}{bit/s/Hz} for \strategy5[title], \SI{74.9}{bit/s/Hz} for \strategy2[title], and \SI{56.4}{bit/s/Hz} for \strategy1[title]. Relative to \strategy2[title], \strategy4[title] improves the mean \gls{esr} by \SI{77.8}{\percent} and the \num{10}th-percentile \gls{esr} by \SI{88.8}{\percent}. \strategy5[title] still improves the mean \gls{esr} by \SI{64.1}{\percent}, but remains consistently below \strategy4[title]. Window by window, \strategy4[title] attains the highest mean \gls{esr} in \num{42} of the \num{61} relocation windows and exceeds \strategy2[title] in all windows; \strategy5[title] leads in \num{15} windows and exceeds \strategy2[title] in \num{57} windows. The relocation markers every \SI{60}{\second} identify the decision instants, and the highest sustained post-relocation levels occur for \strategy4[title].
+The \gls{esr} panel in \cref{fig:radio_primary_pair} follows the same ranking. Mean \gls{esr} reaches \SI{133.1}{bit/s/Hz} for \strategy4[title], \SI{122.8}{bit/s/Hz} for \strategy5[title], \SI{74.9}{bit/s/Hz} for \strategy2[title], and \SI{56.4}{bit/s/Hz} for \strategy1[title]. Relative to \strategy2[title], \strategy4[title] improves the mean \gls{esr} by \SI{77.8}{\percent} and the \num{10}th-percentile \gls{esr} by \SI{88.8}{\percent}. \strategy5[title] still improves the mean \gls{esr} by \SI{64.1}{\percent}, but remains consistently below \strategy4[title].
 
-Together, these figures indicate that the best result in this scenario is not merely ``more movement'' or ``more power'', but the combination of relocation with a phase-aware \gls{ue}-to-\gls{ue} proxy-\gls{csi} objective. \strategy2[title] remains a strong zero-relocation benchmark, whereas \strategy1[title] is clearly mismatched to the spatially spread Rabot user process.
+Together, these figures indicate that the best result in this scenario is not merely ``more movement'' or ``more power'', but the combination of relocation with a phase-aware \gls{ue}-to-\gls{ue} proxy-\gls{csi} objective. \strategy2[title] remains a strong zero-relocation benchmark, whereas \strategy1[title] is clearly mismatched to the spatially spread campus user process.
 % \FloatBarrier

@@ -1,14 +1,14 @@
 \section{Scenario Geometry and Mobility Results}
 \label{sec:results_geometry}
 
-This section summarizes the simulated environment before presenting radio-performance metrics. It reports the available candidate mounting locations, the selected deployment, and the spatial distribution of user trajectories over the Rabot area.
+This section summarizes the simulated environment before presenting radio-performance metrics. It reports the available candidate mounting locations, the selected deployment, and the spatial distribution of user trajectories over the campus area.
 
 \begin{figure}[t]
     \centering
     % \begin{subfigure}[t]{0.47\textwidth}
     %     \centering
     %     \PaperImage[\linewidth]{\resultroot/scene_layout.png}
-    %     \caption{Top-down Rabot scene layout with candidate sites, selected sites, and simulated mobility overlays.}
+    %     \caption{Top-down campus scene layout with candidate sites, selected sites, and simulated mobility overlays.}
     %     \label{fig:scene_layout}
     % \end{subfigure}\hfill
     % \begin{subfigure}[t]{0.47\textwidth}
@@ -19,10 +19,10 @@ This section summarizes the simulated environment before presenting radio-perfor
     % \end{subfigure}
 
     \PaperImage[\linewidth]{\resultroot/scene_layout.png}
-    \caption{Geometry results for the Rabot scenario. The panels show the selected deployment in the urban layout and the simulated user-trajectory overlay over the walkable area.}
+    \caption{Geometry results for the campus scenario. The panels show the selected deployment in the urban layout and the simulated user-trajectory overlay over the walkable area.}
     \label{fig:geometry_pair}
 \end{figure}
 
 \Cref{fig:geometry_pair} provides the geometric context for the subsequent \gls{sinr}, \gls{esr}, and relocation analyses. The scene-layout panel depicts the candidate-site pool and the selected constellation, whereas the trajectory overlay shows the spatial spread of the simulated user population.
-For the present Rabot instance, the candidate-generation procedure yields \num{87} candidate low-height mounting locations, from which \num{6} distributed sites are activated per distributed strategy. The simulated mobility trace contributes \num{7210} user-snapshot positions over the \SI{1}{\hour} horizon, and these positions span most of the accessible outdoor footprint rather than a single narrow corridor. This geometry anticipates a harder coverage problem for the single rooftop proxy than for wall-mounted distributed deployments, because the user population repeatedly moves through streets and courtyard edges that can be served from multiple nearby façades.
+For the present campus instance, the candidate-generation procedure yields \num{87} candidate low-height mounting locations, from which \num{6} distributed sites are activated per distributed strategy. The simulated mobility trace contributes \num{7210} user-snapshot positions over the \SI{1}{\hour} horizon, and these positions span most of the accessible outdoor footprint rather than a single narrow corridor. This geometry anticipates a harder coverage problem for the single rooftop proxy than for wall-mounted distributed deployments, because the user population repeatedly moves through streets and courtyard edges that can be served from multiple nearby façades.
 % \FloatBarrier
